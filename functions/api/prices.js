@@ -128,13 +128,107 @@ export async function onRequestPost(context){
     const body=await context.request.json();
     const action=text(body.action).toUpperCase();
 
-    /*
-      Nesta primeira etapa liberamos somente INATIVAR.
+    if(action==='EDITAR'){
+      const id=Number(body.id);
+      const reason=text(body.reason);
 
-      As ações CRIAR, EDITAR e COMBINAR serão adicionadas
-      separadamente para que possamos testar cada operação
-      sem colocar os 183 produtos em risco.
-    */
+      if(!id){
+        return json({error:'Produto inválido.'},400);
+      }
+
+      if(!reason){
+        return json({
+          error:'Informe o motivo da alteração.'
+        },400);
+      }
+
+      const product=await getProduct(context.env,id);
+
+      if(!product){
+        return json({error:'Produto não encontrado.'},404);
+      }
+
+      if(Number(product.active)===0){
+        return json({error:'Produto inativo não pode ser editado.'},400);
+      }
+
+      const stockQuantity=num(body.stock_quantity,Number(product.stock_quantity||0));
+      const cost=num(body.cost,Number(product.cost||0));
+      const markupPercent=num(body.markup_percent,Number(product.markup_percent||0));
+
+      if(stockQuantity<0){
+        return json({error:'A quantidade não pode ser negativa.'},400);
+      }
+
+      if(cost<0){
+        return json({error:'O custo não pode ser negativo.'},400);
+      }
+
+      if(markupPercent<0){
+        return json({error:'O markup não pode ser negativo.'},400);
+      }
+
+      const multiplier=1+(markupPercent/100);
+      const price4x=cost*multiplier;
+      const priceCash=price4x*0.929;
+      const price18x=priceCash/0.83;
+
+      const changes=[
+        ['stock_quantity',product.stock_quantity,stockQuantity],
+        ['cost',product.cost,cost],
+        ['markup_percent',product.markup_percent,markupPercent],
+        ['multiplier',product.multiplier,multiplier],
+        ['price_4x',product.price_4x,price4x],
+        ['price_cash',product.price_cash,priceCash],
+        ['price_18x',product.price_18x,price18x]
+      ];
+
+      await context.env.DB.prepare(`
+        UPDATE price_products
+        SET
+          stock_quantity = ?,
+          cost = ?,
+          markup_percent = ?,
+          multiplier = ?,
+          price_4x = ?,
+          price_cash = ?,
+          price_18x = ?,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).bind(
+        stockQuantity,
+        cost,
+        markupPercent,
+        multiplier,
+        price4x,
+        priceCash,
+        price18x,
+        id
+      ).run();
+
+      for(const [fieldName,oldValue,newValue] of changes){
+        if(Number(oldValue)!==Number(newValue)){
+          await history(context.env,{
+            productId:id,
+            internalCode:product.internal_code,
+            action:'EDITAR',
+            fieldName,
+            oldValue,
+            newValue,
+            reason,
+            changedBy:user.username
+          });
+        }
+      }
+
+      const updated=await getProduct(context.env,id);
+
+      return json({
+        ok:true,
+        message:'Produto atualizado com sucesso.',
+        product:updated
+      });
+    }
 
     if(action==='INATIVAR'){
       const id=Number(body.id);
