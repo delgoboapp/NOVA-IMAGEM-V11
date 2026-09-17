@@ -114,12 +114,6 @@ export async function onRequestPost(context){
     return json({error:'Sessão inválida ou expirada.'},401);
   }
 
-  if(!gestorOnly(user)){
-    return json({
-      error:'Apenas usuários GESTOR podem alterar o estoque.'
-    },403);
-  }
-
   try{
     if(!context.env.DB){
       throw new Error('D1 binding DB não configurado.');
@@ -127,6 +121,40 @@ export async function onRequestPost(context){
 
     const body=await context.request.json();
     const action=text(body.action).toUpperCase();
+
+    if(action==='CONSUMIR_PEDIDO'||action==='ESTORNAR_PEDIDO'){
+      const items=Array.isArray(body.items)?body.items:[];
+      const orderNumber=text(body.order_number);
+      if(!items.length)return json({error:'Nenhum item de estoque informado.'},400);
+      const prepared=[];
+      for(const item of items){
+        const id=Number(item.product_id),qty=num(item.qty,0);
+        if(!id||qty<=0)return json({error:'Item ou quantidade inválida para movimentação.'},400);
+        const product=await getProduct(context.env,id);
+        if(!product)return json({error:`Produto oficial não encontrado: ${id}.`},404);
+        if(Number(product.active)===0)return json({error:`Produto inativo: ${product.internal_code}.`},400);
+        const current=Number(product.stock_quantity||0);
+        const isRestore=action==='ESTORNAR_PEDIDO';
+        const next=isRestore?current+qty:current-qty;
+        const name=text(product.product_name).toUpperCase();
+        const allowNegative=name.includes('MOTORIZAD')||(name.includes('VARÃO')&&name.includes('COMANDO'));
+        if(!isRestore&&!allowNegative&&next<0){
+          return json({error:`Estoque insuficiente de ${product.product_name} / ${product.color||'-'}. Necessário ${qty.toFixed(String(product.unit).toUpperCase()==='M'?2:0)} ${product.unit||'UN'}; disponível ${current.toFixed(String(product.unit).toUpperCase()==='M'?2:0)} ${product.unit||'UN'}.`},400);
+        }
+        prepared.push({product,qty,current,next,environment:text(item.environment)});
+      }
+      const statements=[];
+      for(const x of prepared){
+        statements.push(context.env.DB.prepare(`UPDATE price_products SET stock_quantity = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`).bind(x.next,Number(x.product.id)));
+        statements.push(context.env.DB.prepare(`INSERT INTO price_product_history (product_id,internal_code,action,field_name,old_value,new_value,reason,changed_by) VALUES (?,?,?,?,?,?,?,?)`).bind(Number(x.product.id),text(x.product.internal_code),action,'stock_quantity',String(x.current),String(x.next),`${action==='ESTORNAR_PEDIDO'?'Estorno':'Saída'} do pedido ${orderNumber}${x.environment?' • '+x.environment:''}`,text(user.username)));
+      }
+      await context.env.DB.batch(statements);
+      return json({ok:true,movements:prepared.map(x=>({product_id:Number(x.product.id),internal_code:x.product.internal_code,product_name:x.product.product_name,color:x.product.color,unit:x.product.unit,qty:x.qty,before:x.current,after:x.next}))});
+    }
+
+    if(!gestorOnly(user)){
+      return json({error:'Apenas usuários GESTOR podem editar ou inativar produtos.'},403);
+    }
 
     if(action==='EDITAR'){
       const id=Number(body.id);
