@@ -135,7 +135,7 @@ function validateAndConsumeStock(q,order){
 function restoreOrderStock(order){if(order?.stockRestored)return;for(const m of order?.stockMovements||[]){const p=(db.products||[]).find(x=>x.id===m.productId)||findStockProduct(m.type,m.name,m.color,m.unit);if(p){p.qty=Number(p.qty||0)+Number(m.qty||0);p.movements=p.movements||[];p.movements.push({id:uid(),date:today(),type:'ESTORNO DE PEDIDO',qty:Number(m.qty||0),balance:p.qty,unit:m.unit||p.unit,by:currentUsername(),reason:`Estorno do pedido ${order.numero||''}`})}}order.stockRestored=true}
 const STAGES=['RECEPÇÃO','CORTE','COSTURA','BARRA','PASSADORIA','EXPEDIÇÃO'];
 const NAV=[
-  ['quote','Novo orçamento','all'],['quotes','Orçamentos','all'],['clients','Clientes','sales'],['orders','Pedidos','all'],['production','Produção','production'],['install','Instalações','all'],['inventory','Estoque','gestor'],['pricing','Tabela / Preços','gestor'],['kpis','KPIs','gestor'],['payables','Contas a pagar','gestor'],['suppliers','Compras / Fornecedores','gestor'],['hr','Departamento Pessoal','gestor'],['rework','Retrabalho','all'],['users','Usuários','gestor']
+  ['quote','Novo orçamento','all'],['quotes','Orçamentos','all'],['clients','Clientes','sales'],['orders','Pedidos','all'],['production','Produção','production'],['install','Instalações','all'],['inventory','Estoque','gestor'],['kpis','KPIs','gestor'],['payables','Contas a pagar','gestor'],['suppliers','Compras / Fornecedores','gestor'],['hr','Departamento Pessoal','gestor'],['rework','Retrabalho','all'],['users','Usuários','gestor']
 ];
 let token=sessionStorage.getItem('novaV9Token')||'';
 let currentUser=JSON.parse(sessionStorage.getItem('novaV9User')||'null');
