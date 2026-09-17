@@ -194,7 +194,7 @@ const NAV_GROUPS=[
  {id:'commercial',label:'COMERCIAL',items:['quote','quotes','clients','orders']},
  {id:'operational',label:'OPERACIONAL',items:['production','install','rework']},
  {id:'stock',label:'COMPRAS E ESTOQUE',items:['suppliers','inventory']},
- {id:'management',label:'GESTÃO',items:['receivables','revenues','productionCosts','results','hr','users']}
+ {id:'management',label:'GESTÃO',items:['receivables','revenues','payables','productionCosts','results','hr','users']}
 ];
 let token=sessionStorage.getItem('novaV9Token')||'';
 let currentUser=JSON.parse(sessionStorage.getItem('novaV9User')||'null');
