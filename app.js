@@ -137,6 +137,7 @@ function officialOrderRequirements(q){
     if(String(e.fixation||'').startsWith('VARÃO WAVE')){
       const f=c.fixationCalc||{};
       add(officialProductById(f.supportProductId),f.supports,e.name,f.supportName||'SUPORTE');
+      add(officialProductByName('VARÃO WAVE 28',e.fixColor),f.meters,e.name,'VARÃO WAVE 28');
       add(officialProductByName('TAMPA DE VARÃO WAVE',e.fixColor),f.ends,e.name,'TAMPA DE VARÃO WAVE');
       const slider=officialProductByName('DESLIZANTE WAVE',e.fixColor);
       add(slider,(c.finishSliders||0)+(c.liningSliders||0),e.name,'DESLIZANTE WAVE');
@@ -161,7 +162,7 @@ async function restoreOfficialStock(order){
 }
 function validateAndConsumeStock(q,order){
   // Durante a migração V11, tecidos e ferragens Wave já baixados em price_products não são baixados novamente no estoque legado.
-  const req=stockRequirements(q).filter(r=>!['TECIDO DE ACABAMENTO','TECIDO DE FORRO'].includes(canonicalProductType(r.type))&&!['SUPORTE WAVE 28','TAMPA VARÃO WAVE 28'].includes(stockName(r.name))), grouped={};
+  const req=stockRequirements(q).filter(r=>!['TECIDO DE ACABAMENTO','TECIDO DE FORRO'].includes(canonicalProductType(r.type))&&!['VARÃO WAVE 28','SUPORTE WAVE 28','TAMPA VARÃO WAVE 28'].includes(stockName(r.name))), grouped={};
   for(const r of req){const key=[norm(r.type),stockName(r.name),norm(r.color),norm(r.unit)].join('|');grouped[key]??={...r,qty:0};grouped[key].qty+=Number(r.qty||0)}
   for(const r of Object.values(grouped)){const p=findStockProduct(r.type,r.name,r.color,r.unit);if(!p)return {ok:false,error:`Produto de estoque não encontrado: ${r.name} / ${r.color}.`};if(Number(p.qty||0)+1e-9<r.qty)return {ok:false,error:`Estoque insuficiente de ${r.name} / ${r.color}. Necessário ${r.qty.toFixed(r.unit==='M'?2:0)} ${r.unit}; disponível ${Number(p.qty||0).toFixed(r.unit==='M'?2:0)} ${r.unit}.`}}
   order.stockMovements=[];
