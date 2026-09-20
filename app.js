@@ -1,3 +1,4 @@
+// HOTFIX CORDAO: usa NI-0192 CORDAO WAVE BRANCO existente; 1m por metro de largura Wave
 // HOTFIX DESLIZANTES: 1/5cm por acabamento + 1/5cm por forro; completa multiplo de 4 acima
 // V11.3 HOTFIX 2: 2 tampas por trilho/ambiente; garras 1/50cm min 2; CORDAO WAVE 5X5 branco R$4 markup 120%
 // V11.3 FIXAÇÃO: trilho/varão + suportes/garras + 2 tampas por trilho
@@ -116,7 +117,7 @@ function stockRequirements(q){
     }
     const f=c.fixationCalc||{};
     if((e.finishPleat==='WAVE'||e.liningPleat==='WAVE')){
-      add('ACESSÓRIO','CORDAO WAVE 5X5','BRANCO',Number(e.width||0)/100,'M',e.name);
+      add('ACESSÓRIO','CORDAO WAVE','BRANCO',Number(e.width||0)/100,'M',e.name);
     }
     if(String(e.fixation||'').startsWith('TRILHO')){
       add('ACESSÓRIOS',e.fixation||'TRILHO SUÍÇO',e.fixColor,f.meters,'M',e.name);
@@ -136,7 +137,13 @@ function officialProductById(id){return (priceProducts||[]).find(p=>Number(p.id)
 function officialProductByName(name,color=''){return (priceProducts||[]).find(p=>Number(p.active??1)===1&&norm(p.product_name)===norm(name)&&(!color||norm(p.color)===norm(color)))||null}
 function officialSliderProduct(fixColor=''){const list=(priceProducts||[]).filter(p=>Number(p.active??1)===1&&norm(p.product_name)==='DESLIZANTE WAVE');if(!list.length)return null;const c=norm(fixColor);return list.find(p=>norm(p.color)===c)||list.find(p=>norm(p.color)==='BRANCO')||list[0]}
 function officialProductLike(words,color=''){const ws=words.map(norm);const list=(priceProducts||[]).filter(p=>Number(p.active??1)===1&&ws.every(w=>norm(p.product_name).includes(w)));if(!list.length)return null;const c=norm(color);return list.find(p=>!c||norm(p.color)===c)||list.find(p=>norm(p.color)==='BRANCO')||list[0]}
-function officialWaveCord(color=''){return officialProductByName('CORDAO WAVE 5X5','BRANCO')||officialProductByName('CORDÃO WAVE 5X5','BRANCO')||officialProductLike(['CORDÃO','WAVE'],'BRANCO')||officialProductLike(['CORDAO','WAVE'],'BRANCO')}
+function officialWaveCord(color=''){
+  return (priceProducts||[]).find(p=>String(p.code||p.sku||'').replace(/[^0-9]/g,'')==='0192')
+    || officialProductByName('CORDAO WAVE','BRANCO')
+    || officialProductByName('CORDÃO WAVE','BRANCO')
+    || officialProductLike(['CORDÃO','WAVE'],'BRANCO')
+    || officialProductLike(['CORDAO','WAVE'],'BRANCO');
+}
 function officialRailProduct(e){
   const color=e.fixColor||'';
   const name=norm(e.fixation||'');
@@ -264,17 +271,7 @@ function canSeeQuote(q){return isGestor()||isProduction()||resolveSellerUser(q)=
 function canSeeOrder(o){return isGestor()||isProduction()||resolveSellerUser(o)===currentUsername()}
 function mergeConfig(c){const base=clone(DEFAULT_PRICE_CONFIG);if(!c)return base;for(const k of Object.keys(c)){if(c[k]&&typeof c[k]==='object'&&!Array.isArray(c[k])&&base[k]&&typeof base[k]==='object'&&!Array.isArray(base[k]))base[k]={...base[k],...c[k]};else base[k]=c[k]}return base}
 function installPrice(heightM,widthM){const h=Number(heightM||0),w=Number(widthM||0);const m=db.priceConfig?.installationMatrix||DEFAULT_PRICE_CONFIG.installationMatrix;const band=h<=Number(m.simple?.maxH??3.5)?m.simple:h<=Number(m.double?.maxH??5.5)?m.double:m.high;const key=w<=4?'up4':w<=5?'up5':'up6';return Number(band?.[key]||0)}
-async function ensureCordaoWaveOfficial(){
-  if((priceProducts||[]).some(p=>norm(p.product_name)==='CORDAO WAVE 5X5'||norm(p.product_name)==='CORDÃO WAVE 5X5'))return;
-  try{
-    await api('prices',{method:'POST',body:JSON.stringify({
-      action:'CRIAR',supplier:'ESTOQUE INICIAL',supplier_code:'',category:'ACESSÓRIO',
-      product_name:'CORDAO WAVE 5X5',color:'BRANCO',width_cm:0,unit:'M',
-      stock_quantity:0,cost:4,markup_percent:120,ncm:'',cfop_internal:'',cfop_interstate:''
-    })});
-    const prices=await api('prices');priceProducts=Array.isArray(prices.products)?prices.products:[];
-  }catch(e){console.error('Não foi possível criar CORDAO WAVE 5X5 automaticamente:',e)}
-}
+async function ensureCordaoWaveOfficial(){return true}
 async function loadCloud(){try{cloud('Sincronizando...');const j=await api('data');db={...db,...j,priceConfig:mergeConfig(j.priceConfig)};db.auditLog=db.auditLog||[];db.attachments=db.attachments||[];db.settings=db.settings||{};const before=(db.products||[]).length;ensureInitialInventory();try{const prices=await api('prices');priceProducts=Array.isArray(prices.products)?prices.products:[];await ensureCordaoWaveOfficial()}catch(e){priceProducts=[];console.error('Falha ao carregar price_products:',e)}cloud('Dados sincronizados na nuvem');renderAll();if((db.products||[]).length!==before)queueSave()}catch(e){cloud('Sem conexão com a nuvem',true);alert(e.message)}}
 let saveTimer=null;function queueSave(){clearTimeout(saveTimer);saveTimer=setTimeout(saveCloud,250)}
 async function saveCloud(){if(!token)return;try{cloud('Salvando...');const j=await api('data',{method:'POST',body:JSON.stringify(db)});db.updatedAt=j.updatedAt;cloud('Dados salvos na nuvem')}catch(e){cloud('Falha ao salvar',true);alert('Não foi possível salvar: '+e.message)}}
