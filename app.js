@@ -1,3 +1,4 @@
+// V11.3 HOTFIX 2: 2 tampas por trilho/ambiente; garras 1/50cm min 2; CORDAO WAVE 5X5 branco R$4 markup 120%
 // V11.3 FIXAÇÃO: trilho/varão + suportes/garras + 2 tampas por trilho
 const $=id=>document.getElementById(id);
 const money=v=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(v)||0);
@@ -113,6 +114,9 @@ function stockRequirements(q){
       if(e.liningPleat==='WAVE')add('AVIAMENTO',WAVE_TAPE_BY_GATHER[String(e.liningGather)],'SEM COR',c.liningCalc.gathered,'M',e.name);
     }
     const f=c.fixationCalc||{};
+    if((e.finishPleat==='WAVE'||e.liningPleat==='WAVE')){
+      add('ACESSÓRIO','CORDAO WAVE 5X5','BRANCO',Number(e.width||0)/100,'M',e.name);
+    }
     if(String(e.fixation||'').startsWith('TRILHO')){
       add('ACESSÓRIOS',e.fixation||'TRILHO SUÍÇO',e.fixColor,f.meters,'M',e.name);
       add('AVIAMENTO','GARRAS DE TRILHO',e.fixColor,Math.max(2,Math.ceil((Number(e.width||0)/100)/0.5)),'UN',e.name);
@@ -131,7 +135,7 @@ function officialProductById(id){return (priceProducts||[]).find(p=>Number(p.id)
 function officialProductByName(name,color=''){return (priceProducts||[]).find(p=>Number(p.active??1)===1&&norm(p.product_name)===norm(name)&&(!color||norm(p.color)===norm(color)))||null}
 function officialSliderProduct(fixColor=''){const list=(priceProducts||[]).filter(p=>Number(p.active??1)===1&&norm(p.product_name)==='DESLIZANTE WAVE');if(!list.length)return null;const c=norm(fixColor);return list.find(p=>norm(p.color)===c)||list.find(p=>norm(p.color)==='BRANCO')||list[0]}
 function officialProductLike(words,color=''){const ws=words.map(norm);const list=(priceProducts||[]).filter(p=>Number(p.active??1)===1&&ws.every(w=>norm(p.product_name).includes(w)));if(!list.length)return null;const c=norm(color);return list.find(p=>!c||norm(p.color)===c)||list.find(p=>norm(p.color)==='BRANCO')||list[0]}
-function officialWaveCord(color=''){return officialProductLike(['CORDÃO','WAVE'],color)||officialProductLike(['CORDAO','WAVE'],color)}
+function officialWaveCord(color=''){return officialProductByName('CORDAO WAVE 5X5','BRANCO')||officialProductByName('CORDÃO WAVE 5X5','BRANCO')||officialProductLike(['CORDÃO','WAVE'],'BRANCO')||officialProductLike(['CORDAO','WAVE'],'BRANCO')}
 function officialRailProduct(e){
   const color=e.fixColor||'';
   const name=norm(e.fixation||'');
@@ -175,12 +179,17 @@ function officialOrderRequirements(q){
       add(officialProductLike(['TAMPA','VARÃO'],e.fixColor),f.ends,e.name,'TAMPA DE VARÃO WAVE');
     }else if(String(e.fixation||'').startsWith('TRILHO')){
       add(officialRailProduct(e),f.meters,e.name,e.fixation==='TRILHO MOTORIZADO'?'TRILHO BASE MOTORIZADO':(e.fixation||'TRILHO'));
-      add(officialProductLike(['GARRA'],e.fixColor),Math.max(2,Math.ceil((Number(e.width||0)/100)/0.5)),e.name,'GARRAS DE TRILHO');
+      add(officialProductLike(['GARRA'],e.fixColor)||officialProductLike(['GARRAS','TRILHO'],e.fixColor),Math.max(2,Math.ceil(Number(e.width||0)/50)),e.name,'GARRAS DE TRILHO');
       add(officialProductLike(['TAMPA','TRILHO'],e.fixColor)||officialProductLike(['ACABAMENTO','TRILHO'],e.fixColor),2,e.name,'TAMPA / ACABAMENTO DE TRILHO');
     }
   }
   const grouped={};
-  for(const r of req){const k=String(r.product_id);if(!grouped[k])grouped[k]={...r,qty:0,environments:[]};grouped[k].qty+=r.qty;if(r.environment&&!grouped[k].environments.includes(r.environment))grouped[k].environments.push(r.environment)}
+  for(const r of req){
+    const k=[String(r.product_id),String(r.environment||'')].join('|');
+    if(!grouped[k])grouped[k]={...r,qty:0,environments:[]};
+    grouped[k].qty+=r.qty;
+    if(r.environment&&!grouped[k].environments.includes(r.environment))grouped[k].environments.push(r.environment);
+  }
   return Object.values(grouped);
 }
 function officialBomRows(order){return (order?.officialStockSnapshot||[]).map(x=>`<tr><td>${esc(x.internal_code||'-')}</td><td>${esc(x.product_name||'-')}</td><td>${esc(x.color||'-')}</td><td>${Number(x.qty||0).toFixed(norm(x.unit)==='M'?2:0)} ${esc(norm(x.unit||'UN'))}</td><td>${esc((x.environments||[]).join(', ')||'-')}</td></tr>`).join('')}
@@ -254,7 +263,18 @@ function canSeeQuote(q){return isGestor()||isProduction()||resolveSellerUser(q)=
 function canSeeOrder(o){return isGestor()||isProduction()||resolveSellerUser(o)===currentUsername()}
 function mergeConfig(c){const base=clone(DEFAULT_PRICE_CONFIG);if(!c)return base;for(const k of Object.keys(c)){if(c[k]&&typeof c[k]==='object'&&!Array.isArray(c[k])&&base[k]&&typeof base[k]==='object'&&!Array.isArray(base[k]))base[k]={...base[k],...c[k]};else base[k]=c[k]}return base}
 function installPrice(heightM,widthM){const h=Number(heightM||0),w=Number(widthM||0);const m=db.priceConfig?.installationMatrix||DEFAULT_PRICE_CONFIG.installationMatrix;const band=h<=Number(m.simple?.maxH??3.5)?m.simple:h<=Number(m.double?.maxH??5.5)?m.double:m.high;const key=w<=4?'up4':w<=5?'up5':'up6';return Number(band?.[key]||0)}
-async function loadCloud(){try{cloud('Sincronizando...');const j=await api('data');db={...db,...j,priceConfig:mergeConfig(j.priceConfig)};db.auditLog=db.auditLog||[];db.attachments=db.attachments||[];db.settings=db.settings||{};const before=(db.products||[]).length;ensureInitialInventory();try{const prices=await api('prices');priceProducts=Array.isArray(prices.products)?prices.products:[]}catch(e){priceProducts=[];console.error('Falha ao carregar price_products:',e)}cloud('Dados sincronizados na nuvem');renderAll();if((db.products||[]).length!==before)queueSave()}catch(e){cloud('Sem conexão com a nuvem',true);alert(e.message)}}
+async function ensureCordaoWaveOfficial(){
+  if((priceProducts||[]).some(p=>norm(p.product_name)==='CORDAO WAVE 5X5'||norm(p.product_name)==='CORDÃO WAVE 5X5'))return;
+  try{
+    await api('prices',{method:'POST',body:JSON.stringify({
+      action:'CRIAR',supplier:'ESTOQUE INICIAL',supplier_code:'',category:'ACESSÓRIO',
+      product_name:'CORDAO WAVE 5X5',color:'BRANCO',width_cm:0,unit:'M',
+      stock_quantity:0,cost:4,markup_percent:120,ncm:'',cfop_internal:'',cfop_interstate:''
+    })});
+    const prices=await api('prices');priceProducts=Array.isArray(prices.products)?prices.products:[];
+  }catch(e){console.error('Não foi possível criar CORDAO WAVE 5X5 automaticamente:',e)}
+}
+async function loadCloud(){try{cloud('Sincronizando...');const j=await api('data');db={...db,...j,priceConfig:mergeConfig(j.priceConfig)};db.auditLog=db.auditLog||[];db.attachments=db.attachments||[];db.settings=db.settings||{};const before=(db.products||[]).length;ensureInitialInventory();try{const prices=await api('prices');priceProducts=Array.isArray(prices.products)?prices.products:[];await ensureCordaoWaveOfficial()}catch(e){priceProducts=[];console.error('Falha ao carregar price_products:',e)}cloud('Dados sincronizados na nuvem');renderAll();if((db.products||[]).length!==before)queueSave()}catch(e){cloud('Sem conexão com a nuvem',true);alert(e.message)}}
 let saveTimer=null;function queueSave(){clearTimeout(saveTimer);saveTimer=setTimeout(saveCloud,250)}
 async function saveCloud(){if(!token)return;try{cloud('Salvando...');const j=await api('data',{method:'POST',body:JSON.stringify(db)});db.updatedAt=j.updatedAt;cloud('Dados salvos na nuvem')}catch(e){cloud('Falha ao salvar',true);alert('Não foi possível salvar: '+e.message)}}
 
