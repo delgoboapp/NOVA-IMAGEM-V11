@@ -206,6 +206,7 @@ export async function onRequestPost(context){
       const stockQuantity=num(body.stock_quantity,Number(product.stock_quantity||0));
       const cost=num(body.cost,Number(product.cost||0));
       const markupPercent=num(body.markup_percent,Number(product.markup_percent||0));
+      const ncm=body.ncm===undefined?text(product.ncm):text(body.ncm),cfopIn=body.cfop_internal===undefined?text(product.cfop_internal):text(body.cfop_internal),cfopOut=body.cfop_interstate===undefined?text(product.cfop_interstate):text(body.cfop_interstate);
 
       if(stockQuantity<0){
         return json({error:'A quantidade não pode ser negativa.'},400);
@@ -244,6 +245,9 @@ export async function onRequestPost(context){
           price_4x = ?,
           price_cash = ?,
           price_18x = ?,
+          ncm = ?,
+          cfop_internal = ?,
+          cfop_interstate = ?,
           updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
       `).bind(
@@ -254,6 +258,9 @@ export async function onRequestPost(context){
         price4x,
         priceCash,
         price18x,
+        ncm,
+        cfopIn,
+        cfopOut,
         id
       ).run();
 
