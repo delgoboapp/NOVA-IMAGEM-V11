@@ -156,6 +156,19 @@ export async function onRequestPost(context){
       return json({error:'Apenas usuários GESTOR podem alterar o estoque oficial.'},403);
     }
 
+    if(action==='COMBINAR_PRODUTOS'){
+      const inputs=Array.isArray(body.inputs)?body.inputs:[],output=body.output||{},reason=text(body.reason);
+      const outId=Number(output.product_id),outQty=num(output.qty,0);
+      if(!inputs.length||!outId||outQty<=0||!reason)return json({error:'Informe insumos, produto resultante, quantidades e justificativa.'},400);
+      const prepared=[];
+      for(const it of inputs){const product=await getProduct(context.env,Number(it.product_id)),qty=num(it.qty,0);if(!product||qty<=0)return json({error:'Insumo inválido.'},400);const current=num(product.stock_quantity,0);if(current<qty)return json({error:`Estoque insuficiente de ${product.internal_code} • ${product.product_name}.`},400);prepared.push({product,qty,current,next:current-qty})}
+      const out=await getProduct(context.env,outId);if(!out)return json({error:'Produto resultante não encontrado.'},404);const outCurrent=num(out.stock_quantity,0),outNext=outCurrent+outQty;
+      const stm=[];
+      for(const x of prepared){stm.push(context.env.DB.prepare(`UPDATE price_products SET stock_quantity=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(x.next,Number(x.product.id)));stm.push(context.env.DB.prepare(`INSERT INTO price_product_history (product_id,internal_code,action,field_name,old_value,new_value,reason,changed_by) VALUES (?,?,?,?,?,?,?,?)`).bind(Number(x.product.id),text(x.product.internal_code),'COMBINAÇÃO - SAÍDA','stock_quantity',String(x.current),String(x.next),reason,text(user.username)))}
+      stm.push(context.env.DB.prepare(`UPDATE price_products SET stock_quantity=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(outNext,outId));stm.push(context.env.DB.prepare(`INSERT INTO price_product_history (product_id,internal_code,action,field_name,old_value,new_value,reason,changed_by) VALUES (?,?,?,?,?,?,?,?)`).bind(outId,text(out.internal_code),'COMBINAÇÃO - ENTRADA','stock_quantity',String(outCurrent),String(outNext),reason,text(user.username)));
+      await context.env.DB.batch(stm);return json({ok:true});
+    }
+
     if(action==='CRIAR'){
       const supplier=text(body.supplier),category=text(body.category).toUpperCase(),productName=text(body.product_name),color=text(body.color)||'SEM COR',unit=text(body.unit).toUpperCase()||'UN';
       const supplierCode=text(body.supplier_code),widthCm=num(body.width_cm,0),stock=num(body.stock_quantity,0),cost=num(body.cost,0),markup=num(body.markup_percent,130),ncm=text(body.ncm),cfopIn=text(body.cfop_internal),cfopOut=text(body.cfop_interstate);
