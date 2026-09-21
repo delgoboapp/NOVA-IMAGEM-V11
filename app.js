@@ -1,7 +1,7 @@
 // HOTFIX CORDAO: usa NI-0192 CORDAO WAVE BRANCO existente; 1m por metro de largura Wave
 // HOTFIX DESLIZANTES: 1/5cm por acabamento + 1/5cm por forro; completa multiplo de 4 acima
 // V11.3 HOTFIX 2: 2 tampas por trilho/ambiente; garras 1/50cm min 2; CORDAO WAVE 5X5 branco R$4 markup 120%
-// V11.3 FIXAÇÃO: trilho/varão + suportes/garras + 2 tampas por trilho
+// V11.3.1 FIXAÇÃO: trilho/varão + garras trilho suíço 1/60cm (mín 2) + 2 tampas
 const $=id=>document.getElementById(id);
 const money=v=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(v)||0);
 const today=()=>new Date().toISOString().slice(0,10);
@@ -121,7 +121,7 @@ function stockRequirements(q){
     }
     if(String(e.fixation||'').startsWith('TRILHO')){
       add('ACESSÓRIOS',e.fixation||'TRILHO SUÍÇO',e.fixColor,f.meters,'M',e.name);
-      add('AVIAMENTO','GARRAS DE TRILHO',e.fixColor,Math.max(2,Math.ceil((Number(e.width||0)/100)/0.5)),'UN',e.name);
+      add('AVIAMENTO','GARRAS DE TRILHO',e.fixColor,Math.max(2,Math.ceil((Number(e.width||0)/100)/0.6)),'UN',e.name);
       add('ACESSÓRIOS','ACABAMENTO TRILHO SUÍÇO',e.fixColor,2,'UN',e.name);
     }else if(String(e.fixation||'').startsWith('VARÃO WAVE')){
       add('ACESSÓRIOS','VARÃO WAVE 28',e.fixColor,f.meters,'M',e.name);
@@ -187,7 +187,7 @@ function officialOrderRequirements(q){
       add(officialProductLike(['TAMPA','VARÃO'],e.fixColor),f.ends,e.name,'TAMPA DE VARÃO WAVE');
     }else if(String(e.fixation||'').startsWith('TRILHO')){
       add(officialRailProduct(e),f.meters,e.name,e.fixation==='TRILHO MOTORIZADO'?'TRILHO BASE MOTORIZADO':(e.fixation||'TRILHO'));
-      add(officialProductLike(['GARRA'],e.fixColor)||officialProductLike(['GARRAS','TRILHO'],e.fixColor),Math.max(2,Math.ceil(Number(e.width||0)/50)),e.name,'GARRAS DE TRILHO');
+      add(officialProductLike(['GARRA'],e.fixColor)||officialProductLike(['GARRAS','TRILHO'],e.fixColor),Math.max(2,Math.ceil(Number(e.width||0)/60)),e.name,'GARRAS DE TRILHO');
       add(officialProductLike(['TAMPA','TRILHO'],e.fixColor)||officialProductLike(['ACABAMENTO','TRILHO'],e.fixColor),2,e.name,'TAMPA / ACABAMENTO DE TRILHO');
     }
   }
@@ -526,7 +526,11 @@ function collectPermissions(){return [...document.querySelectorAll('[data-perm]:
 function openUserPermissions(username){if(!isGestor())return;const u=userPermissionRecord(username);openModal(`<h2>Permissões • ${esc(username)}</h2><p>Marque as áreas que este usuário poderá ver e editar.</p>${permissionChecklist(u.permissions||(u.role==='gestor'?['*']:u.role==='production'?['orders','production','install']:['quote','quotes','clients','orders','install']))}<button id="permSave" class="btn primary" style="margin-top:12px">Salvar permissões</button>`);$('permSave').onclick=()=>{db.settings=db.settings||{};db.settings.userPermissions=db.settings.userPermissions||{};db.settings.userPermissions[norm(username)]=collectPermissions();queueSave();closeModal();renderUsers()}}
 function openUser(){openModal(`<h2>Novo usuário</h2><div class="grid two"><label class="field">Usuário<input id="uUser"></label><label class="field">Nome completo<input id="uName"></label><label class="field">Senha<input id="uPass" type="password"></label><label class="field">Perfil<select id="uRole"><option value="sales">VENDAS</option><option value="production">PRODUÇÃO</option><option value="gestor">GESTOR</option></select></label><label class="field">Comissão (%)<input id="uComm" type="number" value="${db.priceConfig.commissionDefault||5}"></label></div><h3>Áreas que poderá acessar</h3>${permissionChecklist(['quote','quotes','clients','orders','install'])}<button id="uSave" class="btn primary" style="margin-top:12px">Criar usuário</button>`);$('uRole').onchange=()=>{const role=$('uRole').value,def=role==='gestor'?permissionKeys():role==='production'?['orders','production','install']:['quote','quotes','clients','orders','install'];document.querySelectorAll('[data-perm]').forEach(x=>x.checked=def.includes(x.dataset.perm))};$('uSave').onclick=async()=>{const username=norm($('uUser').value),name=$('uName').value.trim(),pass=$('uPass').value,role=$('uRole').value;if(username.length<3||pass.length<6)return alert('Usuário deve ter 3+ caracteres e senha 6+ caracteres.');if(allUsers().some(x=>norm(x.username)===username))return alert('Usuário já existe.');db.users.push({username,name,role,commission:Number($('uComm').value||0),hash:await sha256(pass),builtIn:false,createdBy:currentUsername(),createdAt:new Date().toISOString(),permissions:collectPermissions()});await saveCloud();closeModal();renderUsers();alert('Usuário criado e liberado para login.')}}
 
-function openModal(html){$('modalBody').innerHTML=html;$('modal').classList.add('open')}function closeModal(){$('modal').classList.remove('open');$('modalBody').innerHTML=''}
+let modalDirty=false;let modalClosingByAction=false;
+function openModal(html){modalDirty=false;$('modalBody').innerHTML=html;$('modal').classList.add('open')}
+function closeModal(force=false){if(!force&&!modalClosingByAction&&modalDirty){if(!confirm('Existem informações preenchidas que ainda não foram salvas. Deseja descartar as alterações?'))return;}modalDirty=false;modalClosingByAction=false;$('modal').classList.remove('open');$('modalBody').innerHTML=''}
+document.addEventListener('click',e=>{if(e.target.closest('#modalBody button')&&!e.target.matches('#modalClose')) modalClosingByAction=true;});
+document.addEventListener('input',e=>{if($('modal')?.classList.contains('open')&&e.target.closest('#modalBody')) modalDirty=true;});
 
 async function doLogin(){const user=norm($('loginUser').value),pass=$('loginPass').value;if(!user||!pass)return $('loginError').textContent='Informe usuário e senha.';try{$('loginBtn').disabled=true;$('loginError').textContent='';const j=await api('auth',{method:'POST',body:JSON.stringify({username:user,passwordHash:await sha256(pass)})});token=j.token;currentUser={username:j.username,role:j.role,name:j.name||j.username};sessionStorage.setItem('novaV9Token',token);sessionStorage.setItem('novaV9User',JSON.stringify(currentUser));document.body.classList.remove('auth-locked');$('loginScreen').classList.add('hidden');$('sessionUser').textContent=`${j.name||j.username} • ${String(j.role).toUpperCase()}`;draft.sellerUser=norm(j.username);draft.seller=sellerName(j.username);await loadCloud();refreshSellerControl(draft.sellerUser);setupSelectors();renderQuote();goHome()}catch(e){$('loginError').textContent=e.message}finally{$('loginBtn').disabled=false}}
 function logout(){sessionStorage.removeItem('novaV9Token');sessionStorage.removeItem('novaV9User');location.reload()}
