@@ -1,0 +1,14 @@
+NOVA IMAGEM ERP — V11.3.3
+Base: NOVA-IMAGEM-V11-main(3).zip (versão em produção enviada pelo usuário)
+
+- Trilho suíço: seleção do SKU real em price_products, com tipo, cor, código, preço e estoque.
+- Campo Cor trilho/varão ocultado quando a fixação é Trilho Suíço; cor vem do SKU.
+- Quantidade do trilho suíço = largura exata da cortina em metros.
+- Garras = largura / 0,60, arredondado para cima, mínimo 2.
+- OP usa materiais oficiais: tecidos, fita Wave, deslizantes, cordão Wave, trilho/varão, suportes e tampas.
+- Pedido do cliente: materiais mostram quantidade, valor unitário e total conforme condição contratada.
+- Varão Wave preservado; suportes: até 3m=3, acima de 3 até 5m=4, acima de 5m=5.
+- Alertas de materiais para solicitar preservados/restaurados no painel de gestão.
+- Proteção contra descarte de formulários preservada.
+
+IMPORTANTE: não contém migração destrutiva de D1 e não altera tabelas do banco.
