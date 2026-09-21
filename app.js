@@ -138,7 +138,7 @@ function officialProductByName(name,color=''){return (priceProducts||[]).find(p=
 function officialSliderProduct(fixColor=''){const list=(priceProducts||[]).filter(p=>Number(p.active??1)===1&&norm(p.product_name)==='DESLIZANTE WAVE');if(!list.length)return null;const c=norm(fixColor);return list.find(p=>norm(p.color)===c)||list.find(p=>norm(p.color)==='BRANCO')||list[0]}
 function officialProductLike(words,color=''){const ws=words.map(norm);const list=(priceProducts||[]).filter(p=>Number(p.active??1)===1&&ws.every(w=>norm(p.product_name).includes(w)));if(!list.length)return null;const c=norm(color);return list.find(p=>!c||norm(p.color)===c)||list.find(p=>norm(p.color)==='BRANCO')||list[0]}
 function officialWaveCord(color=''){
-  return (priceProducts||[]).find(p=>String(p.code||p.sku||'').replace(/[^0-9]/g,'')==='0192')
+  return (priceProducts||[]).find(p=>norm(p.internal_code)==='NI-0192')
     || officialProductByName('CORDAO WAVE','BRANCO')
     || officialProductByName('CORDÃO WAVE','BRANCO')
     || officialProductLike(['CORDÃO','WAVE'],'BRANCO')
@@ -221,6 +221,12 @@ function validateAndConsumeStock(q,order){
     if(['TECIDO DE ACABAMENTO','TECIDO DE FORRO'].includes(canonicalProductType(r.type)))return false;
     if(['VARÃO WAVE 28','SUPORTE WAVE 28','TAMPA VARÃO WAVE 28'].includes(stockName(r.name)))return false;
     if(norm(r.name).startsWith('FITA WAVE')){const p=officialProductByName(r.name);if(p&&officialIds.has(Number(p.id)))return false}
+    // Componentes já consumidos no estoque oficial (price_products) não podem ser
+    // procurados/baixados novamente no estoque legado.
+    const rn=norm(r.name);
+    if(rn.includes('CORDAO WAVE')||rn.includes('CORDÃO WAVE'))return false;
+    if(rn.includes('DESLIZANTE WAVE'))return false;
+    if(rn.startsWith('TRILHO')||rn.includes('GARRA')||rn.includes('ACABAMENTO TRILHO')||rn.includes('TAMPA TRILHO'))return false;
     return true;
   }), grouped={};
   for(const r of req){const key=[norm(r.type),stockName(r.name),norm(r.color),norm(r.unit)].join('|');grouped[key]??={...r,qty:0};grouped[key].qty+=Number(r.qty||0)}
