@@ -1,0 +1,30 @@
+NOVA IMAGEM ERP — V11.3.6
+
+1. GARRAS DE TRILHO COMO PRODUTOS OFICIAIS
+- Na primeira sincronização, o sistema cria automaticamente uma garra oficial para cada combinação única de TIPO + COR de trilho suíço ativo no price_products.
+- Nome: GARRA + nome do trilho (ex.: GARRA TRILHO DUPLO ESPAÇADO).
+- Cor: mesma cor do trilho.
+- Unidade: UN.
+- Estoque inicial: 150 unidades.
+- Custo: R$ 3,00.
+- À vista: R$ 5,00.
+- 4x: R$ 5,38.
+- 18x: R$ 6,02.
+- A criação é idempotente: novos deploys não resetam o estoque das garras já existentes.
+
+2. VÍNCULO EXATO TRILHO -> GARRA
+- O sistema não usa mais uma garra genérica por cor.
+- O trilho selecionado determina a garra pelo nome exato do perfil + cor.
+
+3. QUANTIDADE
+- largura / 0,60, arredondada para cima, mínimo de 2 unidades.
+- A quantidade NÃO dobra quando dois trilhos simples são usados em cortina completa; as garras seguem a largura física da instalação.
+
+4. DETALHAMENTO / OP / ESTOQUE
+- A garra específica aparece em Materiais deste ambiente.
+- A garra específica aparece na Ordem de Produção / Materiais para separação.
+- A conversão do pedido baixa o SKU exato da garra no estoque oficial.
+- O custo da garra entra no snapshot/resultado do pedido.
+
+5. PRODUTOS OFICIAIS
+- O indicador Produtos oficiais continua dinâmico e passa a refletir automaticamente o novo total real após a criação das garras.

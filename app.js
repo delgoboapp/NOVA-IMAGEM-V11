@@ -1,3 +1,4 @@
+// V11.3.6: garras oficiais específicas por tipo/cor de trilho, estoque inicial 150 un., custo R$3,00, preços R$5,00 à vista / R$5,38 4x / R$6,02 18x
 // HOTFIX CORDAO: usa NI-0191 CORDAO WAVE BRANCO existente; 1m por metro de largura Wave
 // HOTFIX DESLIZANTES: 1/5cm por acabamento + 1/5cm por forro; completa multiplo de 4 acima
 // V11.3 HOTFIX 2: 2 tampas por trilho/ambiente; garras 1/50cm min 2; CORDAO WAVE 5X5 branco R$4 markup 120%
@@ -157,6 +158,18 @@ function officialRailProduct(e){
   if(name.includes('MOTORIZADO'))return officialProductLike(['TRILHO','DUPLO','ESPAÇADO'],color)||null;
   return null;
 }
+function officialRailClaw(rail){
+  if(!rail)return null;
+  const exactName=`GARRA ${String(rail.product_name||'').trim()}`;
+  return (priceProducts||[]).find(p=>Number(p.active??1)===1&&norm(p.product_name)===norm(exactName)&&norm(p.color)===norm(rail.color||''))||null;
+}
+async function ensureOfficialRailClaws(){
+  try{
+    const r=await api('prices',{method:'POST',body:JSON.stringify({action:'SINCRONIZAR_GARRAS_TRILHOS'})});
+    if(Number(r?.created||0)>0){const prices=await api('prices');priceProducts=Array.isArray(prices.products)?prices.products:priceProducts}
+    return r;
+  }catch(e){console.error('Falha ao sincronizar garras oficiais:',e);return null}
+}
 function officialSupportProduct(e,f){
   if(f?.supportProductId){const p=officialProductById(f.supportProductId);if(p)return p}
   if(e.model==='COMPLETE')return officialProductLike(['SUPORTE','28/28'],e.fixColor)||officialProductLike(['SUPORTE','DUPLO'],e.fixColor)||officialProductLike(['SUPORTE','WAVE'],e.fixColor);
@@ -184,8 +197,9 @@ function officialOrderRequirements(q){
       add(officialProductByName('VARÃO WAVE 28',e.fixColor)||officialProductLike(['VARÃO','WAVE'],e.fixColor),f.meters,e.name,'VARÃO WAVE 28');
       add(officialProductLike(['TAMPA','VARÃO'],e.fixColor),f.ends,e.name,'TAMPA DE VARÃO WAVE');
     }else if(String(e.fixation||'').startsWith('TRILHO')){
-      add(officialRailProduct(e),f.meters,e.name,e.fixation==='TRILHO MOTORIZADO'?'TRILHO BASE MOTORIZADO':(e.fixation||'TRILHO'));
-      add(officialProductLike(['GARRA'],e.fixColor)||officialProductLike(['GARRAS','TRILHO'],e.fixColor),Math.max(2,Math.ceil(Number(e.width||0)/60)),e.name,'GARRAS DE TRILHO');
+      const rail=officialRailProduct(e);
+      add(rail,f.meters,e.name,e.fixation==='TRILHO MOTORIZADO'?'TRILHO BASE MOTORIZADO':(e.fixation||'TRILHO'));
+      add(officialRailClaw(rail),Math.max(2,Math.ceil(Number(e.width||0)/60)),e.name,'GARRA ESPECÍFICA DO TRILHO');
       add(officialProductLike(['TAMPA','TRILHO'],e.fixColor)||officialProductLike(['ACABAMENTO','TRILHO'],e.fixColor),2,e.name,'TAMPA / ACABAMENTO DE TRILHO');
     }
   }
@@ -276,7 +290,7 @@ function canSeeOrder(o){return isGestor()||isProduction()||resolveSellerUser(o)=
 function mergeConfig(c){const base=clone(DEFAULT_PRICE_CONFIG);if(!c)return base;for(const k of Object.keys(c)){if(c[k]&&typeof c[k]==='object'&&!Array.isArray(c[k])&&base[k]&&typeof base[k]==='object'&&!Array.isArray(base[k]))base[k]={...base[k],...c[k]};else base[k]=c[k]}return base}
 function installPrice(heightM,widthM){const h=Number(heightM||0),w=Number(widthM||0);const m=db.priceConfig?.installationMatrix||DEFAULT_PRICE_CONFIG.installationMatrix;const band=h<=Number(m.simple?.maxH??3.5)?m.simple:h<=Number(m.double?.maxH??5.5)?m.double:m.high;const key=w<=4?'up4':w<=5?'up5':'up6';return Number(band?.[key]||0)}
 async function ensureCordaoWaveOfficial(){return true}
-async function loadCloud(){try{cloud('Sincronizando...');const j=await api('data');db={...db,...j,priceConfig:mergeConfig(j.priceConfig)};db.auditLog=db.auditLog||[];db.attachments=db.attachments||[];db.settings=db.settings||{};const before=(db.products||[]).length;ensureInitialInventory();try{const prices=await api('prices');priceProducts=Array.isArray(prices.products)?prices.products:[];await ensureCordaoWaveOfficial()}catch(e){priceProducts=[];console.error('Falha ao carregar price_products:',e)}cloud('Dados sincronizados na nuvem');renderAll();if((db.products||[]).length!==before)queueSave()}catch(e){cloud('Sem conexão com a nuvem',true);alert(e.message)}}
+async function loadCloud(){try{cloud('Sincronizando...');const j=await api('data');db={...db,...j,priceConfig:mergeConfig(j.priceConfig)};db.auditLog=db.auditLog||[];db.attachments=db.attachments||[];db.settings=db.settings||{};const before=(db.products||[]).length;ensureInitialInventory();try{const prices=await api('prices');priceProducts=Array.isArray(prices.products)?prices.products:[];await ensureCordaoWaveOfficial();await ensureOfficialRailClaws()}catch(e){priceProducts=[];console.error('Falha ao carregar price_products:',e)}cloud('Dados sincronizados na nuvem');renderAll();if((db.products||[]).length!==before)queueSave()}catch(e){cloud('Sem conexão com a nuvem',true);alert(e.message)}}
 let saveTimer=null;function queueSave(){clearTimeout(saveTimer);saveTimer=setTimeout(saveCloud,250)}
 async function saveCloud(){if(!token)return;try{cloud('Salvando...');const j=await api('data',{method:'POST',body:JSON.stringify(db)});db.updatedAt=j.updatedAt;cloud('Dados salvos na nuvem')}catch(e){cloud('Falha ao salvar',true);alert('Não foi possível salvar: '+e.message)}}
 
@@ -347,7 +361,7 @@ function updateModelFields(){const m=$('eModel').value;document.querySelectorAll
 function fabricCalc(type,name,widthM,heightM,gather,productId,color){const category=type==='finish'?'TECIDO DE ACABAMENTO':'TECIDO DE FORRO';const hCm=heightM*100;let sku=(priceProducts||[]).find(p=>Number(p.id)===Number(productId));if(!sku)sku=resolveOfficialFabric(category,name,color,hCm);if(!sku)return null;const gathered=widthM*Number(gather);const fabricWidth=officialFabricWidthCm(sku);let mode='LARGURA',panels=0,cutLength=0,consumption=gathered;if(hCm+25>fabricWidth){mode='ALTURA';cutLength=heightM+0.10+(heightM*0.10);panels=Math.ceil(gathered/(fabricWidth/100));consumption=panels*cutLength}const unitPrice=Number(sku.price_4x||0);return {name,gathered,mode,panels,cutLength,consumption,unitPrice,pricePct:0,cost:consumption*unitPrice,productId:sku.id,internalCode:sku.internal_code,officialName:sku.product_name,fabricWidthCm:fabricWidth}}
 function fixationCalc(kind,widthM,model,leaves,fixColor,railProductId){const c=db.priceConfig;
   const swissBase=()=>{const rounded=Math.max(1.5,Math.ceil(widthM*2)/2);const tier=(c.swiss.tiers||[]).find(t=>rounded<=Number(t.m))||c.swiss.tiers[c.swiss.tiers.length-1];const clamps=Math.max(2,Math.ceil(widthM/0.5));const ends=2;const base=Number(tier?.p||0)+clamps*Number(c.swiss.clamp||0)+ends*Number(c.swiss.end||0);return {rounded,clamps,ends,base}};
-  if(kind==='TRILHO SUÍÇO'){const rail=officialProductById(railProductId);const railName=norm(rail?.product_name||'');const simpleRail=railName===norm('TRILHO SIMPLES')||railName===norm('TRILHO SIMPLES ALTO');const meters=(model==='COMPLETE'&&simpleRail)?widthM*2:widthM;const clamps=Math.max(2,Math.ceil(widthM/0.60));const ends=2;const railUnit=Number(rail?.price_4x||0);const claw=officialProductLike(['GARRA','TRILHO'],rail?.color||'')||officialProductLike(['GARRA'],rail?.color||'');const cap=officialProductLike(['TAMPA','TRILHO'],rail?.color||'')||officialProductLike(['ACABAMENTO','TRILHO'],rail?.color||'');const total=meters*railUnit+clamps*Number(claw?.price_4x||0)+ends*Number(cap?.price_4x||0);return {kind,meters,clamps,ends,railProductId:rail?.id||null,railInternalCode:rail?.internal_code||'',railName:rail?.product_name||'TRILHO SUÍÇO',railColor:rail?.color||'',hardwareBase:total,total,detail:`${rail?.product_name||'Selecione o trilho'} • ${meters.toFixed(2)}m • ${clamps} garras • ${ends} tampas`}}
+  if(kind==='TRILHO SUÍÇO'){const rail=officialProductById(railProductId);const railName=norm(rail?.product_name||'');const simpleRail=railName===norm('TRILHO SIMPLES')||railName===norm('TRILHO SIMPLES ALTO');const meters=(model==='COMPLETE'&&simpleRail)?widthM*2:widthM;const clamps=Math.max(2,Math.ceil(widthM/0.60));const ends=2;const railUnit=Number(rail?.price_4x||0);const claw=officialRailClaw(rail);const cap=officialProductLike(['TAMPA','TRILHO'],rail?.color||'')||officialProductLike(['ACABAMENTO','TRILHO'],rail?.color||'');const total=meters*railUnit+clamps*Number(claw?.price_4x||0)+ends*Number(cap?.price_4x||0);return {kind,meters,clamps,ends,railProductId:rail?.id||null,railInternalCode:rail?.internal_code||'',railName:rail?.product_name||'TRILHO SUÍÇO',railColor:rail?.color||'',hardwareBase:total,total,detail:`${rail?.product_name||'Selecione o trilho'} • ${meters.toFixed(2)}m • ${clamps} garras • ${ends} tampas`}}
   if(kind==='TRILHO MOTORIZADO'){const x=swissBase(),complete=model==='COMPLETE';const fixed=Number(complete?(c.motor.baseComplete??3500):(c.motor.baseSingle??2000));const pct=Number(complete?(c.motor.completePct??25):(c.motor.singlePct??15));const total=fixed+x.base*(1+pct/100);return {kind,meters:x.rounded,clamps:x.clamps,ends:x.ends,hardwareBase:x.base,total,detail:`Base trilho suíço duplo espaçado ${x.rounded.toFixed(1)}m • motor ${money(fixed)} + ${pct}% do sistema`}}
   const multiplier=model==='COMPLETE'?2:1;const rodMeters=widthM*multiplier;const supports=widthM<=3?3:widthM<=5?4:5;const ends=model==='COMPLETE'?4:2;const supportName=model==='COMPLETE'?'SUPORTE 28/28':'SUPORTE WAVE 28';const supportSku=(priceProducts||[]).find(p=>Number(p.active??1)===1&&norm(p.category).includes('ACESS')&&norm(p.product_name)===norm(supportName)&&norm(p.color)===norm(fixColor||''));const supportUnit=supportSku?Number(supportSku.price_4x||0):Number(c.wave.support||0);const base=rodMeters*Number(c.wave.rodPerMeter||0)+supports*supportUnit+ends*Number(c.wave.end||0);let total=base;if(kind.includes('COMANDO'))total=base*(1+Number(c.cordPct||0)/100);return {kind,meters:rodMeters,supports,ends,supportName,supportProductId:supportSku?.id||null,supportInternalCode:supportSku?.internal_code||'',hardwareBase:base,total,detail:`${rodMeters.toFixed(2)}m • ${supports} ${supportName.toLowerCase()} • ${ends} tampas`}}
 

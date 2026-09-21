@@ -122,6 +122,26 @@ export async function onRequestPost(context){
     const body=await context.request.json();
     const action=text(body.action).toUpperCase();
 
+    if(action==='SINCRONIZAR_GARRAS_TRILHOS'){
+      const allowed=['TRILHO SIMPLES','TRILHO SIMPLES ALTO','TRILHO DUPLO','TRILHO DUPLO ESPAÇADO','TRILHO TRIPLO','TRILHO 3 VIAS','TRILHO COM ABA','TRILHO CURVO'];
+      const placeholders=allowed.map(()=>'?').join(',');
+      const rails=await context.env.DB.prepare(`SELECT * FROM price_products WHERE active=1 AND UPPER(product_name) IN (${placeholders}) ORDER BY id`).bind(...allowed).all();
+      const existing=await context.env.DB.prepare(`SELECT id,product_name,color FROM price_products WHERE active=1 AND UPPER(product_name) LIKE 'GARRA TRILHO %'`).all();
+      const keys=new Set((existing.results||[]).map(x=>`${text(x.product_name).toUpperCase()}|${text(x.color).toUpperCase()}`));
+      const codes=await context.env.DB.prepare(`SELECT internal_code FROM price_products WHERE internal_code LIKE 'NI-%'`).all();
+      let max=0;for(const r of codes.results||[]){const m=String(r.internal_code||'').match(/^NI-(\d+)$/i);if(m)max=Math.max(max,Number(m[1]))}
+      const statements=[];const created=[];
+      for(const rail of rails.results||[]){
+        const productName=`GARRA ${text(rail.product_name).toUpperCase()}`,color=text(rail.color)||'SEM COR',key=`${productName}|${color.toUpperCase()}`;
+        if(keys.has(key))continue;
+        const internalCode=`NI-${String(++max).padStart(4,'0')}`;
+        statements.push(context.env.DB.prepare(`INSERT INTO price_products (internal_code,supplier_code,category,supplier,product_name,color,width_cm,unit,stock_quantity,multiplier,cost,markup_percent,price_cash,price_4x,price_18x,ncm,cfop_internal,cfop_interstate,active,price_manual,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)`).bind(internalCode,'','ACESSÓRIO',text(rail.supplier)||'NOVA IMAGEM',productName,color,0,'UN',150,1.7933333333,3,79.33333333,5,5.38,6.02,'',text(rail.cfop_internal),text(rail.cfop_interstate)));
+        created.push({internal_code:internalCode,product_name:productName,color});keys.add(key);
+      }
+      if(statements.length)await context.env.DB.batch(statements);
+      return json({ok:true,created:created.length,products:created,total_official:Number((await context.env.DB.prepare(`SELECT COUNT(*) AS n FROM price_products WHERE active=1`).first())?.n||0)});
+    }
+
     if(action==='CONSUMIR_PEDIDO'||action==='ESTORNAR_PEDIDO'){
       const items=Array.isArray(body.items)?body.items:[];
       const orderNumber=text(body.order_number);
