@@ -1,0 +1,9 @@
+V11.3.4 — REGRA TRILHO SIMPLES EM CORTINA COMPLETA
+
+- Para cortina COMPLETE (tecido de acabamento + tecido de forro):
+  * TRILHO SIMPLES: quantidade = largura x 2.
+  * TRILHO SIMPLES ALTO: quantidade = largura x 2.
+- Para cortina somente acabamento ou somente forro: quantidade = largura normal.
+- Demais trilhos suíços: quantidade = largura normal.
+- Garras continuam calculadas pela largura física da cortina (1 a cada 0,60 m, mínimo 2), sem dobrar.
+- A quantidade corrigida alimenta cálculo, pedido/OP e baixa de estoque por meio de fixationCalc.meters.
