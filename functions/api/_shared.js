@@ -7,7 +7,7 @@ export const DEFAULT_USERS = [
 ];
 
 const EMPTY_DB = () => ({
-  quotes:[], orders:[], clients:[], users:[], disabledUsers:[], products:[], suppliers:[], payables:[], purchaseOrders:[], reworks:[],
+  quotes:[], orders:[], clients:[], users:[], disabledUsers:[], products:[], suppliers:[], payables:[], purchaseOrders:[], reworks:[], agenda:[], purchaseAlerts:[], auditLog:[], attachments:[],
   priceConfig:null, settings:{}, updatedAt:null
 });
 
@@ -20,7 +20,7 @@ async function ensureSchema(env){
 
 function normalize(parsed={}){
   const base=EMPTY_DB();
-  for(const k of ['quotes','orders','clients','users','disabledUsers','products','suppliers','payables','purchaseOrders','reworks']) base[k]=Array.isArray(parsed[k])?parsed[k]:[];
+  for(const k of ['quotes','orders','clients','users','disabledUsers','products','suppliers','payables','purchaseOrders','reworks','agenda','purchaseAlerts','auditLog','attachments']) base[k]=Array.isArray(parsed[k])?parsed[k]:[];
   base.priceConfig=parsed.priceConfig&&typeof parsed.priceConfig==='object'?parsed.priceConfig:null;
   base.settings=parsed.settings&&typeof parsed.settings==='object'?parsed.settings:{};
   base.updatedAt=parsed.updatedAt||null;
