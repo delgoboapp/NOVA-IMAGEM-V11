@@ -1,0 +1,6 @@
+V11.3.7
+- Fornecedor: nova categoria/material PERSIANA.
+- OC: persiana de repasse com descrição editável, quantidade e custo; não entra no estoque físico no recebimento.
+- Resultado: Venda de Persianas / Custo de Persianas / Resultado de Persianas, usando custo real da OC recebida/finalizada vinculada ao pedido.
+- Tabela Ordens de Compra corrigida: OC | Data | Fornecedor | Responsável | Valor | Status | Ações.
+- Removida coluna GAP e corrigido deslocamento dos dados.
