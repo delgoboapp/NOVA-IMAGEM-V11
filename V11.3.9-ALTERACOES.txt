@@ -1,0 +1,12 @@
+V11.3.9 — CONSOLIDADA
+- Agenda pessoal: somente o próprio login; visão dos próximos 3 dias; Eventos anteriores.
+- Novo perfil PARCEIRO: comissão padrão 6%, desconto máximo 5%; comissão = 6% - desconto. Acima de 5% somente gestão e comissão zerada.
+- Isolamento visual de clientes/orçamentos/pedidos por proprietário para VENDAS/PARCEIRO.
+- PRODUÇÃO: somente GESTOR e PRODUÇÃO alteram etapas.
+- Novo perfil INSTALADOR: acesso à própria agenda de instalação e consulta de valores.
+- Departamento Pessoal: prestadores COSTUREIRA/INSTALADOR com nome, telefone, documento, prazo de recebimento e usuário vinculado.
+- Instalações: responsável selecionado entre prestadores INSTALADOR.
+- Gestão: valor real do serviço por instalação.
+- Fechamento de Instalações: filtro por instalador/período, seleção de pedidos e opção VALOR DE DIÁRIA.
+- Proteção adicional contra conversão duplicada de orçamento em pedido.
+- Base: V11.3.7 estável (Persianas + OC).
