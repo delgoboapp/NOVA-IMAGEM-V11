@@ -1,0 +1,9 @@
+V11.32.4 — PARCEIRO: DESCONTO E ACRÉSCIMO
+
+- Perfil PARCEIRO limitado tecnicamente a 5% de desconto no orçamento.
+- Campo de desconto é limitado a 5% durante a digitação para login PARCEIRO.
+- Conversão em pedido continua impedindo desconto total acima de 5% para PARCEIRO.
+- Cadastro/edição de PARCEIRO ganhou DEFINIR ACRÉSCIMO de 1% a 10%, padrão 5%.
+- Acréscimo incide somente sobre as cortinas (ambientes), não sobre persianas, avulsos ou deslocamento.
+- Percentual de acréscimo é gravado no orçamento/pedido para preservar o histórico.
+- Comissão padrão do PARCEIRO permanece 6% menos o desconto concedido.
