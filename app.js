@@ -250,14 +250,14 @@ function validateAndConsumeStock(q,order){
 function restoreOrderStock(order){if(order?.stockRestored)return;for(const m of order?.stockMovements||[]){const p=(db.products||[]).find(x=>x.id===m.productId)||findStockProduct(m.type,m.name,m.color,m.unit);if(p){p.qty=Number(p.qty||0)+Number(m.qty||0);p.movements=p.movements||[];p.movements.push({id:uid(),date:today(),type:'ESTORNO DE PEDIDO',qty:Number(m.qty||0),balance:p.qty,unit:m.unit||p.unit,by:currentUsername(),reason:`Estorno do pedido ${order.numero||''}`})}}order.stockRestored=true}
 const STAGES=['RECEPÇÃO','CORTE','COSTURA','BARRA','PASSADORIA','EXPEDIÇÃO'];
 const NAV=[
-  ['quote','Novo Orçamento','all'],['quotes','Orçamentos','all'],['clients','Clientes','sales'],['orders','Pedidos','all'],['agenda','Agenda','all'],
+  ['commercialPanel','Painel Comercial','all'],['quote','Novo Orçamento','all'],['quotes','Orçamentos','all'],['clients','Clientes','sales'],['orders','Pedidos','all'],['agenda','Agenda','all'],
   ['production','Produção','production'],['install','Instalações','all'],['rework','Retrabalho','all'],
   ['suppliers','Compras e Fornecedores','gestor'],['inventory','Estoque','gestor'],
   ['receivables','Contas a Receber','gestor'],['revenues','Receitas Totais','gestor'],['productionCosts','Custos de Instalação','gestor'],['sewingCost','Custo de Costura','gestor'],['results','Resultados dos Pedidos','gestor'],['hr','Departamento Pessoal','gestor'],['users','Usuários','gestor'],
   ['kpis','Dashboard Gestão','gestor'],['payables','Contas a Pagar','gestor'],['monthlyClose','Fechamento Mensal','gestor'],['settings','Configurações','gestor'],['audit','Auditoria','gestor'],['backup','Backup','gestor'],['help','AJUDA','all']
 ];
 const NAV_GROUPS=[
- {id:'commercial',label:'COMERCIAL',items:['quote','quotes','clients','orders','agenda']},
+ {id:'commercial',label:'COMERCIAL',items:['commercialPanel','quote','quotes','clients','orders','agenda']},
  {id:'operational',label:'OPERACIONAL',items:['production','install','rework']},
  {id:'stock',label:'COMPRAS E ESTOQUE',items:['suppliers','inventory']},
  {id:'management',label:'GESTÃO',items:['kpis','receivables','revenues','payables','productionCosts','sewingCost','results','monthlyClose','hr','users','settings','audit','backup']},
@@ -281,7 +281,7 @@ function isProduction(){return currentUser?.role==='production'}
 function currentUsername(){return norm(currentUser?.username)}
 function permissionKeys(){return NAV.map(x=>x[0])}
 function userPermissionRecord(username){const key=norm(username);const base=[...DEFAULT_USERS,...(db.users||[])].find(x=>norm(x.username)===key)||currentUser||{};const profile=db.settings?.builtInUserProfiles?.[key]||{};const override=db.settings?.userPermissions?.[key];return {...base,...profile,permissions:Array.isArray(override)?override:(base.permissions||null)}}
-function hasPermission(area){if(area==='help')return true;if(isGestor())return true;const u=userPermissionRecord(currentUsername());if(Array.isArray(u.permissions))return u.permissions.includes('*')||u.permissions.includes(area);if(u.role==='production')return ['orders','production','install'].includes(area);if(u.role==='sales')return ['quote','quotes','clients','orders','install'].includes(area);return false}
+function hasPermission(area){if(area==='help')return true;if(area==='commercialPanel'){const r=norm(userPermissionRecord(currentUsername()).role);return isGestor()||['SALES','PARTNER'].includes(r);}if(isGestor())return true;const u=userPermissionRecord(currentUsername());if(Array.isArray(u.permissions))return u.permissions.includes('*')||u.permissions.includes(area);if(u.role==='production')return ['orders','production','install'].includes(area);if(u.role==='sales')return ['quote','quotes','clients','orders','install'].includes(area);return false}
 function allUsers(){const disabled=new Set((db.disabledUsers||[]).map(norm));return [...DEFAULT_USERS,...(db.users||[])].filter((u,i,a)=>a.findIndex(x=>norm(x.username)===norm(u.username))===i).map(u=>({...u,...(db.settings?.builtInUserProfiles?.[norm(u.username)]||{})})).filter(u=>!disabled.has(norm(u.username)))}
 function sellerName(username){return allUsers().find(u=>norm(u.username)===norm(username))?.name||username||'-'}
 function sellerCommission(username){return Number(allUsers().find(u=>norm(u.username)===norm(username))?.commission ?? db.priceConfig.commissionDefault ??5)}
@@ -295,10 +295,10 @@ let saveTimer=null;function queueSave(){clearTimeout(saveTimer);saveTimer=setTim
 async function saveCloud(){if(!token)return;try{cloud('Salvando...');const j=await api('data',{method:'POST',body:JSON.stringify(db)});db.updatedAt=j.updatedAt;cloud('Dados salvos na nuvem')}catch(e){cloud('Falha ao salvar',true);alert('Não foi possível salvar: '+e.message)}}
 
 function renderNav(){const nav=$('nav');if(!nav)return;nav.innerHTML='';if(!$('accordionNavStyle')){const st=document.createElement('style');st.id='accordionNavStyle';st.textContent='.nav-group{border-bottom:1px solid #e5efed}.nav-group-title{width:100%;border:0;background:transparent;text-align:left;padding:12px 10px;font-weight:850;color:#075b5b;display:flex;justify-content:space-between;align-items:center}.nav-group-title:hover{background:#eef7f5}.nav-group-items{display:none;padding:0 0 7px 8px}.nav-group.open .nav-group-items{display:grid;gap:4px}.nav-group-items .nav-btn{padding:9px 10px;font-size:13px}.nav-group-title .chev{transition:.15s}.nav-group.open .chev{transform:rotate(90deg)}';document.head.appendChild(st)}const visible=new Set(NAV.filter(x=>hasPermission(x[0])).map(x=>x[0]));let openId=sessionStorage.getItem('novaV11NavGroup')||'';for(const g of NAV_GROUPS){const ids=g.items.filter(id=>visible.has(id));if(!ids.length)continue;const wrap=document.createElement('div');wrap.className='nav-group'+(g.id===openId?' open':'');const head=document.createElement('button');head.type='button';head.className='nav-group-title';head.innerHTML=`<span>${g.label}</span><span class="chev">▶</span>`;const items=document.createElement('div');items.className='nav-group-items';for(const id of ids){const item=NAV.find(x=>x[0]===id);const b=document.createElement('button');b.className='nav-btn';b.dataset.view=id;b.textContent=item[1];b.onclick=()=>setView(id);items.appendChild(b)}head.onclick=()=>{const opening=!wrap.classList.contains('open');nav.querySelectorAll('.nav-group').forEach(x=>x.classList.remove('open'));if(opening){wrap.classList.add('open');sessionStorage.setItem('novaV11NavGroup',g.id)}else sessionStorage.removeItem('novaV11NavGroup')};wrap.append(head,items);nav.appendChild(wrap)}}
-function setView(id){if(id!=='home'&&!hasPermission(id))return alert('Seu usuário não possui permissão para acessar esta área.');document.querySelectorAll('.view').forEach(v=>v.classList.remove('active','print-target'));$('view-'+id)?.classList.add('active');document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',id!=='home'&&b.dataset.view===id));if(id==='home')renderHome();if(id==='kpis')renderKpis();if(id==='results')renderResults();if(id==='productionCosts')renderProductionCosts();if(id==='sewingCost')renderSewingCost();if(id==='help')renderHelp();if(id==='pricing')renderPricing();if(id==='hr')renderHR();if(id==='receivables')renderReceivables();if(id==='revenues')renderRevenues();if(id==='settings')renderSettings();if(id==='audit')renderAudit();if(id==='monthlyClose')renderMonthlyClose()}
+function setView(id){if(id!=='home'&&!hasPermission(id))return alert('Seu usuário não possui permissão para acessar esta área.');document.querySelectorAll('.view').forEach(v=>v.classList.remove('active','print-target'));$('view-'+id)?.classList.add('active');document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',id!=='home'&&b.dataset.view===id));if(id==='home')renderHome();if(id==='commercialPanel')renderCommercialPanel();if(id==='kpis')renderKpis();if(id==='results')renderResults();if(id==='productionCosts')renderProductionCosts();if(id==='sewingCost')renderSewingCost();if(id==='help')renderHelp();if(id==='pricing')renderPricing();if(id==='hr')renderHR();if(id==='receivables')renderReceivables();if(id==='revenues')renderRevenues();if(id==='settings')renderSettings();if(id==='audit')renderAudit();if(id==='monthlyClose')renderMonthlyClose()}
 function renderHome(){renderPurchaseAlerts();const name=currentUser?.name||currentUser?.username||'USUÁRIO';if($('homeWelcome'))$('homeWelcome').textContent=`BEM-VINDO - ${String(name).toUpperCase()}`;const quotes=[['No longo prazo, estaremos todos mortos.','John Maynard Keynes'],['O consumo é o único fim e propósito de toda produção.','Adam Smith'],['Nada é tão permanente quanto um programa temporário do governo.','Milton Friedman'],['A dificuldade não está nas novas ideias, mas em escapar das antigas.','John Maynard Keynes'],['A liberdade econômica é requisito essencial da liberdade política.','Milton Friedman'],['A riqueza não consiste em possuir grandes bens, mas em ter poucas necessidades.','Epicteto — filosofia econômica clássica']];const q=quotes[Math.floor(Math.random()*quotes.length)];if($('homeQuote'))$('homeQuote').textContent='“'+q[0]+'”';if($('homeQuoteAuthor'))$('homeQuoteAuthor').textContent='— '+q[1];const tick=()=>{const now=new Date();if($('homeDate'))$('homeDate').textContent=now.toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});if($('homeTime'))$('homeTime').textContent=now.toLocaleTimeString('pt-BR')};tick();if(homeClockTimer)clearInterval(homeClockTimer);homeClockTimer=setInterval(tick,1000)}
 function goHome(){setView('home')}
-function renderAll(){renderNav();renderQuote();renderQuotes();renderClients();renderOrders();renderAgenda();renderProduction();renderInstall();renderProducts();renderProductionCosts();renderPricing();renderKpis();renderPayables();renderResults();renderReceivables();renderRevenues();renderSuppliers();renderPurchases();renderHR();renderReworks();renderUsers();renderAudit();}
+function renderAll(){renderNav();renderCommercialPanel();renderQuote();renderQuotes();renderClients();renderOrders();renderAgenda();renderProduction();renderInstall();renderProducts();renderProductionCosts();renderPricing();renderKpis();renderPayables();renderResults();renderReceivables();renderRevenues();renderSuppliers();renderPurchases();renderHR();renderReworks();renderUsers();renderAudit();}
 
 function fillSelect(el,items,selected){el.innerHTML=items.map(x=>`<option ${x===selected?'selected':''}>${esc(x)}</option>`).join('')}
 function stockOptions(type){return (db.products||[]).filter(p=>p.stockManaged&&canonicalProductType(p.type)===canonicalProductType(type)&&Number(p.qty||0)>0)}
@@ -819,3 +819,43 @@ renderProduction=function(){const box=$('productionList');if(!box)return;const r
 
 /* === V11.32.2 hotfix navegacao === */
 document.addEventListener('click',function(e){const b=e.target.closest?.('[data-purchase-alert]');if(b){e.preventDefault();e.stopPropagation();purchaseRequestDetail(b.getAttribute('data-purchase-alert'));return;}if(e.target.closest?.('#purchaseReqBack')){e.preventDefault();returnInternalView('home');return;}if(e.target.closest?.('#ficBackBtn')){e.preventDefault();setView('install');return;}},true);
+
+
+/* === V11.32.6 • PAINEL COMERCIAL VENDEDOR / PARCEIRO === */
+function commercialPanelCommissionPercent(o){
+  const p=Number(o?.commissionPercent);
+  return Number.isFinite(p)?p:sellerCommission(resolveSellerUser(o));
+}
+function commercialPanelCommissionGenerated(o){return Number(o?.agreedValue||0)*commercialPanelCommissionPercent(o)/100}
+function commercialPanelCommissionReleased(o){
+  const sale=Math.max(0,Number(o?.agreedValue||0));
+  if(!sale)return 0;
+  const ratio=Math.min(1,Math.max(0,orderPaid(o)/sale));
+  return commercialPanelCommissionGenerated(o)*ratio;
+}
+function commercialPanelCommissionPaid(o){return Math.max(0,Number(o?.commissionPaid||0))}
+function renderCommercialPanel(){
+  const box=$('commercialPanelBody');if(!box)return;
+  const month=$('commercialPanelMonth')?.value||today().slice(0,7);
+  const role=norm(userPermissionRecord(currentUsername()).role);
+  if(!isGestor()&&!['SALES','PARTNER'].includes(role)){box.innerHTML='<div class="card"><p class="muted">Painel disponível para vendedores e parceiros.</p></div>';return}
+  const sellerEl=$('commercialPanelSeller');
+  if(sellerEl){
+    const cur=sellerEl.value;
+    const users=allUsers().filter(u=>['SALES','PARTNER'].includes(norm(u.role)));
+    sellerEl.innerHTML=isGestor()?'<option value="">TODOS OS VENDEDORES / PARCEIROS</option>'+users.map(u=>`<option value="${esc(u.username)}">${esc(u.name||u.username)}</option>`).join(''):`<option value="${esc(currentUsername())}">${esc(sellerName(currentUsername()))}</option>`;
+    sellerEl.value=isGestor()?(cur||''):currentUsername();sellerEl.disabled=!isGestor();
+  }
+  const seller=isGestor()?norm(sellerEl?.value||''):currentUsername();
+  const orders=(db.orders||[]).filter(o=>String(o.createdDate||o.date||'').slice(0,7)===month&&(!seller||resolveSellerUser(o)===seller));
+  const sold=orders.reduce((a,o)=>a+Number(o.agreedValue||0),0);
+  const received=orders.reduce((a,o)=>a+orderPaid(o),0);
+  const generated=orders.reduce((a,o)=>a+commercialPanelCommissionGenerated(o),0);
+  const released=orders.reduce((a,o)=>a+commercialPanelCommissionReleased(o),0);
+  const paid=orders.reduce((a,o)=>a+commercialPanelCommissionPaid(o),0);
+  const balance=Math.max(0,released-paid);
+  const cards=$('commercialPanelCards');if(cards)cards.innerHTML=[['Vendido no mês',money(sold)],['Recebido',money(received)],['Saldo dos clientes',money(Math.max(0,sold-received))],['Comissão gerada',money(generated)],['Comissão liberada',money(released)],['Comissão paga',money(paid)],['Comissão a receber',money(balance)],['Pedidos fechados',orders.length]].map(x=>`<div class="kpi"><span>${x[0]}</span><strong>${x[1]}</strong></div>`).join('');
+  box.innerHTML=`<div class="card"><div class="card-title">Meus pedidos no período</div><div class="table-wrap"><table class="table"><thead><tr><th>Pedido</th><th>Cliente</th><th>Venda</th><th>Recebido</th><th>Saldo</th><th>Comissão %</th><th>Gerada</th><th>Liberada</th><th>Status</th></tr></thead><tbody>${orders.map(o=>`<tr><td>${String(o.numero).padStart(6,'0')}</td><td>${esc(o.client||'-')}</td><td>${money(o.agreedValue)}</td><td>${money(orderPaid(o))}</td><td>${money(orderBalance(o))}</td><td>${commercialPanelCommissionPercent(o).toFixed(2)}%</td><td>${money(commercialPanelCommissionGenerated(o))}</td><td>${money(commercialPanelCommissionReleased(o))}</td><td>${financialStatus(o)}</td></tr>`).join('')||'<tr><td colspan="9">Nenhum pedido fechado nesta competência.</td></tr>'}</tbody></table></div><p class="muted" style="margin-top:12px">A comissão liberada acompanha proporcionalmente os pagamentos recebidos do cliente. Alterações futuras na comissão do usuário não mudam o percentual já congelado no pedido.</p></div>`;
+}
+document.addEventListener('change',function(e){if(e.target?.id==='commercialPanelMonth'||e.target?.id==='commercialPanelSeller')renderCommercialPanel()});
+(function initCommercialPanelDefaults(){const run=()=>{const m=$('commercialPanelMonth');if(m&&!m.value)m.value=today().slice(0,7)};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',run);else run()})();

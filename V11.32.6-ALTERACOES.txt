@@ -1,0 +1,9 @@
+V11.32.6 - PAINEL COMERCIAL
+
+- Novo menu PAINEL COMERCIAL para perfis VENDAS e PARCEIRO.
+- Gestor também pode acessar e filtrar por vendedor/parceiro.
+- Filtro por competência mensal.
+- Indicadores: vendido no mês, recebido, saldo dos clientes, comissão gerada, comissão liberada, comissão paga, comissão a receber e pedidos fechados.
+- Comissão liberada proporcional ao valor efetivamente recebido do cliente.
+- Lista detalhada dos pedidos do período com venda, recebimento, saldo e comissão.
+- Privacidade: vendedor/parceiro visualiza somente os próprios números.
