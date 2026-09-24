@@ -1,0 +1,18 @@
+NOVA IMAGEM ERP - V11.32.5
+24/09/2026
+
+1. SOLICITAÇÕES DE COMPRA
+- Alerta passa a depender da existência real de materiais externos calculados para o pedido.
+- Pedidos sem material externo têm alertas antigos resolvidos automaticamente e deixam de aparecer na tela inicial.
+- Incluído botão IGNORAR no alerta da tela inicial.
+- Incluído botão IGNORAR na tela Solicitação de Compra.
+- Ao ignorar, a decisão fica gravada com usuário/data e o alerta não é recriado pela sincronização.
+- Ordens de compra existentes continuam resolvendo o alerta normalmente.
+
+2. ACRÉSCIMO POR VENDEDOR
+- DEFINIR ACRÉSCIMO (%) agora funciona também para perfil VENDAS, além de PARCEIRO.
+- Percentual configurável de 1% a 10% no cadastro/edição do usuário vendedor/parceiro.
+- Acréscimo é persistido no usuário e aplicado ao preço de tabela das cortinas no orçamento.
+- Ex.: base R$ 2.000 + 10% = R$ 2.200; +5% = R$ 2.100.
+- O percentual é congelado no orçamento salvo (partnerMarkupPercent), preservando valores históricos.
+- Usuários sem acréscimo previamente gravado continuam com 0% até receberem configuração.
