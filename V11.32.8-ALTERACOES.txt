@@ -1,0 +1,7 @@
+V11.32.8 — PORTAL LOGIN APROVADO
+
+- Tela de login atualizada para utilizar a composição visual aprovada da Nova Imagem.
+- Arte institucional ocupa 3/4 da tela no desktop; painel de acesso ocupa 1/4.
+- Mantidos sem alteração os IDs e controles reais de autenticação: loginUser, loginPass, loginBtn e loginError.
+- app.js, APIs, D1, usuários, senhas, sessão, permissões e módulos internos não foram alterados nesta versão.
+- Layout responsivo mantido para telas menores.
