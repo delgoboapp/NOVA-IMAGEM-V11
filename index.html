@@ -1,7 +1,33 @@
 <!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Nova Imagem App • V11.3</title><link rel="stylesheet" href="styles.css"><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#0a6c69"><link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" href="favicon-32.png"><style id="rc1InventoryPolish">
 .inventory-table-wrap{max-height:68vh;overflow:auto}.inventory-table thead th{position:sticky;top:0;z-index:3;background:#f3f8f7;white-space:nowrap}.inventory-table .check-col{width:54px;min-width:54px;text-align:center}.inventory-table .num-col{text-align:right;white-space:nowrap}.inventory-table th:nth-child(6),.inventory-table td:nth-child(6){min-width:180px}.inventory-table th:last-child,.inventory-table td:last-child{min-width:190px}.toolbar select{min-height:38px;border:1px solid #cfdad8;border-radius:8px;padding:0 10px;background:#fff}
 </style></head><body class="auth-locked">
-<div id="loginScreen" class="login-screen"><div class="login-card" style="text-align:center"><img class="app-icon" src="icon-512.png" alt="Nova Imagem"><h1 style="margin-bottom:2px">Nova Imagem App</h1><div style="font-weight:800;color:#0a6c69;margin-bottom:22px">V11.3</div><label style="text-align:left">USUÁRIO<input id="loginUser" autocomplete="username" placeholder="Usuário"></label><label style="text-align:left">SENHA<input id="loginPass" type="password" autocomplete="current-password" placeholder="Senha"></label><button id="loginBtn" class="btn primary" style="width:100%;margin-top:8px">ENTRAR</button><div id="loginError" class="login-error"></div><div style="margin-top:24px;font-size:11px;opacity:.65">SOFTWARE DESENVOLVIDO POR ERIC DELGOBO</div></div></div>
+<div id="loginScreen" class="login-screen login-portal">
+  <section class="login-showcase">
+    <div class="login-showcase-shade"></div>
+    <div class="login-branding">
+      <div class="login-wordmark">Nova Imagem</div>
+      <div class="login-subbrand">CORTINAS &amp; PERSIANAS</div>
+      <div class="login-slogan">Bom gosto e sofisticação em cada detalhe</div>
+    </div>
+    <div class="login-contact">
+      <span>WhatsApp&nbsp; (42) 98801-1435</span>
+      <span>@novaimagemcortinas</span>
+    </div>
+  </section>
+  <section class="login-access">
+    <div class="login-access-inner">
+      <div class="login-version">ERP NOVA IMAGEM&nbsp;&nbsp;|&nbsp;&nbsp;V11.3</div>
+      <img class="login-app-icon" src="icon-512.png" alt="Nova Imagem">
+      <h1>Acesso ao Sistema</h1>
+      <p>Entre com seu usuário e senha<br>para acessar o ERP Nova Imagem.</p>
+      <label>USUÁRIO<input id="loginUser" autocomplete="username" placeholder="Usuário"></label>
+      <label>SENHA<input id="loginPass" type="password" autocomplete="current-password" placeholder="Senha"></label>
+      <button id="loginBtn" class="btn primary login-enter">ENTRAR&nbsp;&nbsp;→</button>
+      <div id="loginError" class="login-error"></div>
+      <div class="login-credit">SOFTWARE DESENVOLVIDO POR ERIC DELGOBO</div>
+    </div>
+  </section>
+</div>
 <div class="erp-shell"><aside class="sidebar no-print"><div class="brand" id="homeLogo" role="button" tabindex="0" title="Voltar ao início" style="cursor:pointer"><img class="app-icon" src="icon-512.png" alt="Nova Imagem"></div><nav class="nav" id="nav"></nav><div class="session"><small>Usuário conectado</small><strong id="sessionUser">-</strong><button id="logoutBtn" class="btn ghost" style="width:100%">Sair</button><div id="cloudStatus" class="cloud">Conectando à nuvem...</div></div></aside><main class="main"><section id="view-home" class="view"><div class="card" style="max-width:900px;margin:9vh auto 0;text-align:center;padding:42px 28px"><img src="icon-512.png" alt="Nova Imagem" style="width:110px;height:110px;object-fit:contain"><h1 id="homeWelcome" style="margin:16px 0 4px;color:#075b5b">BEM-VINDO</h1><div id="homeDate" class="muted" style="font-size:15px"></div><div id="homeTime" style="font-size:30px;font-weight:800;margin:4px 0 28px;color:#173638"></div><div id="purchaseAlerts"></div><div style="border-top:1px solid #dce9e7;padding-top:24px"><blockquote id="homeQuote" style="margin:0 auto;max-width:680px;font-size:19px;line-height:1.5;font-style:italic;color:#315a5a"></blockquote><div id="homeQuoteAuthor" style="margin-top:10px;font-weight:750;color:#075b5b"></div></div></div></section>
 <section id="view-quote" class="view active"><header class="topbar"><div><h1>Novo Orçamento</h1><p></p></div><div class="actions no-print"><button id="saveQuoteBtn" class="btn primary">Salvar orçamento</button><button id="savePrintBtn" class="btn secondary">Salvar e gerar PDF</button><button id="resetQuoteBtn" class="btn ghost">Zerar dados</button></div></header><div class="print-header print-only"><img src="logo-v4.jpg"><h2 id="printQuoteTitle">ORÇAMENTO</h2></div>
 <div class="grid two"><section class="card"><div class="card-title">A • Dados do cliente</div><div class="grid two"><label class="field">Cliente<input id="qClient"></label><label class="field">Data<input id="qDate" type="date"></label><label class="field">CPF<input id="qDocument" inputmode="numeric" maxlength="11"></label><label class="field">Contato / Telefone<input id="qContact" inputmode="numeric"></label><label class="field">Logradouro<input id="qStreet"></label><label class="field">Número<input id="qNumber" inputmode="numeric"></label><label class="field">Complemento<input id="qComplement"></label><label class="field">Bairro<input id="qNeighborhood"></label><label class="field">CEP<input id="qCep" inputmode="numeric" maxlength="8"></label><label class="field">Vendedor<input id="qSeller"></label><label class="field">Deslocamento (R$)<input id="qTravel" type="number" min="0" step="0.01" value="0"></label><label class="field">Desconto no orçamento (%)<input id="qDiscount" type="number" min="0" max="100" step="0.01" value="0"></label><label class="field">Justificativa do desconto<textarea id="qDiscountReason" rows="2"></textarea></label></div></section><section class="card no-print"><div class="card-title">Resumo</div><div class="price-strip"><div class="price-box"><span>Ambientes</span><strong id="qCount">0</strong></div><div class="price-box"><span>18x</span><strong id="q18">R$ 0,00</strong></div><div class="price-box"><span>4x</span><strong id="q4">R$ 0,00</strong></div><div class="price-box"><span>À vista</span><strong id="qCash">R$ 0,00</strong></div></div><p id="quoteStatus" class="muted">Pronto para começar.</p></section></div>

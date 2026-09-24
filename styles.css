@@ -15,3 +15,27 @@
 .permission-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .perm{display:flex;align-items:center;gap:6px;padding:8px;border:1px solid var(--line);border-radius:8px}
 @media(max-width:760px){.brand .app-icon{width:68px;height:68px}.permission-grid{grid-template-columns:1fr}}
+
+/* V11.32.7 - Portal visual de acesso. Somente apresentação; autenticação preservada. */
+.login-portal{display:grid;grid-template-columns:minmax(0,3fr) minmax(330px,1fr);place-items:stretch;padding:0;background:#f4f6f5;overflow:hidden}
+.login-showcase{position:relative;min-height:100vh;background:linear-gradient(120deg,#eef2f0 0%,#d9e1df 42%,#f7f4ef 100%);overflow:hidden}
+.login-showcase:before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(4,76,75,.16),transparent 42%),repeating-linear-gradient(90deg,rgba(255,255,255,.44) 0 38px,rgba(225,229,226,.22) 38px 70px);opacity:.72}
+.login-showcase:after{content:"";position:absolute;right:5%;top:0;width:48%;height:100%;background:linear-gradient(90deg,rgba(255,255,255,.15),rgba(255,255,255,.7));clip-path:polygon(18% 0,100% 0,100% 100%,0 100%);opacity:.55}
+.login-showcase-shade{position:absolute;left:0;right:0;bottom:0;height:34%;background:linear-gradient(0deg,rgba(17,29,29,.52),transparent)}
+.login-branding{position:relative;z-index:2;padding:7vh 6vw;color:#153b3a;max-width:760px}
+.login-wordmark{font-family:Georgia,'Times New Roman',serif;font-style:italic;font-size:clamp(48px,5vw,92px);line-height:.95;color:#182020;text-shadow:0 1px 0 #fff}
+.login-subbrand{margin:14px 0 40px;font-size:clamp(14px,1.2vw,22px);letter-spacing:.32em;color:#08706c;font-weight:650}
+.login-slogan{font-size:clamp(18px,1.5vw,28px);font-weight:800;color:#08706c;border-top:2px solid rgba(8,112,108,.45);padding-top:15px;width:max-content;max-width:100%}
+.login-contact{position:absolute;z-index:3;left:0;right:0;bottom:0;display:flex;gap:34px;align-items:center;padding:24px 6vw;color:#fff;background:rgba(15,27,27,.64);font-size:clamp(14px,1vw,19px);backdrop-filter:blur(4px)}
+.login-access{min-height:100vh;background:linear-gradient(135deg,#fff,#f2f5f4);display:grid;place-items:center;padding:36px;position:relative;z-index:4;box-shadow:-12px 0 35px rgba(8,42,42,.08)}
+.login-access-inner{width:min(390px,100%);text-align:left}
+.login-version{text-align:right;color:#0b6663;font-size:12px;font-weight:800;margin-bottom:56px}
+.login-app-icon{width:112px;height:112px;display:block;margin:0 auto 30px;object-fit:contain;border-radius:24px;filter:drop-shadow(0 8px 10px rgba(0,45,43,.16))}
+.login-access h1{margin:0;text-align:center;color:#075f5c;font-size:32px}
+.login-access p{text-align:center;color:#687779;line-height:1.45;margin:8px 0 30px}
+.login-access label{display:grid;gap:7px;font-size:11px;font-weight:800;color:#4d6264;margin:14px 0}
+.login-access input{width:100%;border:1px solid #cad6d4;background:rgba(255,255,255,.9);border-radius:9px;padding:14px 15px;outline:none;font-size:15px}
+.login-access input:focus{border-color:#08736f;box-shadow:0 0 0 3px rgba(8,115,111,.1)}
+.login-enter{width:100%;margin-top:10px;padding:15px;background:linear-gradient(90deg,#075b58,#08736f)!important;font-size:15px;letter-spacing:.04em}
+.login-credit{text-align:center;margin-top:38px;font-size:9px;color:#899596;letter-spacing:.05em}
+@media(max-width:800px){.login-portal{grid-template-columns:1fr;overflow:auto}.login-showcase{min-height:34vh}.login-branding{padding:34px 26px 90px}.login-wordmark{font-size:48px}.login-subbrand{font-size:12px;margin:10px 0 20px}.login-slogan{font-size:16px}.login-contact{padding:14px 26px;font-size:12px;gap:16px;flex-wrap:wrap}.login-access{min-height:66vh;padding:30px 24px}.login-version{margin-bottom:22px}.login-app-icon{width:82px;height:82px;margin-bottom:18px}.login-access h1{font-size:26px}}
