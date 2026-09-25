@@ -1,0 +1,14 @@
+V11.4 — PORTAL DO CLIENTE + NPS
+
+1. Cada novo pedido recebe senha numérica aleatória de 6 dígitos.
+2. Via do Cliente exibe número do pedido e senha do Portal do Cliente.
+3. Login inicial ganhou “ACOMPANHAR MEU PEDIDO”, sem misturar cliente com usuário do ERP.
+4. Portal do Cliente exibe nome, etapa de produção e data de instalação.
+5. Em EXPEDIÇÃO com instalador atribuído, exibe aviso de pedido pronto.
+6. Após instalação concluída, libera avaliação: Atendimento, Prazo, Produto e Instalação (1–10), NPS (0–10) e comentário opcional.
+7. Uma avaliação por pedido; respostas não são editáveis no ERP.
+8. Novo menu NPS - CLIENTES exclusivo do perfil GESTOR.
+9. Resultado NPS: NPS, médias, média geral, avaliações, taxa de resposta, promotores/neutros/detratores e tabela detalhada.
+10. Evolução NPS: gráfico temporal do NPS e gráfico das quatro notas de satisfação.
+11. Alertas quando nota dos últimos 30 dias fica abaixo de 8,0 ou cai 0,7 ponto ou mais ante os 30 dias anteriores.
+12. Endpoint público do cliente retorna apenas dados mínimos do pedido e limita tentativas de login.
