@@ -1,0 +1,7 @@
+NOVA IMAGEM ERP — V11.4.3
+
+- Via do Cliente agora exibe QR Code para acesso ao Portal do Cliente.
+- QR Code abre diretamente a tela de acompanhamento, com o número do pedido pré-preenchido.
+- PDF do pedido inclui link clicável “Clique aqui para acompanhar seu pedido”.
+- Link e QR Code usam o endereço atual do ERP, permitindo futura migração para domínio próprio sem alterar a lógica.
+- Senha de 6 dígitos continua obrigatória; o QR Code não autentica automaticamente.
