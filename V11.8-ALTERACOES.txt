@@ -1,0 +1,13 @@
+NOVA IMAGEM V11.8 — CONFECÇÃO / BARRAS / TUBOS / ESTOQUE
+
+- WAVE no acabamento: forro limitado a Franzido Suíço, Wave e Sobreposto.
+- WAVE assume Trilho Suíço + Duplo Espaçado Branco como padrão.
+- Material do suporte visível apenas para Argolas/Ilhós.
+- Barra do acabamento: Simples, Tombada (+R$15/m), Soutache (+R$20/m) e Soutache Dupla (+R$35/m), mão de obra pela metragem franzida do acabamento.
+- Soutache: Cinza, Nude, Fendi e Bege; 100m/cor; custo R$0,60/m; markup 100%.
+- Soutache Duplo consome 2m de material por metro de barra; mão de obra continua sobre 1x a metragem da barra.
+- Tubos 19mm (R$10/m) e 28mm (R$14/m), markup 140%, 30m por cor: Prata Escovado, Cromado, Imbuia, Dourado, Ouro Velho, Marfim, Branco e Preto.
+- Ilhós, argolas e suportes: estoque inicial ajustado para 200 unidades por SKU/cor.
+- Compatibilidade de tubo/suporte/tampa e cor integrada ao cálculo/OP.
+- Componentes incompatíveis permanecem excluídos para modelos de Argolas/Ilhós.
+- Soutache e tubos entram na OP e na baixa do estoque oficial.

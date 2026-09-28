@@ -970,10 +970,62 @@ const _v116SetView=setView;setView=function(id){_v116SetView(id);if(id==='inspir
 document.addEventListener('DOMContentLoaded',()=>{const pub=$('publicInspirationsOpen');if(pub)pub.onclick=()=>{$('loginScreen').classList.add('hidden');$('publicPortal').classList.remove('hidden');loadPublicPortal('inspirations')};$('publicPortalClose')?.addEventListener('click',()=>{$('publicPortal').classList.add('hidden');$('loginScreen').classList.remove('hidden')});document.querySelectorAll('[data-public-tab]').forEach(b=>b.onclick=()=>loadPublicPortal(b.dataset.publicTab));$('manageInspirationsBtn')?.addEventListener('click',manageInspirations);$('viewCandidatesBtn')?.addEventListener('click',renderCandidates);$('manageJobsBtn')?.addEventListener('click',manageJobs)});
 
 
-/* ===== V11.7 • HOME PÚBLICA ===== */
+/* ===== V11.8 • HOME PÚBLICA ===== */
 async function loadPublicHome(){try{const r=await fetch('/api/portal'),j=await r.json();const items=(j.inspirations?.length?j.inspirations:V116_DEFAULT_INSPIRATIONS).slice(0,3),root=$('homeFeaturedInspirations');if(root)root.innerHTML=items.map(x=>`<article class="site-featured-card"><img src="${esc(x.image||'inspiration-1.jpg')}" alt="${esc(x.title)}"><div><h3>${esc(x.title)}</h3><p>${esc(x.description||'')}</p><button class="site-text-link" onclick="openPublicTab('inspirations')">VER MODELO →</button></div></article>`).join('')}catch(e){}}
 function openPublicTab(tab){$('publicHome')?.classList.add('hidden');$('loginScreen')?.classList.add('hidden');$('publicPortal')?.classList.remove('hidden');loadPublicPortal(tab)}
 function showPublicHome(){$('publicPortal')?.classList.add('hidden');$('loginScreen')?.classList.add('hidden');$('clientLoginScreen')?.classList.add('hidden');$('publicHome')?.classList.remove('hidden');window.scrollTo({top:0,behavior:'smooth'});loadPublicHome()}
 document.addEventListener('DOMContentLoaded',()=>{document.querySelectorAll('[data-home-tab]').forEach(b=>b.onclick=()=>openPublicTab(b.dataset.homeTab));document.querySelectorAll('[data-home-top]').forEach(b=>b.onclick=showPublicHome);$('siteLoginBtn')?.addEventListener('click',()=>{$('publicHome').classList.add('hidden');$('loginScreen').classList.remove('hidden');setTimeout(()=>$('loginUser')?.focus(),50)});$('siteClientBtn')?.addEventListener('click',()=>{$('publicHome').classList.add('hidden');$('clientLoginScreen').classList.remove('hidden')});$('siteMenuToggle')?.addEventListener('click',()=>$('siteNav')?.classList.toggle('open'));$('publicPortalClose')?.addEventListener('click',showPublicHome)});
 window.openPublicTab=openPublicTab;
 document.addEventListener('DOMContentLoaded',()=>{$('clientLoginBack')?.addEventListener('click',showPublicHome);});
+
+/* ===== V11.8 • CONFECÇÃO / BARRAS / TUBOS / ESTOQUE ===== */
+const V118_TUBE_COLORS=['PRATA ESCOVADO','CROMADO','IMBUIA','DOURADO','OURO VELHO','MARFIM','BRANCO','PRETO'];
+const _v118SetupSelectors=setupSelectors;
+setupSelectors=function(){
+  _v118SetupSelectors();
+  // WAVE: forro compatível e trilho suíço duplo espaçado branco como padrão.
+  v118ApplyConditionalForm();
+};
+function v118DefaultSwissRail(){return officialSwissRails().find(p=>norm(p.product_name).includes('DUPLO ESPAÇADO')&&norm(p.color)==='BRANCO')||null}
+function v118ApplyConditionalForm(){
+  const fp=$('eFinishPleat')?.value||'', tube=isTubePleat(fp), wave=fp==='WAVE';
+  if(wave){
+    const lining=$('eLiningPleat'),allowed=['FRANZIDO SUÍÇO','WAVE','SOBREPOSTO'];
+    if(lining){const old=lining.value;fillSelect(lining,allowed,allowed.includes(old)?old:'FRANZIDO SUÍÇO')}
+    if($('eFixation')){$('eFixation').value='TRILHO SUÍÇO';refreshFixColors();const d=v118DefaultSwissRail();if(d&&$('eRailProduct'))$('eRailProduct').value=String(d.id)}
+  }
+  $('eSupportMaterialWrap')?.classList.toggle('hidden',!tube);
+  const bar=$('eFinishBar')?.value||'BARRA SIMPLES';$('eSoutacheColorWrap')?.classList.toggle('hidden',!['BARRA SOUTACHE','BARRA SOUTACHE DUPLA'].includes(bar));
+  if(tube){setSelectOptions($('eFixColor'),V118_TUBE_COLORS,$('eFixColor')?.value)}
+}
+const _v118UpdateModelFields=updateModelFields;
+updateModelFields=function(){_v118UpdateModelFields();v118ApplyConditionalForm()};
+const _v118EnvFromForm=envFromForm;
+envFromForm=function(){const e=_v118EnvFromForm();e.finishBar=$('eFinishBar')?.value||'BARRA SIMPLES';e.soutacheColor=$('eSoutacheColor')?.value||'';e.tubeFixation=isTubePleat(e.finishPleat)||isTubePleat(e.liningPleat);if(e.tubeFixation){e.fixColor=$('eFixColor')?.value||e.fixColor;}return e};
+const _v118TubeHardwareCalc=tubeHardwareCalc;
+tubeHardwareCalc=function(e,c){
+  const w=Number(e.width||0)/100,model=e.model,color=e.fixColor||'',mat=norm(e.supportMaterial)==='PVC'?'PVC':'ALUMINIO',supports=w<=2?2:w<=3.5?3:w<=4.5?4:5;
+  const tubes=[];if(model!=='LINING')tubes.push(e.finishTube||'TUBO 28 MM');if(model!=='FINISH')tubes.push(e.liningTube||'TUBO 19 MM');
+  const supportName=model==='COMPLETE'?`SUPORTE 19/28 ${mat}`:`SUPORTE ${(tubes[0]||'TUBO 28 MM').includes('19')?'19':'28'}MM ${mat}`;
+  const support=officialProductByName(supportName,color)||officialProductLike(supportName.split(' '),color);const parts=[];let total=0;
+  if(support){parts.push({productId:support.id,name:supportName,qty:supports,unit:'UN'});total+=supports*Number(support.price_4x||0)}
+  for(const t of tubes){const size=t.includes('19')?'19':'28',tube=officialProductByName(`TUBO ${size} MM`,color),capName=`TAMPA PARA TUBO EM ALUMINIO ${size}MM`,cap=officialProductByName(capName,color)||officialProductLike(['TAMPA','TUBO',size],color);if(tube){parts.push({productId:tube.id,name:tube.product_name,qty:w,unit:'M'});total+=w*Number(tube.price_4x||0)}if(cap){parts.push({productId:cap.id,name:capName,qty:2,unit:'UN'});total+=2*Number(cap.price_4x||0)}}
+  return {kind:tubes.join(' + '),meters:w*tubes.length,supports,ends:tubes.length*2,supportName,supportProductId:support?.id||null,parts,total,hardwareBase:total,detail:`${tubes.join(' + ')} • ${supports} ${supportName.toLowerCase()} • ${tubes.length*2} tampas`};
+};
+const _v118CalcEnvironment=calcEnvironment;
+calcEnvironment=function(e){
+  const c=_v118CalcEnvironment(e);if(!c)return c;
+  const bar=e.finishBar||'BARRA SIMPLES',barMeters=Number(c.finishCalc?.gathered||0);let laborRate=0,soutacheFactor=0;
+  if(bar==='BARRA TOMBADA')laborRate=15;if(bar==='BARRA SOUTACHE'){laborRate=20;soutacheFactor=1}if(bar==='BARRA SOUTACHE DUPLA'){laborRate=35;soutacheFactor=2}
+  const barLabor=barMeters*laborRate,soutacheMeters=barMeters*soutacheFactor,soutache=soutacheMeters?officialProductByName('SOUTACHE',e.soutacheColor):null,soutacheCost=soutacheMeters*Number(soutache?.price_4x||0);
+  c.barType=bar;c.barMeters=barMeters;c.barLabor=barLabor;c.soutacheMeters=soutacheMeters;c.soutacheProductId=soutache?.id||null;c.soutacheCost=soutacheCost;c.laborTotal=Number(c.laborTotal||0)+barLabor;c.base4=Number(c.base4||0)+barLabor+soutacheCost;c.p18=c.base4*(1+Number(db.priceConfig.terms.p18AddPct||0)/100);c.cash=c.base4*(1-Number(db.priceConfig.terms.cashDiscountPct||0)/100);return c;
+};
+const _v118OfficialOrderRequirements=officialOrderRequirements;
+officialOrderRequirements=function(q){const rows=_v118OfficialOrderRequirements(q);for(const e of q.environments||[]){const c=calcEnvironment(e);if(c?.soutacheMeters>0){const p=officialProductById(c.soutacheProductId);if(p)rows.push({product_id:Number(p.id),internal_code:p.internal_code,product_name:p.product_name,color:p.color,unit:p.unit||'M',qty:c.soutacheMeters,environment:e.name,environments:[e.name],source:'SOUTACHE DA BARRA',cost:Number(p.cost||0),markup_percent:Number(p.markup_percent||0),price_cash:Number(p.price_cash||0),price_4x:Number(p.price_4x||0),price_18x:Number(p.price_18x||0)})}if(e.tubeFixation&&Array.isArray(c?.fixationCalc?.parts)){for(const x of c.fixationCalc.parts){const p=officialProductById(x.productId);if(p&&!rows.some(r=>r.product_id===Number(p.id)&&r.environment===e.name&&r.source===x.name))rows.push({product_id:Number(p.id),internal_code:p.internal_code,product_name:p.product_name,color:p.color,unit:p.unit||x.unit||'UN',qty:Number(x.qty||0),environment:e.name,environments:[e.name],source:x.name,cost:Number(p.cost||0),markup_percent:Number(p.markup_percent||0),price_cash:Number(p.price_cash||0),price_4x:Number(p.price_4x||0),price_18x:Number(p.price_18x||0)})}}}return rows};
+function v118TechnicalSummary(e){const c=calcEnvironment(e);if(!c)return '';return [e.finishPleat,e.finish,e.finishColor,e.liningPleat,e.fixation,e.railProductName||'',e.finishBar,e.soutacheColor?`SOUTACHE ${e.soutacheColor}`:''].filter(Boolean).join(' • ')}
+document.addEventListener('DOMContentLoaded',()=>{
+  $('eFinishPleat')?.addEventListener('change',()=>{v118ApplyConditionalForm();updatePreview()});
+  $('eFinishBar')?.addEventListener('change',()=>{v118ApplyConditionalForm();updatePreview()});
+  $('eSoutacheColor')?.addEventListener('change',updatePreview);
+  $('eFixColor')?.addEventListener('change',updatePreview);
+});

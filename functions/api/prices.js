@@ -131,21 +131,27 @@ export async function onRequestPost(context){
 
 
     if(action==='SINCRONIZAR_V115_ACESSORIOS'){
-      if(!gestorOnly(user))return json({error:'Apenas usuários GESTOR podem sincronizar os acessórios V11.5.'},403);
-      const colors=['IMBUIA','PRATA ESCOVADO','CROMADO','BRANCO','MARFIM'];
+      if(!gestorOnly(user))return json({error:'Apenas usuários GESTOR podem sincronizar os acessórios.'},403);
+      const baseColors=['IMBUIA','PRATA ESCOVADO','CROMADO','BRANCO','MARFIM'];
       const families=[
-        ['ARGOLA 19MM',0.65],['ARGOLA 29MM',0.90],['ILHOS QUADRADO',0.90],['ILHOS REDONDO',0.95],
-        ['SUPORTE 19MM PVC',9.00],['SUPORTE 28MM PVC',10.00],['SUPORTE 19/28 PVC',13.00],
-        ['SUPORTE 28MM ALUMINIO',18.00],['SUPORTE 19MM ALUMINIO',17.00],['SUPORTE 19/28 ALUMINIO',20.00],
-        ['TAMPA PARA TUBO EM ALUMINIO 28MM',4.00],['TAMPA PARA TUBO EM ALUMINIO 19MM',3.50]
+        ['ARGOLA 19MM',0.65,200],['ARGOLA 29MM',0.90,200],['ILHOS QUADRADO',0.90,200],['ILHOS REDONDO',0.95,200],
+        ['SUPORTE 19MM PVC',9.00,200],['SUPORTE 28MM PVC',10.00,200],['SUPORTE 19/28 PVC',13.00,200],
+        ['SUPORTE 28MM ALUMINIO',18.00,200],['SUPORTE 19MM ALUMINIO',17.00,200],['SUPORTE 19/28 ALUMINIO',20.00,200],
+        ['TAMPA PARA TUBO EM ALUMINIO 28MM',4.00,200],['TAMPA PARA TUBO EM ALUMINIO 19MM',3.50,200]
       ];
-      const existing=await context.env.DB.prepare(`SELECT id,product_name,color FROM price_products WHERE active=1`).all();
-      const keys=new Set((existing.results||[]).map(x=>`${text(x.product_name).toUpperCase()}|${text(x.color).toUpperCase()}`));
+      const tubeColors=['PRATA ESCOVADO','CROMADO','IMBUIA','DOURADO','OURO VELHO','MARFIM','BRANCO','PRETO'];
+      const tubes=[['TUBO 19 MM',10.00],['TUBO 28 MM',14.00]];
+      const soutaches=['CINZA','NUDE','FENDI','BEGE'];
+      const existing=await context.env.DB.prepare(`SELECT id,product_name,color,stock_quantity FROM price_products WHERE active=1`).all();
+      const byKey=new Map((existing.results||[]).map(x=>[`${text(x.product_name).toUpperCase()}|${text(x.color).toUpperCase()}`,x]));
       const codes=await context.env.DB.prepare(`SELECT internal_code FROM price_products WHERE internal_code LIKE 'NI-%'`).all();let max=0;for(const r of codes.results||[]){const m=String(r.internal_code||'').match(/^NI-(\d+)$/i);if(m)max=Math.max(max,Number(m[1]))}
       const stm=[];const created=[];
-      for(const [name,cost] of families)for(const color of colors){const key=`${name}|${color}`;if(keys.has(key))continue;const code=`NI-${String(++max).padStart(4,'0')}`,markup=130,mult=2.30,p4=cost*mult,pc=p4*0.92,p18=pc/0.82;stm.push(context.env.DB.prepare(`INSERT INTO price_products (internal_code,supplier_code,category,supplier,product_name,color,width_cm,unit,stock_quantity,multiplier,cost,markup_percent,price_cash,price_4x,price_18x,ncm,cfop_internal,cfop_interstate,active,price_manual,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,0,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)`).bind(code,'','ACESSÓRIO','NOVA IMAGEM',name,color,0,'UN',0,mult,cost,markup,pc,p4,p18,'','',''));created.push({internal_code:code,product_name:name,color});keys.add(key)}
+      const upsert=(name,color,cost,markup,unit,stock)=>{const key=`${name}|${color}`,old=byKey.get(key);const mult=1+markup/100,p4=cost*mult,pc=p4*0.92,p18=pc/0.82;if(old){stm.push(context.env.DB.prepare(`UPDATE price_products SET stock_quantity=?,cost=?,markup_percent=?,multiplier=?,price_4x=?,price_cash=?,price_18x=?,unit=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(stock,cost,markup,mult,p4,pc,p18,unit,Number(old.id)));return;}const code=`NI-${String(++max).padStart(4,'0')}`;stm.push(context.env.DB.prepare(`INSERT INTO price_products (internal_code,supplier_code,category,supplier,product_name,color,width_cm,unit,stock_quantity,multiplier,cost,markup_percent,price_cash,price_4x,price_18x,ncm,cfop_internal,cfop_interstate,active,price_manual,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,0,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)`).bind(code,'','ACESSÓRIO','NOVA IMAGEM',name,color,0,unit,stock,mult,cost,markup,pc,p4,p18,'','',''));created.push({internal_code:code,product_name:name,color});};
+      for(const [name,cost,stock] of families)for(const color of baseColors)upsert(name,color,cost,130,'UN',stock);
+      for(const [name,cost] of tubes)for(const color of tubeColors)upsert(name,color,cost,140,'M',30);
+      for(const color of soutaches)upsert('SOUTACHE',color,0.60,100,'M',100);
       if(stm.length)await context.env.DB.batch(stm);
-      return json({ok:true,created});
+      return json({ok:true,created,updated:true});
     }
 
     if(action==='SINCRONIZAR_GARRAS_TRILHOS'){
