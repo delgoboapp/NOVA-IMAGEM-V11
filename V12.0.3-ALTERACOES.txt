@@ -1,0 +1,9 @@
+NOVA IMAGEM ERP V12.0.3
+- Matriz de confecção: acabamento com ARGOLAS 29MM trava forro em ARGOLAS 19MM; acabamento ARGOLAS 19MM mantém somente ARGOLAS 19MM no forro.
+- Mantidas regras: ILHÓS -> ARGOLAS 19MM; WAVE -> FRANZIDO SUÍÇO ou SOBREPOSTO.
+- BLACKOUT 100% comum usado automaticamente abaixo de 275 cm.
+- BLACKOUT 100% WIDE usado automaticamente entre 275 e 310 cm.
+- Acima de 310 cm, motor aplica cálculo por alturas/emendas.
+- Novos SKUs oficiais: BLACKOUT 100% WIDE BRANCO e MARFIM, largura 320 cm, custo R$35/m, 4x R$75/m, à vista R$69/m, 18x = 69/0,82.
+- Nova capa pública com cortina de linho natural em fita Wave.
+- Gestão > Inspirações: botão TROCAR FOTO DA CAPA, permitindo upload e restauração da capa padrão.

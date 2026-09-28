@@ -130,6 +130,11 @@ export async function onRequestPost(context){
     const action=text(body.action).toUpperCase();
 
 
+    if(action==='SINCRONIZAR_BLACKOUT_WIDE'){
+      if(!gestorOnly(user))return json({error:'Apenas usuários GESTOR podem sincronizar o Blackout Wide.'},403);
+      const colors=['BRANCO','MARFIM'];const existing=await context.env.DB.prepare(`SELECT id,product_name,color FROM price_products WHERE active=1`).all();const byKey=new Map((existing.results||[]).map(x=>[`${text(x.product_name).toUpperCase()}|${text(x.color).toUpperCase()}`,x]));const codes=await context.env.DB.prepare(`SELECT internal_code FROM price_products WHERE internal_code LIKE 'NI-%'`).all();let max=0;for(const r of codes.results||[]){const m=String(r.internal_code||'').match(/^NI-(\d+)$/i);if(m)max=Math.max(max,Number(m[1]))}const stm=[];let created=0;for(const color of colors){const key=`BLACKOUT 100% WIDE|${color}`,old=byKey.get(key);if(old){stm.push(context.env.DB.prepare(`UPDATE price_products SET width_cm=320,unit='M',cost=35,markup_percent=0,price_4x=75,price_cash=69,price_18x=?,price_manual=1,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(69/0.82,Number(old.id)));continue}const code=`NI-${String(++max).padStart(4,'0')}`;stm.push(context.env.DB.prepare(`INSERT INTO price_products (internal_code,supplier_code,category,supplier,product_name,color,width_cm,unit,stock_quantity,multiplier,cost,markup_percent,price_cash,price_4x,price_18x,ncm,cfop_internal,cfop_interstate,active,price_manual,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)`).bind(code,'','TECIDO DE FORRO','NOVA IMAGEM','BLACKOUT 100% WIDE',color,320,'M',0,75/35,35,0,69,75,69/0.82,'','',''));created++}if(stm.length)await context.env.DB.batch(stm);return json({ok:true,created,updated:true});
+    }
+
     if(action==='SINCRONIZAR_V115_ACESSORIOS'){
       if(!gestorOnly(user))return json({error:'Apenas usuários GESTOR podem sincronizar os acessórios.'},403);
       const baseColors=['IMBUIA','PRATA ESCOVADO','CROMADO','BRANCO','MARFIM'];
