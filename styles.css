@@ -78,3 +78,26 @@
 .modal-backdrop{z-index:400}
 /* V11.9 */
 .site-location{display:grid;grid-template-columns:minmax(300px,.8fr) 1.2fr;gap:24px;padding:44px max(5vw,24px);background:#f4f1eb;align-items:center}.site-location h2{color:#075b5b;font-size:30px;margin:6px 0 12px}.site-location iframe{width:100%;min-height:340px;border:0;border-radius:18px;box-shadow:0 12px 30px #163c3c1c}.site-footer a{color:inherit;text-decoration:none;display:block}.site-dev-credit{text-align:center;opacity:.82}.site-dev-credit strong{letter-spacing:.14em}.angle-check{display:flex;align-items:center;gap:8px;min-height:42px;border:1px solid #cfdad8;border-radius:8px;padding:0 10px;background:#fff;font-weight:750;color:#075b5b}.angle-check input{width:auto}.hidden{display:none!important}@media(max-width:760px){.site-location{grid-template-columns:1fr;padding:28px 18px}.site-location iframe{min-height:280px}.site-footer{display:grid!important;grid-template-columns:1fr!important;text-align:center;gap:14px}.site-footer img{margin:auto}}
+
+/* V12.0.5 — refinamento tipografico do portal em celulares */
+@media(max-width:600px){
+  .site-hero{min-height:500px;background-position:60% center}
+  .site-hero-copy{width:auto;margin:0;padding:46px 24px 38px;max-width:520px}
+  .site-hero-copy>span{font-size:9px;letter-spacing:.16em}
+  .site-hero-copy h1{font-size:clamp(31px,9.2vw,38px);line-height:1.06;letter-spacing:-.025em;margin:10px 0 14px;font-weight:500}
+  .site-hero-copy p{font-size:14px;line-height:1.55;max-width:34em;color:rgba(255,255,255,.9)}
+  .site-hero-actions{margin-top:20px;gap:9px}
+  .site-primary,.site-secondary{font-size:11px;letter-spacing:.02em;padding:12px 15px}
+  .site-intro{padding:44px 24px}
+  .site-intro h2,.site-featured h2,.site-work h2{font-size:27px;line-height:1.12;letter-spacing:-.015em}
+  .site-intro p{font-size:14px;line-height:1.65}
+  .site-featured{padding:46px 24px}
+  .site-featured-card h3{font-size:17px}
+  .site-featured-card p{font-size:12.5px;line-height:1.5}
+  .site-work{margin:36px 18px;padding:27px 22px}
+  .site-work p{font-size:14px;line-height:1.6}
+  .public-section{padding:34px 22px}
+  .public-section h1{font-size:28px;line-height:1.12}
+  .public-hero h1{font-size:29px;line-height:1.08}
+  .public-head nav button{font-size:11px}
+}

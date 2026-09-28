@@ -1,0 +1,5 @@
+NOVA IMAGEM V12.0.5
+- Refinamento responsivo da tipografia do portal publico em celulares.
+- Hero principal menor, mais leve e com melhor proporcao entre titulo, texto e botoes.
+- Titulos das secoes, textos, cards e paginas publicas reduzidos no mobile.
+- Mantidas as regras e funcionalidades da V12.0.4 sem alteracao no motor de calculo.

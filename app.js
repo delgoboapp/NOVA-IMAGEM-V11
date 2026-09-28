@@ -260,7 +260,7 @@ const NAV=[
   ['production','Produção','production'],['install','Instalações','all'],['rework','Retrabalho','all'],
   ['suppliers','Compras e Fornecedores','gestor'],['inventory','Estoque','gestor'],
   ['receivables','Contas a Receber','gestor'],['revenues','Receitas Totais','gestor'],['productionCosts','Custos de Instalação','gestor'],['sewingCost','Custo de Costura','gestor'],['results','Resultados dos Pedidos','gestor'],['hr','Departamento Pessoal','gestor'],['users','Usuários','gestor'],
-  ['kpis','Dashboard Gestão','gestor'],['inspirations','INSPIRAÇÕES','all'],['npsResults','Resultado NPS','gestor'],['npsEvolution','Evolução NPS','gestor'],['payables','Contas a Pagar','gestor'],['monthlyClose','Fechamento Mensal','gestor'],['settings','Configurações','gestor'],['audit','Auditoria','gestor'],['backup','Backup','gestor'],['help','AJUDA','all']
+  ['kpis','Dashboard Gestão','gestor'],['inspirations','Configurações do Portal','gestor'],['npsResults','Resultado NPS','gestor'],['npsEvolution','Evolução NPS','gestor'],['payables','Contas a Pagar','gestor'],['monthlyClose','Fechamento Mensal','gestor'],['settings','Configurações','gestor'],['audit','Auditoria','gestor'],['backup','Backup','gestor'],['help','AJUDA','all']
 ];
 const NAV_GROUPS=[
  {id:'commercial',label:'COMERCIAL',items:['commercialPanel','quote','quotes','clients','orders','agenda']},
@@ -268,7 +268,7 @@ const NAV_GROUPS=[
  {id:'stock',label:'COMPRAS E ESTOQUE',items:['suppliers','inventory']},
  {id:'management',label:'GESTÃO',items:['kpis','receivables','revenues','payables','productionCosts','sewingCost','results','monthlyClose','hr','users','settings','audit','backup']},
  {id:'nps',label:'NPS - CLIENTES',items:['npsResults','npsEvolution']},
- {id:'inspirations',label:'INSPIRAÇÕES',items:['inspirations']},
+ {id:'inspirations',label:'CONFIGURAÇÕES DO PORTAL',items:['inspirations']},
  {id:'help',label:'AJUDA',items:['help']}
 ];
 let token=sessionStorage.getItem('novaV9Token')||'';
@@ -289,7 +289,7 @@ function isProduction(){return currentUser?.role==='production'}
 function currentUsername(){return norm(currentUser?.username)}
 function permissionKeys(){return NAV.map(x=>x[0])}
 function userPermissionRecord(username){const key=norm(username);const base=[...DEFAULT_USERS,...(db.users||[])].find(x=>norm(x.username)===key)||currentUser||{};const profile=db.settings?.builtInUserProfiles?.[key]||{};const override=db.settings?.userPermissions?.[key];return {...base,...profile,permissions:Array.isArray(override)?override:(base.permissions||null)}}
-function hasPermission(area){if(area==='help'||area==='inspirations')return true;if(area==='commercialPanel'){const r=norm(userPermissionRecord(currentUsername()).role);return isGestor()||['SALES','PARTNER'].includes(r);}if(isGestor())return true;const u=userPermissionRecord(currentUsername());if(Array.isArray(u.permissions))return u.permissions.includes('*')||u.permissions.includes(area);if(u.role==='production')return ['orders','production','install'].includes(area);if(u.role==='sales')return ['quote','quotes','clients','orders','install'].includes(area);return false}
+function hasPermission(area){if(area==='help')return true;if(area==='commercialPanel'){const r=norm(userPermissionRecord(currentUsername()).role);return isGestor()||['SALES','PARTNER'].includes(r);}if(isGestor())return true;const u=userPermissionRecord(currentUsername());if(Array.isArray(u.permissions))return u.permissions.includes('*')||u.permissions.includes(area);if(u.role==='production')return ['orders','production','install'].includes(area);if(u.role==='sales')return ['quote','quotes','clients','orders','install'].includes(area);return false}
 function allUsers(){const disabled=new Set((db.disabledUsers||[]).map(norm));return [...DEFAULT_USERS,...(db.users||[])].filter((u,i,a)=>a.findIndex(x=>norm(x.username)===norm(u.username))===i).map(u=>({...u,...(db.settings?.builtInUserProfiles?.[norm(u.username)]||{})})).filter(u=>!disabled.has(norm(u.username)))}
 function sellerName(username){return allUsers().find(u=>norm(u.username)===norm(username))?.name||username||'-'}
 function sellerCommission(username){return Number(allUsers().find(u=>norm(u.username)===norm(username))?.commission ?? db.priceConfig.commissionDefault ??5)}
@@ -338,7 +338,7 @@ function resolveOfficialFabric(category,name,color,heightCm){
   if(category==='TECIDO DE FORRO'&&norm(name)==='BLACKOUT 100% LEVE'){
     const all=officialQuoteProducts(category).filter(p=>['BLACKOUT 100% LEVE','BLACKOUT 100% WIDE'].includes(norm(p.product_name))&&norm(p.color)===norm(color));
     const h=Number(heightCm||0);const wide=all.find(p=>norm(p.product_name)==='BLACKOUT 100% WIDE');const common=all.find(p=>norm(p.product_name)==='BLACKOUT 100% LEVE');
-    if(h>=275&&h<=310&&wide)return wide;if(h<275&&common)return common;if(h>310&&wide)return wide;list=all.length?all:list;
+    if(h>=275&&h<=310&&wide)return wide;if(h<275&&common)return common;if(h>310&&common)return common;list=all.length?all:list;
   }
   if(!list.length)return null;
   const required=Number(heightCm||0)+25;
@@ -1144,3 +1144,41 @@ const _v12UpdateModelFields=updateModelFields;updateModelFields=function(){_v12U
 const _v12SetupSelectors=setupSelectors;setupSelectors=function(){_v12SetupSelectors();v12RefreshFixations();};
 const _v12RenderQuote=renderQuote;renderQuote=function(){_v12RenderQuote();v12RefreshFixations();};
 document.addEventListener('DOMContentLoaded',()=>{['eFinishPleat','eLiningPleat','eModel','eFixation'].forEach(id=>$(id)?.addEventListener('change',()=>{v12RefreshFixations();updatePreview()}));['eFinishTube','eLiningTube','eRailProduct'].forEach(id=>$(id)?.addEventListener('change',updatePreview));v12RefreshFixations();});
+
+
+/* ===== V12.0.4 • APENAS FORRO INDEPENDENTE + PORTAL CONFIG/ANALYTICS ===== */
+const V1204_LINING_PLEATS=['FRANZIDO SUÍÇO','FRANZIDO COM ARGOLAS 19MM','FRANZIDO COM ARGOLAS 29MM','ILHÓS REDONDO','ILHÓS QUADRADO','WAVE','SOBREPOSTO','OUTRO'];
+const _v1204Allowed=v12AllowedLiningPleats;
+v12AllowedLiningPleats=function(fp){
+  // Em APENAS FORRO, o tecido de forro é a própria cortina: não herda restrições do acabamento inexistente.
+  if(($('eModel')?.value||'')==='LINING')return V1204_LINING_PLEATS;
+  return _v1204Allowed(fp);
+};
+const _v1204Refresh=v12RefreshFixations;
+v12RefreshFixations=function(){
+  const liningOnly=($('eModel')?.value||'')==='LINING';
+  _v1204Refresh();
+  if(liningOnly){
+    const lp=$('eLiningPleat'); if(lp){const old=lp.value;fillSelect(lp,V1204_LINING_PLEATS,V1204_LINING_PLEATS.includes(old)?old:'FRANZIDO SUÍÇO');}
+    // WAVE sozinho é cortina principal: trilho suíço e duplo espaçado branco como padrão.
+    if(($('eLiningPleat')?.value||'')==='WAVE'){
+      if($('eFixation'))$('eFixation').value='TRILHO SUÍÇO';
+      const generic=$('eFixationWrap'),prod=$('eRailProductWrap'),color=$('eFixColorWrap');generic?.classList.remove('hidden');prod?.classList.remove('hidden');color?.classList.add('hidden');
+      v12FillProductSelect($('eRailProduct'),v12RailProducts(),'SELECIONE O TRILHO DO ESTOQUE',v118DefaultSwissRail()?.id);
+    }
+    v1191GatherOptions('eLiningGather');
+  }
+};
+// Portal: captura origem rastreável (?origem=flyer, instagram, feira, parceiro...).
+function v1204PortalSource(){try{return (new URLSearchParams(location.search).get('origem')||'DIRETO').trim().toUpperCase().slice(0,40)}catch(e){return 'DIRETO'}}
+const _v1204PortalEvent=portalEvent;
+portalEvent=async function(event,meta={}){return _v1204PortalEvent(event,{...meta,source:v1204PortalSource()})};
+function renderPortalConfig(){
+  if(!isGestor())return;
+  const a=db.portalAnalytics||{},events=a.events||{},sources=a.sources||{},daily=a.daily||{};
+  const box=$('portalConfigAnalytics'); if(box)box.innerHTML=`<div class="kpis">${[['Visualizações',a.views||0],['Visitantes',a.visitors||0],['Interações',a.interactions||0],['WhatsApp / modelo',events.WHATSAPP_INSPIRACAO||0],['Inspirações abertas',events.INSPIRACOES_ABERTAS||0],['Acompanhar pedido',events.ACOMPANHAR_PEDIDO||0],['Candidaturas',events.CANDIDATURA||0]].map(x=>`<div class="kpi"><span>${x[0]}</span><strong>${x[1]}</strong></div>`).join('')}</div><div class="grid two" style="margin-top:14px"><div class="card"><div class="card-title">Origem dos acessos</div>${Object.keys(sources).length?Object.entries(sources).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #eee"><span>${esc(k)}</span><strong>${v}</strong></div>`).join(''):'<p class="muted">Os novos acessos rastreáveis aparecerão aqui.</p>'}</div><div class="card"><div class="card-title">Acessos recentes</div>${Object.keys(daily).length?Object.entries(daily).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,10).map(([k,v])=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #eee"><span>${esc(k)}</span><strong>${v}</strong></div>`).join(''):'<p class="muted">Sem histórico diário ainda.</p>'}</div></div>`;
+}
+const _v1204RenderInspirations=renderInspirations;
+renderInspirations=function(){_v1204RenderInspirations();renderPortalConfig()};
+const _v1204SetView=setView;
+setView=function(id){_v1204SetView(id);if(id==='inspirations')renderPortalConfig()};

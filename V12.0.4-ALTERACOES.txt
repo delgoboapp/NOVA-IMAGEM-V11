@@ -1,0 +1,11 @@
+NOVA IMAGEM ERP — V12.0.4
+
+- APENAS FORRO passa a funcionar como cortina independente, liberando pregas compatíveis, inclusive WAVE e SOBREPOSTO.
+- APENAS FORRO + WAVE assume TRILHO SUÍÇO e prioriza TRILHO DUPLO ESPAÇADO BRANCO.
+- Matriz de cortina completa preservada: WAVE -> SUÍÇO/SOBREPOSTO; ILHÓS -> ARGOLAS 19; ARGOLAS 29 -> ARGOLAS 19; ARGOLAS 19 -> ARGOLAS 19.
+- BLACKOUT 100%: <275 cm comum; 275–310 cm WIDE; >310 cm volta ao comum e cálculo por alturas/emendas.
+- Menu interno INSPIRAÇÕES renomeado para CONFIGURAÇÕES DO PORTAL e restrito ao gestor.
+- Configurações do Portal reúne Inspirações e painel de interações.
+- Analytics do portal registra visualizações, visitantes, interações, WhatsApp/modelo, inspirações, acompanhamento e candidaturas.
+- Origem de acesso via ?origem=flyer / instagram / feira / parceiro etc.
+- Histórico diário de acessos e ranking de origens.
