@@ -13,6 +13,13 @@ function num(v,def=0){
   return Number.isFinite(n)?n:def;
 }
 
+
+function isV115AccessoryName(name){
+  const n=text(name).toUpperCase();
+  return n.startsWith('ARGOLA 19MM')||n.startsWith('ARGOLA 29MM')||n.startsWith('ILHOS QUADRADO')||n.startsWith('ILHOS REDONDO')||n.startsWith('SUPORTE 19MM PVC')||n.startsWith('SUPORTE 28MM PVC')||n.startsWith('SUPORTE 19/28 PVC')||n.startsWith('SUPORTE 28MM ALUMINIO')||n.startsWith('SUPORTE 19MM ALUMINIO')||n.startsWith('SUPORTE 19/28 ALUMINIO')||n.startsWith('TAMPA PARA TUBO EM ALUMINIO 28MM')||n.startsWith('TAMPA PARA TUBO EM ALUMINIO 19MM');
+}
+function calculatedPrices(cost,markup,name){const p4=Number(cost)*(1+Number(markup)/100);const cash=p4*(isV115AccessoryName(name)?0.92:0.929);const p18=cash/(isV115AccessoryName(name)?0.82:0.83);return {p4,cash,p18}}
+
 async function getProduct(env,id){
   return await env.DB.prepare(
     'SELECT * FROM price_products WHERE id = ?'
@@ -122,6 +129,25 @@ export async function onRequestPost(context){
     const body=await context.request.json();
     const action=text(body.action).toUpperCase();
 
+
+    if(action==='SINCRONIZAR_V115_ACESSORIOS'){
+      if(!gestorOnly(user))return json({error:'Apenas usuários GESTOR podem sincronizar os acessórios V11.5.'},403);
+      const colors=['IMBUIA','PRATA ESCOVADO','CROMADO','BRANCO','MARFIM'];
+      const families=[
+        ['ARGOLA 19MM',0.65],['ARGOLA 29MM',0.90],['ILHOS QUADRADO',0.90],['ILHOS REDONDO',0.95],
+        ['SUPORTE 19MM PVC',9.00],['SUPORTE 28MM PVC',10.00],['SUPORTE 19/28 PVC',13.00],
+        ['SUPORTE 28MM ALUMINIO',18.00],['SUPORTE 19MM ALUMINIO',17.00],['SUPORTE 19/28 ALUMINIO',20.00],
+        ['TAMPA PARA TUBO EM ALUMINIO 28MM',4.00],['TAMPA PARA TUBO EM ALUMINIO 19MM',3.50]
+      ];
+      const existing=await context.env.DB.prepare(`SELECT id,product_name,color FROM price_products WHERE active=1`).all();
+      const keys=new Set((existing.results||[]).map(x=>`${text(x.product_name).toUpperCase()}|${text(x.color).toUpperCase()}`));
+      const codes=await context.env.DB.prepare(`SELECT internal_code FROM price_products WHERE internal_code LIKE 'NI-%'`).all();let max=0;for(const r of codes.results||[]){const m=String(r.internal_code||'').match(/^NI-(\d+)$/i);if(m)max=Math.max(max,Number(m[1]))}
+      const stm=[];const created=[];
+      for(const [name,cost] of families)for(const color of colors){const key=`${name}|${color}`;if(keys.has(key))continue;const code=`NI-${String(++max).padStart(4,'0')}`,markup=130,mult=2.30,p4=cost*mult,pc=p4*0.92,p18=pc/0.82;stm.push(context.env.DB.prepare(`INSERT INTO price_products (internal_code,supplier_code,category,supplier,product_name,color,width_cm,unit,stock_quantity,multiplier,cost,markup_percent,price_cash,price_4x,price_18x,ncm,cfop_internal,cfop_interstate,active,price_manual,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,0,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)`).bind(code,'','ACESSÓRIO','NOVA IMAGEM',name,color,0,'UN',0,mult,cost,markup,pc,p4,p18,'','',''));created.push({internal_code:code,product_name:name,color});keys.add(key)}
+      if(stm.length)await context.env.DB.batch(stm);
+      return json({ok:true,created});
+    }
+
     if(action==='SINCRONIZAR_GARRAS_TRILHOS'){
       const allowed=['TRILHO SIMPLES','TRILHO SIMPLES ALTO','TRILHO DUPLO','TRILHO DUPLO ESPAÇADO','TRILHO TRIPLO','TRILHO 3 VIAS','TRILHO COM ABA','TRILHO CURVO'];
       const placeholders=allowed.map(()=>'?').join(',');
@@ -208,7 +234,7 @@ export async function onRequestPost(context){
 
     if(action==='RECEBER_COMPRA'){
       const items=Array.isArray(body.items)?body.items:[],orderNumber=text(body.order_number),invoice=text(body.invoice);if(!items.length)return json({error:'Nenhum item informado no recebimento.'},400);
-      const prepared=[];for(const it of items){const product=await getProduct(context.env,Number(it.product_id)),qty=num(it.qty,0),inCost=num(it.unit_cost,0);if(!product)return json({error:`Produto oficial não encontrado: ${it.product_id}.`},404);if(qty<=0||inCost<0)return json({error:`Quantidade/custo inválido em ${product.internal_code}.`},400);const oldQty=num(product.stock_quantity,0),oldCost=num(product.cost,0),newQty=oldQty+qty,newCost=newQty>0?((oldQty*oldCost)+(qty*inCost))/newQty:inCost,markup=num(product.markup_percent,130),mult=1+markup/100,p4=newCost*mult,pc=p4*0.929,p18=pc/0.83;prepared.push({product,qty,inCost,oldQty,oldCost,newQty,newCost,mult,p4,pc,p18})}
+      const prepared=[];for(const it of items){const product=await getProduct(context.env,Number(it.product_id)),qty=num(it.qty,0),inCost=num(it.unit_cost,0);if(!product)return json({error:`Produto oficial não encontrado: ${it.product_id}.`},404);if(qty<=0||inCost<0)return json({error:`Quantidade/custo inválido em ${product.internal_code}.`},400);const oldQty=num(product.stock_quantity,0),oldCost=num(product.cost,0),newQty=oldQty+qty,newCost=newQty>0?((oldQty*oldCost)+(qty*inCost))/newQty:inCost,markup=num(product.markup_percent,130),mult=1+markup/100,pr=calculatedPrices(newCost,markup,product.product_name),p4=pr.p4,pc=pr.cash,p18=pr.p18;prepared.push({product,qty,inCost,oldQty,oldCost,newQty,newCost,mult,p4,pc,p18})}
       const stm=[];for(const x of prepared){stm.push(context.env.DB.prepare(`UPDATE price_products SET stock_quantity=?,cost=?,multiplier=?,price_4x=?,price_cash=?,price_18x=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(x.newQty,x.newCost,x.mult,x.p4,x.pc,x.p18,Number(x.product.id)));stm.push(context.env.DB.prepare(`INSERT INTO price_product_history (product_id,internal_code,action,field_name,old_value,new_value,reason,changed_by) VALUES (?,?,?,?,?,?,?,?)`).bind(Number(x.product.id),text(x.product.internal_code),'ENTRADA POR COMPRA','stock_quantity',String(x.oldQty),String(x.newQty),`${orderNumber}${invoice?' • NF '+invoice:''} • +${x.qty} ${x.product.unit||''} • custo entrada ${x.inCost}`,text(user.username)))}await context.env.DB.batch(stm);return json({ok:true,movements:prepared.map(x=>({product_id:x.product.id,internal_code:x.product.internal_code,before:x.oldQty,after:x.newQty,cost_before:x.oldCost,cost_after:x.newCost}))});
     }
 
@@ -254,9 +280,10 @@ export async function onRequestPost(context){
       }
 
       const multiplier=1+(markupPercent/100);
-      const price4x=cost*multiplier;
-      const priceCash=price4x*0.929;
-      const price18x=priceCash/0.83;
+      const pr=calculatedPrices(cost,markupPercent,product.product_name);
+      const price4x=pr.p4;
+      const priceCash=pr.cash;
+      const price18x=pr.p18;
 
       const changes=[
         ['stock_quantity',product.stock_quantity,stockQuantity],

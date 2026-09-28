@@ -1,0 +1,19 @@
+NOVA IMAGEM ERP — V11.5
+
+1. Versão exibida atualizada para V11.5 no login, tela inicial e configurações.
+2. Prazo sugerido de instalação: 20 dias a partir da data do orçamento/pedido, ajustado para terça, quarta ou quinta-feira. A data continua editável na conversão em pedido.
+3. Novos acabamentos: FRANZIDO COM ARGOLAS 19MM, FRANZIDO COM ARGOLAS 29MM, ILHÓS REDONDO e ILHÓS QUADRADO.
+4. Argolas: 1 a cada 7 cm de tecido franzido, arredondamento para cima e quantidade final par. Mão de obra adicional R$ 1,20 por argola com gancho.
+5. Ilhós: 1 a cada 14 cm de tecido franzido, arredondamento para cima e quantidade final par. Mão de obra adicional R$ 9,00 por metro de cabeçote + R$ 1,50 por ilhós.
+6. Novas fixações TUBO 19 MM e TUBO 28 MM, com escolha de suporte PVC ou ALUMÍNIO. O preço do tubo permanece zerado/pendente até cadastro dos custos dos tubos.
+7. Distribuição de suportes igual ao Wave: 2 até 2,00 m; 3 até 3,50 m; 4 até 4,50 m; 5 até 6,00 m. Cortina completa usa suporte duplo 19/28.
+8. Tampas: 2 por tubo; cortina completa usa 4.
+9. Sincronização automática de 60 novos SKUs (12 famílias x 5 cores), com estoque inicial 0 para não inventar saldo físico.
+10. Cores: IMBUIA, PRATA ESCOVADO, CROMADO, BRANCO e MARFIM.
+11. Custos cadastrados conforme especificação da V11.5.
+12. Precificação dos novos acessórios: base/4x = custo x 2,30; à vista = base x 0,92; 18x = à vista / 0,82.
+13. OP e baixa de estoque passam a incluir argolas/ilhós, suportes e tampas calculados automaticamente.
+14. Tipo de Trilho padrão em novos ambientes: TRILHO SUÍÇO DUPLO ESPAÇADO, cor BRANCO, quando esse produto existir na tabela oficial. Continua editável.
+15. PREGA SOBREPOSTA: franzimento automaticamente fixado/travado em 4,0:1, sem permitir valor inferior.
+16. Os novos modelos de argolas e ilhós permanecem dentro dos seletores de tipo de prega (acabamento/forro), sem criar um campo paralelo de modelo.
+17. Regras de altura permanecem as mesmas para todos os tipos de prega; nenhum cálculo específico de altura foi criado para argolas, ilhós ou sobreposto.
