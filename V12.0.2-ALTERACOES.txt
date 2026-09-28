@@ -1,0 +1,7 @@
+NOVA IMAGEM ERP — V12.0.2
+
+MATRIZ DE COMPATIBILIDADE DE CONFECÇÃO
+- Acabamento WAVE: forro limitado a FRANZIDO SUÍÇO ou SOBREPOSTO.
+- Ao trocar para WAVE com forro incompatível, FRANZIDO SUÍÇO passa a ser o padrão.
+- Acabamento ILHÓS REDONDO ou ILHÓS QUADRADO: forro obrigatório FRANZIDO COM ARGOLAS 19MM.
+- Mantida a seleção de fixações por produtos reais do estoque, com SKU/cor/saldo.

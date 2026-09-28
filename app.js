@@ -1078,7 +1078,7 @@ function v1191GatherOptions(selectId){const el=$(selectId);if(!el)return;const i
 function v1191CompatibleFixations(){const fp=$('eFinishPleat')?.value||'',lp=$('eLiningPleat')?.value||'',tube=isTubePleat(fp)||isTubePleat(lp);if(tube)return [];const opts=[];if(officialSwissRails().length)opts.push('TRILHO SUÍÇO');if(fixationColors('VARÃO WAVE').length)opts.push('VARÃO WAVE','VARÃO WAVE COM COMANDO POR CORDA');opts.push('TRILHO MOTORIZADO');return opts}
 function v1191FixProducts(kind){const n=norm(kind);if(n==='TRILHO SUÍÇO')return officialSwissRails();if(n.startsWith('VARÃO WAVE'))return (priceProducts||[]).filter(p=>Number(p.active??1)===1&&norm(p.product_name).includes('VARÃO WAVE 28'));if(n==='TUBO 19 MM'||n==='TUBO 28 MM')return (priceProducts||[]).filter(p=>Number(p.active??1)===1&&norm(p.product_name)===n);return []}
 function v1191RefreshFixProduct(){const kind=$('eFixation')?.value||'',sel=$('eRailProduct'),wrap=$('eRailProductWrap'),colorWrap=$('eFixColorWrap');if(!sel)return;const list=v1191FixProducts(kind),show=list.length>0;if(wrap)wrap.classList.toggle('hidden',!show);if(colorWrap)colorWrap.classList.toggle('hidden',show);if(show){const old=sel.value;sel.innerHTML='<option value="">SELECIONE O PRODUTO</option>'+list.map(p=>`<option value="${p.id}">${esc(p.product_name)} • ${esc(p.color||'SEM COR')} • ${esc(p.internal_code||'-')} • ${money(p.price_4x||0)}/${esc(p.unit||'M')} • estoque ${Number(p.stock_quantity||0).toFixed(2)} ${esc(p.unit||'M')}</option>`).join('');if([...sel.options].some(o=>o.value===old))sel.value=old;else if(kind==='TRILHO SUÍÇO'){const d=v118DefaultSwissRail();if(d)sel.value=String(d.id)}}}
-function v1191Conditional(){const fp=$('eFinishPleat')?.value||'',tube=isTubePleat(fp)||isTubePleat($('eLiningPleat')?.value||''),wave=fp==='WAVE';if(['FRANZIDO COM ARGOLAS 19MM','FRANZIDO COM ARGOLAS 29MM'].includes(fp)){const el=$('eLiningPleat'),allowed=['FRANZIDO SUÍÇO','SOBREPOSTO'];if(el){const old=el.value;fillSelect(el,allowed,allowed.includes(old)?old:'FRANZIDO SUÍÇO')}}else if(wave){const el=$('eLiningPleat'),allowed=['FRANZIDO SUÍÇO','WAVE','SOBREPOSTO'];if(el){const old=el.value;fillSelect(el,allowed,allowed.includes(old)?old:'FRANZIDO SUÍÇO')}}else{const el=$('eLiningPleat'),all=['FRANZIDO SUÍÇO','FRANZIDO COM ARGOLAS 19MM','FRANZIDO COM ARGOLAS 29MM','ILHÓS REDONDO','ILHÓS QUADRADO','WAVE','SOBREPOSTO','OUTRO'];if(el){const old=el.value;fillSelect(el,all,all.includes(old)?old:'FRANZIDO SUÍÇO')}}
+function v1191Conditional(){const fp=$('eFinishPleat')?.value||'',tube=isTubePleat(fp)||isTubePleat($('eLiningPleat')?.value||''),wave=fp==='WAVE';if(['FRANZIDO COM ARGOLAS 19MM','FRANZIDO COM ARGOLAS 29MM'].includes(fp)){const el=$('eLiningPleat'),allowed=['FRANZIDO SUÍÇO','SOBREPOSTO'];if(el){const old=el.value;fillSelect(el,allowed,allowed.includes(old)?old:'FRANZIDO SUÍÇO')}}else if(wave){const el=$('eLiningPleat'),allowed=['FRANZIDO SUÍÇO','SOBREPOSTO'];if(el){const old=el.value;fillSelect(el,allowed,allowed.includes(old)?old:'FRANZIDO SUÍÇO')}}else{const el=$('eLiningPleat'),all=['FRANZIDO SUÍÇO','FRANZIDO COM ARGOLAS 19MM','FRANZIDO COM ARGOLAS 29MM','ILHÓS REDONDO','ILHÓS QUADRADO','WAVE','SOBREPOSTO','OUTRO'];if(el){const old=el.value;fillSelect(el,all,all.includes(old)?old:'FRANZIDO SUÍÇO')}}
   if(!tube){const fix=v1191CompatibleFixations(),el=$('eFixation');if(el){const old=el.value;setSelectOptions(el,fix,fix.includes(old)?old:(wave?'TRILHO SUÍÇO':fix[0]));if(wave)el.value='TRILHO SUÍÇO'}}
   v1191GatherOptions('eFinishGather');v1191GatherOptions('eLiningGather');v1191RefreshFixProduct();const motorL=$('eAngle')?.checked&&$('eFixation')?.value==='TRILHO MOTORIZADO';$('eMotorAngleWrap')?.classList.toggle('hidden',!motorL);if($('eWidth'))$('eWidth').readOnly=!!$('eAngle')?.checked;
 }
@@ -1102,17 +1102,15 @@ function v12RailProducts(){return officialSwissRails();}
 function v12WaveProducts(){return (priceProducts||[]).filter(p=>Number(p.active??1)===1&&norm(p.product_name).includes('VARÃO WAVE 28'));}
 function v12FillProductSelect(el,list,placeholder,preferred){if(!el)return;const old=String(el.value||'');el.innerHTML=`<option value="">${placeholder}</option>`+list.map(p=>`<option value="${p.id}">${esc(v12StockLabel(p))}</option>`).join('');const wanted=String(preferred||old||'');if([...el.options].some(o=>o.value===wanted))el.value=wanted;}
 function v12AllowedLiningPleats(fp){
-  if(fp==='WAVE')return ['FRANZIDO SUÍÇO','WAVE','SOBREPOSTO'];
-  if(['FRANZIDO COM ARGOLAS 19MM','FRANZIDO COM ARGOLAS 29MM','ILHÓS REDONDO','ILHÓS QUADRADO'].includes(fp))return ['FRANZIDO SUÍÇO','SOBREPOSTO','FRANZIDO COM ARGOLAS 19MM','FRANZIDO COM ARGOLAS 29MM','ILHÓS REDONDO','ILHÓS QUADRADO'].filter(x=>{
-    if(fp.includes('ARGOLAS'))return !x.startsWith('ILHÓS');
-    if(fp.startsWith('ILHÓS'))return !x.includes('ARGOLAS');
-    return true;
-  });
+  // Matriz rígida de compatibilidade da confecção.
+  if(fp==='WAVE')return ['FRANZIDO SUÍÇO','SOBREPOSTO'];
+  if(fp==='ILHÓS REDONDO'||fp==='ILHÓS QUADRADO')return ['FRANZIDO COM ARGOLAS 19MM'];
+  if(fp==='FRANZIDO COM ARGOLAS 19MM'||fp==='FRANZIDO COM ARGOLAS 29MM')return ['FRANZIDO SUÍÇO','SOBREPOSTO','FRANZIDO COM ARGOLAS 19MM','FRANZIDO COM ARGOLAS 29MM'];
   return ['FRANZIDO SUÍÇO','FRANZIDO COM ARGOLAS 19MM','FRANZIDO COM ARGOLAS 29MM','ILHÓS REDONDO','ILHÓS QUADRADO','WAVE','SOBREPOSTO','OUTRO'];
 }
 function v12RefreshFixations(){
   const m=$('eModel')?.value||'COMPLETE',fp=$('eFinishPleat')?.value||'',lp=$('eLiningPleat')?.value||'';
-  const lining=$('eLiningPleat'),allowed=v12AllowedLiningPleats(fp);if(lining){const old=lining.value;fillSelect(lining,allowed,allowed.includes(old)?old:'FRANZIDO SUÍÇO');}
+  const lining=$('eLiningPleat'),allowed=v12AllowedLiningPleats(fp);if(lining){const old=lining.value,def=(fp==='ILHÓS REDONDO'||fp==='ILHÓS QUADRADO')?'FRANZIDO COM ARGOLAS 19MM':'FRANZIDO SUÍÇO';fillSelect(lining,allowed,allowed.includes(old)?old:def);}
   const fTube=isTubePleat(fp),lTube=isTubePleat($('eLiningPleat')?.value||'');
   const fw=$('eFinishTubeWrap'),lw=$('eLiningTubeWrap'),generic=$('eFixationWrap'),prod=$('eRailProductWrap'),color=$('eFixColorWrap');
   generic?.classList.toggle('hidden',fTube||lTube);prod?.classList.add('hidden');color?.classList.add('hidden');
