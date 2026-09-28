@@ -1,0 +1,12 @@
+V11.9.1 — HOTFIX MOTOR DE CONFECÇÃO
+
+- Cortina em L: Lado A e B agora possuem largura e altura independentes.
+- Largura principal do ambiente passa a somar automaticamente os dois lados.
+- Cálculo de tecido em L é realizado lado a lado, respeitando alturas inteiras/faixas e largura da peça.
+- Argolas 19/29 mm removem WAVE das opções de prega do forro.
+- Fixações incompatíveis (Tubos 19/28) deixam de aparecer para Wave/Suíço.
+- Trilho Suíço, Varão Wave e tubos passam a exibir produto real e saldo de estoque no seletor quando aplicável.
+- Blackout 100% Leve/Pesado ganha franzimento PAINEL (largura da cortina + 1 m), integrado ao cálculo por alturas.
+- Cortina em L motorizada: opção Trilho Motorizado com Curva ou Múltiplos Motores; múltiplos = 4 motores na completa e 2 em camada simples, R$ 2.000 por motor + trilhos.
+- Cadastro do orçamento PF/PJ dinâmico: CPF/NOME até 11 dígitos; CNPJ/RAZÃO SOCIAL acima disso, com Nome Fantasia e Inscrição Estadual opcionais.
+- Fechamento Mensal permanece sem alteração, conforme decisão final.
