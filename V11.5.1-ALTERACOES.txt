@@ -1,0 +1,14 @@
+NOVA IMAGEM ERP — V11.5.1
+
+- Franzido renomeado para Franzido Suíço.
+- Ilhós e Franzido com Argolas: fixação por camada (acabamento/forro), tubos 19/28 mm, suporte simples ou duplo 19/28 conforme modelo.
+- Materiais Wave/Suíço excluídos dos modelos com ilhós/argolas.
+- Trava de desconto individual configurável para Vendas e Parceiro.
+- Acima do limite: orçamento fica pendente e exige aprovação do gestor.
+- Gestor recebe alerta laranja na home, podendo abrir, recusar ou aceitar.
+- Recusa avisa vendedor para reajustar desconto. Aprovação converte em pedido e registra gestor.
+- Vendedor recebe alerta de pedido aprovado.
+- Agenda dos próximos 3 dias exibida em verde na tela inicial.
+- Trilho Suíço Duplo Espaçado Branco mantido como default.
+- Prega Sobreposta permanece travada em 4,0:1.
+- Regras de altura permanecem iguais para todos os modelos.
