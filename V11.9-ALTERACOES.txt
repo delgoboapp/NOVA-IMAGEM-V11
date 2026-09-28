@@ -1,0 +1,13 @@
+NOVA IMAGEM V11.9 — CONSOLIDAÇÃO
+- Argolas 19/29: remove WAVE da prega do forro.
+- Cortina em ângulo (L): Lado A + Lado B, preservando os trechos e usando o desenvolvimento total nos cálculos.
+- Gestão > Configurações: dados da empresa, custos de costura/instalação, condições gerais e Termo de Garantia.
+- Termo de Garantia no Painel Comercial com exportação em PDF.
+- Versionamento de contrato/garantia por pedido e auditoria de alterações de configuração.
+- Auditoria: filtros por usuário, área, ação e período + PDF.
+- Inspirações: Rolô Blackout, Rolô Screen, Double Vision e Romana; filtro Cortinas/Persianas/Todos.
+- Rodapé: DELGOBO CRIAÇÃO E DESENVOLVIMENTO DE SOFTWARE + links WhatsApp/Instagram.
+- Localização: mapa, endereço e horários de atendimento.
+- Trabalhe Conosco: áreas Vendas, Instalações, Confecção, Administrativo e Estágio; consentimento e exclusão de candidatura/currículo.
+- NPS Clientes: métricas de acessos, visitantes e interações do portal.
+- Banco ampliado de frases de gestão, filosofia, economia e inovação.
