@@ -1,0 +1,12 @@
+NOVA IMAGEM ERP — V12
+
+Base: V11.9.1.
+
+Alterações V12:
+- Compatibilidade de pregas: Ilhós e Argolas não exibem WAVE no forro.
+- Fixações de acabamento/forro passam a selecionar diretamente SKUs reais do estoque para tubos 19/28 mm.
+- Cada opção mostra produto + cor + código + saldo disponível.
+- Trilho Suíço e Varão Wave também listam diretamente produtos reais do estoque com cor e saldo.
+- Campo genérico de produto de fixação deixa de ser etapa visível redundante; a seleção é feita no próprio fluxo de fixação.
+- Tubos selecionados passam a entrar no cálculo de fixação pelo preço cadastrado, com baixa/OP por SKU/cor.
+- Mantidas todas as funcionalidades e correções consolidadas da V11.9.1.

@@ -1094,3 +1094,45 @@ const _v1191SyncDraft=syncDraft;syncDraft=function(){_v1191SyncDraft();const pj=
 const _v1191RenderQuote=renderQuote;renderQuote=function(){_v1191RenderQuote();if($('qFantasyName'))$('qFantasyName').value=draft.fantasyName||'';if($('qStateRegistration'))$('qStateRegistration').value=draft.stateRegistration||'';v1191PfPj();v1191Conditional()};
 const _v1191Upsert=upsertClientFromQuote;upsertClientFromQuote=function(q){_v1191Upsert(q);const c=(db.clients||[]).find(x=>norm(x.name)===norm(q.client));if(c){c.fantasyName=q.fantasyName||c.fantasyName||'';c.stateRegistration=q.stateRegistration||c.stateRegistration||'';c.personType=q.personType||c.personType||''}};
 document.addEventListener('DOMContentLoaded',()=>{const doc=$('qDocument');doc?.addEventListener('input',()=>{v1191PfPj();syncDraft()});['qFantasyName','qStateRegistration'].forEach(id=>$(id)?.addEventListener('input',syncDraft));$('eAngle')?.addEventListener('change',()=>{const on=$('eAngle').checked;$('eAngleFields')?.classList.toggle('hidden',!on);if(on){if($('eWidth').value&&!$('eAngleA').value)$('eAngleA').value=$('eWidth').value;if($('eHeight').value){if(!$('eAngleAHeight').value)$('eAngleAHeight').value=$('eHeight').value;if(!$('eAngleBHeight').value)$('eAngleBHeight').value=$('eHeight').value}}v1191Conditional();updatePreview()});['eAngleA','eAngleB','eAngleAHeight','eAngleBHeight'].forEach(id=>$(id)?.addEventListener('input',()=>{const a=Number($('eAngleA')?.value||0),b=Number($('eAngleB')?.value||0);if($('eWidth'))$('eWidth').value=a+b||'';updatePreview()}));['eFinish','eLining','eFinishPleat','eLiningPleat','eFixation'].forEach(id=>$(id)?.addEventListener('change',()=>{v1191Conditional();updatePreview()}));$('eRailProduct')?.addEventListener('change',()=>{const p=officialProductById($('eRailProduct').value);if(p&&$('eFixColor'))$('eFixColor').value=p.color||'';updatePreview()});$('eMotorAngleMode')?.addEventListener('change',updatePreview);v1191Conditional();v1191PfPj()});
+
+/* ===== V12.0 • FIXAÇÕES DIRETAS DO ESTOQUE / COMPATIBILIDADE ===== */
+function v12StockLabel(p){return `${p.product_name||'PRODUTO'} — ${p.color||'SEM COR'} • ${p.internal_code||'-'} • estoque ${Number(p.stock_quantity||0).toFixed(2)} ${p.unit||''}`}
+function v12TubeProducts(size){return (priceProducts||[]).filter(p=>Number(p.active??1)===1&&norm(p.product_name)===norm(`TUBO ${size} MM`));}
+function v12RailProducts(){return officialSwissRails();}
+function v12WaveProducts(){return (priceProducts||[]).filter(p=>Number(p.active??1)===1&&norm(p.product_name).includes('VARÃO WAVE 28'));}
+function v12FillProductSelect(el,list,placeholder,preferred){if(!el)return;const old=String(el.value||'');el.innerHTML=`<option value="">${placeholder}</option>`+list.map(p=>`<option value="${p.id}">${esc(v12StockLabel(p))}</option>`).join('');const wanted=String(preferred||old||'');if([...el.options].some(o=>o.value===wanted))el.value=wanted;}
+function v12AllowedLiningPleats(fp){
+  if(fp==='WAVE')return ['FRANZIDO SUÍÇO','WAVE','SOBREPOSTO'];
+  if(['FRANZIDO COM ARGOLAS 19MM','FRANZIDO COM ARGOLAS 29MM','ILHÓS REDONDO','ILHÓS QUADRADO'].includes(fp))return ['FRANZIDO SUÍÇO','SOBREPOSTO','FRANZIDO COM ARGOLAS 19MM','FRANZIDO COM ARGOLAS 29MM','ILHÓS REDONDO','ILHÓS QUADRADO'].filter(x=>{
+    if(fp.includes('ARGOLAS'))return !x.startsWith('ILHÓS');
+    if(fp.startsWith('ILHÓS'))return !x.includes('ARGOLAS');
+    return true;
+  });
+  return ['FRANZIDO SUÍÇO','FRANZIDO COM ARGOLAS 19MM','FRANZIDO COM ARGOLAS 29MM','ILHÓS REDONDO','ILHÓS QUADRADO','WAVE','SOBREPOSTO','OUTRO'];
+}
+function v12RefreshFixations(){
+  const m=$('eModel')?.value||'COMPLETE',fp=$('eFinishPleat')?.value||'',lp=$('eLiningPleat')?.value||'';
+  const lining=$('eLiningPleat'),allowed=v12AllowedLiningPleats(fp);if(lining){const old=lining.value;fillSelect(lining,allowed,allowed.includes(old)?old:'FRANZIDO SUÍÇO');}
+  const fTube=isTubePleat(fp),lTube=isTubePleat($('eLiningPleat')?.value||'');
+  const fw=$('eFinishTubeWrap'),lw=$('eLiningTubeWrap'),generic=$('eFixationWrap'),prod=$('eRailProductWrap'),color=$('eFixColorWrap');
+  generic?.classList.toggle('hidden',fTube||lTube);prod?.classList.add('hidden');color?.classList.add('hidden');
+  fw?.classList.toggle('hidden',m==='LINING'||!fTube);lw?.classList.toggle('hidden',m==='FINISH'||!lTube);
+  if(fTube){const size=fp.includes('19MM')?'19':'28';v12FillProductSelect($('eFinishTube'),v12TubeProducts(size),'SELECIONE A FIXAÇÃO DO ACABAMENTO');}
+  if(lTube){const lpp=$('eLiningPleat').value,size=lpp.includes('19MM')?'19':'28';v12FillProductSelect($('eLiningTube'),v12TubeProducts(size),'SELECIONE A FIXAÇÃO DO FORRO');}
+  if(!(fTube||lTube)){
+    const kind=$('eFixation')?.value||'';let list=[];
+    if(kind==='TRILHO SUÍÇO')list=v12RailProducts();else if(kind.startsWith('VARÃO WAVE'))list=v12WaveProducts();
+    if(list.length){prod?.classList.remove('hidden');v12FillProductSelect($('eRailProduct'),list,kind==='TRILHO SUÍÇO'?'SELECIONE O TRILHO DO ESTOQUE':'SELECIONE O VARÃO DO ESTOQUE',kind==='TRILHO SUÍÇO'?v118DefaultSwissRail()?.id:null);}
+  }
+  v1191GatherOptions('eFinishGather');v1191GatherOptions('eLiningGather');
+}
+const _v12EnvFromForm=envFromForm;
+envFromForm=function(){const e=_v12EnvFromForm();const fp=e.finishPleat||'',lp=e.liningPleat||'';if(isTubePleat(fp)||isTubePleat(lp)){
+  const f=officialProductById($('eFinishTube')?.value),l=officialProductById($('eLiningTube')?.value);e.finishTubeProductId=f?.id||null;e.liningTubeProductId=l?.id||null;e.finishTube=f?.product_name||'';e.liningTube=l?.product_name||'';e.finishTubeColor=f?.color||'';e.liningTubeColor=l?.color||'';e.tubeFixation=true;e.fixation=[f?.product_name,l?.product_name].filter(Boolean).join(' + ');
+ }return e;};
+tubeHardwareCalc=function(e,c){const w=Number(e.width||0)/100,model=e.model,mat=norm(e.supportMaterial)==='PVC'?'PVC':'ALUMINIO',supports=w<=2?2:w<=3.5?3:w<=4.5?4:5;const layers=[];if(model!=='LINING'&&e.finishTubeProductId)layers.push({p:officialProductById(e.finishTubeProductId),layer:'ACABAMENTO'});if(model!=='FINISH'&&e.liningTubeProductId)layers.push({p:officialProductById(e.liningTubeProductId),layer:'FORRO'});let total=0,parts=[];for(const x of layers){const p=x.p;if(!p)continue;const size=norm(p.product_name).includes('19')?'19':'28',color=p.color||'';parts.push({productId:p.id,name:`${p.product_name} — ${color}`,qty:w,unit:'M'});total+=w*Number(p.price_4x||0);const cap=officialProductLike(['TAMPA','TUBO',size],color);if(cap){parts.push({productId:cap.id,name:`${cap.product_name} — ${color}`,qty:2,unit:'UN'});total+=2*Number(cap.price_4x||0);}}
+  const sizes=layers.map(x=>norm(x.p?.product_name).includes('19')?'19':'28');const colors=[...new Set(layers.map(x=>x.p?.color||'').filter(Boolean))];let supportName;if(model==='COMPLETE')supportName=`SUPORTE 19/28 ${mat}`;else supportName=`SUPORTE ${sizes[0]||'28'}MM ${mat}`;let support=null;for(const cor of colors){support=officialProductByName(supportName,cor)||officialProductLike(supportName.split(' '),cor);if(support)break;}support=support||officialProductLike(supportName.split(' '),'');if(support){parts.push({productId:support.id,name:`${support.product_name} — ${support.color||''}`,qty:supports,unit:'UN'});total+=supports*Number(support.price_4x||0);}return {kind:layers.map(x=>`${x.p.product_name} — ${x.p.color}`).join(' + '),meters:w*layers.length,supports,ends:layers.length*2,supportName,supportProductId:support?.id||null,parts,total,hardwareBase:total,detail:`${layers.map(x=>`${x.p.product_name} — ${x.p.color}`).join(' + ')} • ${supports} suportes • ${layers.length*2} tampas`};};
+const _v12UpdateModelFields=updateModelFields;updateModelFields=function(){_v12UpdateModelFields();v12RefreshFixations();};
+const _v12SetupSelectors=setupSelectors;setupSelectors=function(){_v12SetupSelectors();v12RefreshFixations();};
+const _v12RenderQuote=renderQuote;renderQuote=function(){_v12RenderQuote();v12RefreshFixations();};
+document.addEventListener('DOMContentLoaded',()=>{['eFinishPleat','eLiningPleat','eModel','eFixation'].forEach(id=>$(id)?.addEventListener('change',()=>{v12RefreshFixations();updatePreview()}));['eFinishTube','eLiningTube','eRailProduct'].forEach(id=>$(id)?.addEventListener('change',updatePreview));v12RefreshFixations();});
