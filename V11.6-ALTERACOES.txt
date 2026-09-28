@@ -1,0 +1,15 @@
+NOVA IMAGEM ERP • V11.6
+
+- Novo portal público INSPIRAÇÕES, acessível antes do login e dentro do ERP.
+- Busca por palavras-chave, categorias e filtros por tecido/fixação.
+- Modelos iniciais baseados nos tecidos e cores do estoque atual.
+- Fichas com descrição, ambientes recomendados, conservação, cores e WhatsApp “Quero este modelo”.
+- GESTOR pode criar, editar, publicar/despublicar e excluir inspirações.
+- Upload de foto principal e amostras/fotos de cores por inspiração.
+- Página SOBRE NÓS com texto editável pelo GESTOR.
+- Página TRABALHE JUNTO CONOSCO para candidaturas e parceiros de negócios.
+- Upload de currículo PDF/DOC/DOCX para candidatura.
+- Departamento Pessoal: VER CANDIDATURAS e VAGAS PUBLICADAS.
+- GESTOR pode adicionar vaga ao portal: cargo, descrição, carga horária, faixa salarial e benefícios.
+- Publicar/despublicar vagas e acompanhar status das candidaturas.
+- Identificação atualizada para V11.6.
