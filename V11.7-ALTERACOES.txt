@@ -1,0 +1,24 @@
+NOVA IMAGEM ERP • V11.7
+
+PORTAL PÚBLICO
+- Nova Home contemporânea antes do login, mantendo logo oficial e identidade visual.
+- Menu superior: Início, Inspirações, Sobre Nós, Trabalhe Conosco, Contato, Acompanhar Pedido e Login.
+- LOGIN abre a tela de autenticação do ERP somente quando solicitado.
+- Home responsiva para desktop e celular.
+- Destaques de Inspirações carregados do catálogo público.
+
+SOBRE NÓS
+- História institucional ampliada.
+- Missão, Visão e Valores exibidos na página pública.
+- Gestor continua podendo editar o texto principal de Sobre Nós em Gerenciar Inspirações.
+
+INSPIRAÇÕES / CORES
+- Cores agora podem ser cadastradas uma a uma em cada inspiração.
+- Cada cor possui nome e upload individual de foto/amostra.
+- Permite remover uma cor individualmente.
+- Catálogo público exibe somente as cores cadastradas para aquele modelo.
+- Ficha do modelo mostra a foto/amostra específica de cada cor quando cadastrada.
+
+MANTIDO
+- V11.6.1 e módulos anteriores preservados.
+- Trabalhe Conosco, candidaturas, parcerias, vagas e Departamento Pessoal preservados.
