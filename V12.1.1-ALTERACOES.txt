@@ -1,0 +1,11 @@
+NOVA IMAGEM ERP — V12.1.1
+
+CORREÇÕES
+- Persistência real de Clientes Atacado e Pedidos/Vendas Atacado no backend D1 (app_state).
+- Finalização da venda atacado revisada com gravação explícita na nuvem.
+- Movimentações do estoque oficial ficam vinculadas à venda atacado.
+- Mensagem clara de erro caso a finalização falhe.
+- Botões de Finalizar venda e Adicionar produto definidos como type=button.
+- Proteção de wholesaleSales contra gravações por perfis não gestores.
+- Correção visual da página pública: máscara reforçada sobre o texto/botões antigos que já estão gravados no portal-cover.jpg.
+- Cache-busting de styles.css e app.js para evitar navegador carregando versão anterior após deploy.

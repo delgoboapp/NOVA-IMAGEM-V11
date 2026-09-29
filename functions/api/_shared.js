@@ -7,7 +7,7 @@ export const DEFAULT_USERS = [
 ];
 
 const EMPTY_DB = () => ({
-  quotes:[], orders:[], clients:[], users:[], disabledUsers:[], products:[], suppliers:[], payables:[], purchaseOrders:[], reworks:[], agenda:[], purchaseAlerts:[], auditLog:[], attachments:[], customerFeedback:[], discountApprovals:[], userAlerts:[], inspirations:[], candidates:[], jobs:[], portalAnalytics:{views:0,visitors:0,interactions:0,events:{},visitorIds:[]},
+  quotes:[], orders:[], clients:[], wholesaleClients:[], wholesaleSales:[], users:[], disabledUsers:[], products:[], suppliers:[], payables:[], purchaseOrders:[], reworks:[], agenda:[], purchaseAlerts:[], auditLog:[], attachments:[], customerFeedback:[], discountApprovals:[], userAlerts:[], inspirations:[], candidates:[], jobs:[], portalAnalytics:{views:0,visitors:0,interactions:0,events:{},visitorIds:[]},
   priceConfig:null, settings:{}, updatedAt:null
 });
 
@@ -20,7 +20,7 @@ async function ensureSchema(env){
 
 function normalize(parsed={}){
   const base=EMPTY_DB();
-  for(const k of ['quotes','orders','clients','users','disabledUsers','products','suppliers','payables','purchaseOrders','reworks','agenda','purchaseAlerts','auditLog','attachments','customerFeedback','discountApprovals','userAlerts','inspirations','candidates','jobs']) base[k]=Array.isArray(parsed[k])?parsed[k]:[];
+  for(const k of ['quotes','orders','clients','wholesaleClients','wholesaleSales','users','disabledUsers','products','suppliers','payables','purchaseOrders','reworks','agenda','purchaseAlerts','auditLog','attachments','customerFeedback','discountApprovals','userAlerts','inspirations','candidates','jobs']) base[k]=Array.isArray(parsed[k])?parsed[k]:[];
   base.priceConfig=parsed.priceConfig&&typeof parsed.priceConfig==='object'?parsed.priceConfig:null;
   base.settings=parsed.settings&&typeof parsed.settings==='object'?parsed.settings:{};
   base.portalAnalytics=parsed.portalAnalytics&&typeof parsed.portalAnalytics==='object'?parsed.portalAnalytics:{views:0,visitors:0,interactions:0,events:{},visitorIds:[]};
