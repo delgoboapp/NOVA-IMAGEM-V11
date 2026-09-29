@@ -1463,3 +1463,129 @@ document.addEventListener('DOMContentLoaded',()=>{
 });
 
 /* ===== V12.1.5 • PRECIFICAÇÃO ESPECIAL: BASE 80% / À VISTA -8% / 18X = À VISTA ÷ 0,82 ===== */
+
+/* ===== V12.1.6 • FIX DEFINITIVO SELEÇÃO FIXAÇÕES + SUPORTES/GARRAS ===== */
+const v1216Fold=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase();
+function v1216SupportCount(widthM){
+  const w=Number(widthM||0);
+  if(w<=2)return 2;
+  if(w<=3)return 3;
+  if(w<=4)return 4;
+  if(w<=5)return 5;
+  return 6; // de 5,01 até 6,00 m
+}
+function v1216TierLimit(name){
+  const m=v1216Fold(name).match(/ATE\s*([0-9]+(?:[,.][0-9]+)?)M/);
+  return m?Number(m[1].replace(',','.')):null;
+}
+function v1216SpecialList(kind,widthM){
+  const k=v1216Fold(kind),w=Math.max(0,Number(widthM||0));
+  let prefix='';
+  if(k==='VARAO WAVE COM COMANDO POR CORDA')prefix='VARAO COM COMANDO POR CORDA';
+  else if(k==='TRILHO SQUARE COM COMANDO')prefix='TRILHO SQUARE COM COMANDO';
+  else if(k==='TRILHO MOTORIZADO')prefix='TRILHO MOTORIZADO';
+  else return [];
+  let list=(priceProducts||[]).filter(p=>Number(p.active??1)===1&&v1216Fold(p.product_name).startsWith(prefix+' ATE'));
+  const tiers=[...new Set(list.map(p=>v1216TierLimit(p.product_name)).filter(x=>x!=null))].sort((a,b)=>a-b);
+  const tier=tiers.find(x=>w<=x+1e-9);
+  if(tier==null)return [];
+  return list.filter(p=>Math.abs(Number(v1216TierLimit(p.product_name))-tier)<1e-9);
+}
+function v1216FixProducts(kind){
+  const k=v1216Fold(kind),w=Math.max(0,Number($('eWidth')?.value||0)/100);
+  if(k==='TRILHO SUICO')return officialSwissRails().filter(p=>Number(p.active??1)===1);
+  if(k==='VARAO WAVE')return (priceProducts||[]).filter(p=>Number(p.active??1)===1&&v1216Fold(p.product_name)==='VARAO WAVE 28');
+  return v1216SpecialList(kind,w);
+}
+function v1216RefreshFixProduct(){
+  const kind=$('eFixation')?.value||'',sel=$('eRailProduct'),wrap=$('eRailProductWrap'),colorWrap=$('eFixColorWrap');
+  if(!sel)return;
+  const eligible=['TRILHO SUICO','VARAO WAVE','VARAO WAVE COM COMANDO POR CORDA','TRILHO SQUARE COM COMANDO','TRILHO MOTORIZADO'].includes(v1216Fold(kind));
+  if(!eligible){wrap?.classList.add('hidden');return;}
+  wrap?.classList.remove('hidden');colorWrap?.classList.add('hidden');
+  const old=officialProductById(sel.value),oldColor=old?.color||$('eFixColor')?.value||'';
+  const list=v1216FixProducts(kind);
+  let placeholder='SELECIONE A FIXAÇÃO DO ESTOQUE';
+  if(v1216Fold(kind)==='TRILHO SUICO')placeholder='SELECIONE O TRILHO DO ESTOQUE';
+  else if(v1216Fold(kind)==='VARAO WAVE')placeholder='SELECIONE O VARÃO WAVE / COR';
+  else if(v1216Fold(kind)==='VARAO WAVE COM COMANDO POR CORDA')placeholder='SELECIONE O VARÃO COM COMANDO / COR';
+  else if(v1216Fold(kind)==='TRILHO SQUARE COM COMANDO')placeholder='SELECIONE O TRILHO SQUARE / COR';
+  else if(v1216Fold(kind)==='TRILHO MOTORIZADO')placeholder='SELECIONE O TRILHO MOTORIZADO / COR';
+  if(!list.length){
+    const w=Number($('eWidth')?.value||0)/100;
+    sel.innerHTML=`<option value="">${w>6?'MEDIDA ACIMA DE 6M — DEFINIR SOLUÇÃO ESPECIAL':'NENHUM PRODUTO COMPATÍVEL CADASTRADO NO ESTOQUE'}</option>`;
+    return;
+  }
+  v12FillProductSelect(sel,list,placeholder);
+  const same=list.find(p=>v1216Fold(p.color)===v1216Fold(oldColor));
+  if(same)sel.value=String(same.id);
+  else if(v1216Fold(kind)==='TRILHO SUICO'){
+    const d=v118DefaultSwissRail();if(d&&list.some(p=>Number(p.id)===Number(d.id)))sel.value=String(d.id);
+  }
+  const p=officialProductById(sel.value);
+  if(p&&$('eFixColor'))$('eFixColor').value=p.color||'';
+}
+
+const _v1216RefreshFix=v12RefreshFixations;
+v12RefreshFixations=function(){
+  _v1216RefreshFix();
+  const el=$('eFixation');
+  if(el){for(const k of ['TRILHO SUÍÇO','VARÃO WAVE','VARÃO WAVE COM COMANDO POR CORDA','TRILHO SQUARE COM COMANDO','TRILHO MOTORIZADO'])if(![...el.options].some(o=>o.value===k))el.add(new Option(k,k));}
+  v1216RefreshFixProduct();
+};
+
+const _v1216EnvFromForm=envFromForm;
+envFromForm=function(){
+  const e=_v1216EnvFromForm();
+  const k=v1216Fold(e.fixation),p=officialProductById($('eRailProduct')?.value);
+  if(p&&['TRILHO SUICO','VARAO WAVE','VARAO WAVE COM COMANDO POR CORDA','TRILHO SQUARE COM COMANDO','TRILHO MOTORIZADO'].includes(k)){
+    e.railProductId=p.id;e.fixProductId=p.id;e.railProductName=p.product_name||'';e.fixProductName=p.product_name||'';e.railInternalCode=p.internal_code||'';e.fixColor=p.color||'';
+  }
+  return e;
+};
+
+const _v1216FixationCalc=fixationCalc;
+fixationCalc=function(kind,widthM,model,leaves,fixColor,railProductId,supportMaterial='ALUMINIO'){
+  const k=v1216Fold(kind),w=Number(widthM||0),selected=officialProductById(railProductId);
+  if(k==='VARAO WAVE'){
+    const rod=selected&&v1216Fold(selected.product_name)==='VARAO WAVE 28'?selected:(priceProducts||[]).find(p=>Number(p.active??1)===1&&v1216Fold(p.product_name)==='VARAO WAVE 28'&&v1216Fold(p.color)===v1216Fold(fixColor));
+    if(!rod)return {kind,total:0,hardwareBase:0,detail:'Selecione o Varão Wave do estoque'};
+    const supports=v1216SupportCount(w),multiplier=model==='COMPLETE'?2:1,meters=w*multiplier,ends=model==='COMPLETE'?4:2;
+    const supportName=model==='COMPLETE'?'SUPORTE 28/28':'SUPORTE WAVE 28';
+    const sup=(priceProducts||[]).find(p=>Number(p.active??1)===1&&v1216Fold(p.product_name)===v1216Fold(supportName)&&v1216Fold(p.color)===v1216Fold(rod.color))||officialProductLike(['SUPORTE','WAVE','28'],rod.color);
+    const cap=officialProductByName('TAMPA VARÃO WAVE 28',rod.color)||officialProductLike(['TAMPA','VARÃO','WAVE'],rod.color);
+    const total=meters*Number(rod.price_4x||0)+supports*Number(sup?.price_4x||0)+ends*Number(cap?.price_4x||0);
+    return {kind,total,hardwareBase:total,meters,supports,ends,railProductId:rod.id,railName:rod.product_name,railColor:rod.color,supportProductId:sup?.id||null,supportName:sup?.product_name||supportName,capProductId:cap?.id||null,detail:`${rod.product_name} • ${rod.color||''} • ${meters.toFixed(2)}m • ${supports} suportes • ${ends} tampas`};
+  }
+  if(k==='VARAO WAVE COM COMANDO POR CORDA'){
+    const rod=(selected&&v1216Fold(selected.product_name).startsWith('VARAO COM COMANDO POR CORDA'))?selected:(v1216SpecialList(kind,w).find(p=>v1216Fold(p.color)===v1216Fold(fixColor))||v1216SpecialList(kind,w)[0]);
+    if(!rod)return {kind,total:0,hardwareBase:0,detail:w>6?'ACIMA DE 6M • DEFINIR SOLUÇÃO ESPECIAL':'Selecione o varão com comando'};
+    const supports=v1216SupportCount(w);
+    const sup=officialProductByName('SUPORTE WAVE 28',rod.color)||officialProductLike(['SUPORTE','WAVE','28'],rod.color);
+    const total=Number(rod.price_4x||0)+supports*Number(sup?.price_4x||0);
+    return {kind,total,hardwareBase:total,meters:0,units:1,supports,railProductId:rod.id,railName:rod.product_name,railColor:rod.color,supportProductId:sup?.id||null,supportName:sup?.product_name||'SUPORTE WAVE 28',detail:`${rod.product_name} • ${rod.color||''} • 1 un • ${supports} suportes`};
+  }
+  if(k==='TRILHO SQUARE COM COMANDO'){
+    const rail=(selected&&v1216Fold(selected.product_name).startsWith('TRILHO SQUARE COM COMANDO'))?selected:(v1216SpecialList(kind,w).find(p=>v1216Fold(p.color)===v1216Fold(fixColor))||v1216SpecialList(kind,w)[0]);
+    if(!rail)return {kind,total:0,hardwareBase:0,detail:w>6?'ACIMA DE 6M • DEFINIR SOLUÇÃO ESPECIAL':'Selecione o Trilho Square'};
+    const claws=Math.max(2,Math.ceil(w/0.60));
+    const claw=officialProductLike(['GARRA','TRILHO'],rail.color)||officialProductLike(['GARRA']);
+    const total=Number(rail.price_4x||0)+claws*Number(claw?.price_4x||0);
+    return {kind,total,hardwareBase:total,meters:0,units:1,clamps:claws,railProductId:rail.id,railName:rail.product_name,railColor:rail.color,clawProductId:claw?.id||null,detail:`${rail.product_name} • ${rail.color||''} • 1 un • ${claws} garras`};
+  }
+  if(k==='TRILHO MOTORIZADO'){
+    const rail=(selected&&v1216Fold(selected.product_name).startsWith('TRILHO MOTORIZADO'))?selected:(v1216SpecialList(kind,w).find(p=>v1216Fold(p.color)===v1216Fold(fixColor))||v1216SpecialList(kind,w)[0]);
+    if(!rail)return {kind,total:0,hardwareBase:0,detail:w>6?'ACIMA DE 6M • DEFINIR SOLUÇÃO ESPECIAL':'Selecione o trilho motorizado'};
+    const remote=(priceProducts||[]).find(p=>Number(p.active??1)===1&&v1216Fold(p.product_name)==='CONTROLE REMOTO TRILHO MOTORIZADO');
+    const total=Number(rail.price_4x||0)+Number(remote?.price_4x||0);
+    return {kind,total,hardwareBase:total,meters:0,units:1,railProductId:rail.id,railName:rail.product_name,railColor:rail.color,remoteProductId:remote?.id||null,detail:`${rail.product_name} • ${rail.color||''} • 1 un • controle remoto incluído`};
+  }
+  return _v1216FixationCalc(kind,widthM,model,leaves,fixColor,railProductId,supportMaterial);
+};
+
+document.addEventListener('DOMContentLoaded',()=>{
+  $('eFixation')?.addEventListener('change',()=>{v1216RefreshFixProduct();updatePreview();});
+  $('eWidth')?.addEventListener('input',()=>{v1216RefreshFixProduct();updatePreview();});
+  $('eRailProduct')?.addEventListener('change',()=>{const p=officialProductById($('eRailProduct')?.value);if(p&&$('eFixColor'))$('eFixColor').value=p.color||'';updatePreview();});
+  v1216RefreshFixProduct();
+});
