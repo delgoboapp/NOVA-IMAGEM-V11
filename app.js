@@ -80,7 +80,7 @@ const STOCK_SEED=[
   ['ACESSÓRIOS','SUPORTE WAVE 28',['PRATA ESCOVADO','CROMADO','PRETO','DOURADO','OURO VELHO','BRANCO'],'UN'],
   ['ACESSÓRIOS','TAMPA VARÃO WAVE 28',['PRATA ESCOVADO','CROMADO','PRETO','DOURADO','OURO VELHO','BRANCO'],'UN']
 ];
-const WAVE_TAPE_BY_GATHER={'1.5':'FITA WAVE 10X10','2.0':'FITA WAVE 10X12','2.5':'FITA WAVE 12X12','3.0':'FITA WAVE 10X15','3.5':'FITA WAVE 12X16','4.0':'FITA WAVE 18X16'};
+const WAVE_TAPE_BY_GATHER={'2.0':'FITA WAVE 10X10','2.5':'FITA WAVE 12X12','3.0':'FITA WAVE 10X15','3.5':'FITA WAVE 12X16','4.0':'FITA WAVE 16X18'};
 const stockName=n=>{const x=norm(n);if(x==='MICROFIBRA LEVE')return 'FORRO LEVE';if(x==='GABARDINE 70%')return 'GABARDINE';if(x==='VOIL TRABALHADO')return 'VOIL TRABALHADO COMPOSTO';return x};
 const cleanText=s=>norm(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim();
 function canonicalProductType(v){const x=cleanText(v);if(['ACESSORIOS','AVIAMENTO','ACESSORIO'].includes(x))return 'ACESSÓRIO';if(x==='TECIDO DE ACABAMENTO')return 'TECIDO DE ACABAMENTO';if(x==='TECIDO DE FORRO')return 'TECIDO DE FORRO';if(x==='TECIDO ESPECIAL')return 'TECIDO ESPECIAL';return 'OUTRO'}
@@ -178,7 +178,7 @@ function officialSupportProduct(e,f){
   return officialProductLike(['SUPORTE','WAVE','28'],e.fixColor)||officialProductLike(['SUPORTE','SIMPLES'],e.fixColor)||officialProductLike(['SUPORTE','WAVE'],e.fixColor);
 }
 function officialWaveTape(gather){
-  const map={'1.5':'FITA WAVE 10X10','2.0':'FITA WAVE 10X12','2.5':'FITA WAVE 12X12','3.0':'FITA WAVE 10X15','3.5':'FITA WAVE 12X16','4.0':'FITA WAVE 16X18'};
+  const map={'2.0':'FITA WAVE 10X10','2.5':'FITA WAVE 12X12','3.0':'FITA WAVE 10X15','3.5':'FITA WAVE 12X16','4.0':'FITA WAVE 16X18'};
   const name=map[String(gather)]||'';return name?officialProductByName(name):null;
 }
 function officialOrderRequirements(q){
@@ -1110,7 +1110,7 @@ function v118ApplyConditionalForm(){
   if(wave){
     const lining=$('eLiningPleat'),allowed=['FRANZIDO SUÍÇO','WAVE','SOBREPOSTO'];
     if(lining){const old=lining.value;fillSelect(lining,allowed,allowed.includes(old)?old:'FRANZIDO SUÍÇO')}
-    if($('eFixation')){$('eFixation').value='TRILHO SUÍÇO';refreshFixColors();const d=v118DefaultSwissRail();if(d&&$('eRailProduct'))$('eRailProduct').value=String(d.id)}
+    // WAVE é prega de acabamento. NÃO define nem altera a família de fixação.
   }
   $('eSupportMaterialWrap')?.classList.toggle('hidden',!tube);
   const bar=$('eFinishBar')?.value||'BARRA SIMPLES';$('eSoutacheColorWrap')?.classList.toggle('hidden',!['BARRA SOUTACHE','BARRA SOUTACHE DUPLA'].includes(bar));
@@ -1192,12 +1192,12 @@ const _v119Home=renderHome;renderHome=function(){_v119Home();const q=V119_QUOTES
 
 /* ===== V11.9.1 • MOTOR DE CONFECÇÃO / CADASTRO PF-PJ ===== */
 function v1191IsBlackout(name){const n=norm(name);return n.includes('BLACKOUT 100% LEVE')||n.includes('BLACKOUT 100% PESADO')}
-function v1191GatherOptions(selectId){const el=$(selectId);if(!el)return;const isFinish=selectId==='eFinishGather',fabric=$(isFinish?'eFinish':'eLining')?.value||'',pleat=$(isFinish?'eFinishPleat':'eLiningPleat')?.value||'';let opts=['1.5','2.0','2.5','3.0','3.5','4.0'];if(v1191IsBlackout(fabric))opts.push('PAINEL');const old=el.value;fillSelect(el,opts,opts.includes(old)?old:(pleat==='SOBREPOSTO'?'4.0':(isFinish?'3.0':'2.0')));if(pleat==='SOBREPOSTO'){el.value='4.0';el.disabled=true}else el.disabled=false}
+function v1191GatherOptions(selectId){const el=$(selectId);if(!el)return;const isFinish=selectId==='eFinishGather',fabric=$(isFinish?'eFinish':'eLining')?.value||'',pleat=$(isFinish?'eFinishPleat':'eLiningPleat')?.value||'';let opts=pleat==='WAVE'?['2.0','2.5','3.0','3.5','4.0']:['1.5','2.0','2.5','3.0','3.5','4.0'];if(v1191IsBlackout(fabric)&&pleat!=='WAVE')opts.push('PAINEL');const old=el.value;fillSelect(el,opts,opts.includes(old)?old:(pleat==='SOBREPOSTO'?'4.0':(pleat==='WAVE'?(isFinish?'3.0':'2.0'):(isFinish?'3.0':'2.0'))));if(pleat==='SOBREPOSTO'){el.value='4.0';el.disabled=true}else el.disabled=false}
 function v1191CompatibleFixations(){const fp=$('eFinishPleat')?.value||'',lp=$('eLiningPleat')?.value||'',tube=isTubePleat(fp)||isTubePleat(lp);if(tube)return [];const opts=[];if(officialSwissRails().length)opts.push('TRILHO SUÍÇO');if(fixationColors('VARÃO WAVE').length)opts.push('VARÃO WAVE','VARÃO WAVE COM COMANDO POR CORDA');opts.push('TRILHO MOTORIZADO');return opts}
 function v1191FixProducts(kind){const n=norm(kind);if(n==='TRILHO SUÍÇO')return officialSwissRails();if(n.startsWith('VARÃO WAVE'))return (priceProducts||[]).filter(p=>Number(p.active??1)===1&&norm(p.product_name).includes('VARÃO WAVE 28'));if(n==='TUBO 19 MM'||n==='TUBO 28 MM')return (priceProducts||[]).filter(p=>Number(p.active??1)===1&&norm(p.product_name)===n);return []}
 function v1191RefreshFixProduct(){const kind=$('eFixation')?.value||'',sel=$('eRailProduct'),wrap=$('eRailProductWrap'),colorWrap=$('eFixColorWrap');if(!sel)return;const list=v1191FixProducts(kind),show=list.length>0;if(wrap)wrap.classList.toggle('hidden',!show);if(colorWrap)colorWrap.classList.toggle('hidden',show);if(show){const old=sel.value;sel.innerHTML='<option value="">SELECIONE O PRODUTO</option>'+list.map(p=>`<option value="${p.id}">${esc(p.product_name)} • ${esc(p.color||'SEM COR')} • ${esc(p.internal_code||'-')} • ${money(p.price_4x||0)}/${esc(p.unit||'M')} • estoque ${Number(p.stock_quantity||0).toFixed(2)} ${esc(p.unit||'M')}</option>`).join('');if([...sel.options].some(o=>o.value===old))sel.value=old;else if(kind==='TRILHO SUÍÇO'){const d=v118DefaultSwissRail();if(d)sel.value=String(d.id)}}}
 function v1191Conditional(){const fp=$('eFinishPleat')?.value||'',tube=isTubePleat(fp)||isTubePleat($('eLiningPleat')?.value||''),wave=fp==='WAVE';if(['FRANZIDO COM ARGOLAS 19MM','FRANZIDO COM ARGOLAS 29MM'].includes(fp)){const el=$('eLiningPleat'),allowed=['FRANZIDO SUÍÇO','SOBREPOSTO'];if(el){const old=el.value;fillSelect(el,allowed,allowed.includes(old)?old:'FRANZIDO SUÍÇO')}}else if(wave){const el=$('eLiningPleat'),allowed=['FRANZIDO SUÍÇO','SOBREPOSTO'];if(el){const old=el.value;fillSelect(el,allowed,allowed.includes(old)?old:'FRANZIDO SUÍÇO')}}else{const el=$('eLiningPleat'),all=['FRANZIDO SUÍÇO','FRANZIDO COM ARGOLAS 19MM','FRANZIDO COM ARGOLAS 29MM','ILHÓS REDONDO','ILHÓS QUADRADO','WAVE','SOBREPOSTO','OUTRO'];if(el){const old=el.value;fillSelect(el,all,all.includes(old)?old:'FRANZIDO SUÍÇO')}}
-  if(!tube){const fix=v1191CompatibleFixations(),el=$('eFixation');if(el){const old=el.value;setSelectOptions(el,fix,fix.includes(old)?old:(wave?'TRILHO SUÍÇO':fix[0]));if(wave)el.value='TRILHO SUÍÇO'}}
+  if(!tube){const fix=v1191CompatibleFixations(),el=$('eFixation');if(el){const old=el.value;setSelectOptions(el,fix,fix.includes(old)?old:fix[0])}}
   v1191GatherOptions('eFinishGather');v1191GatherOptions('eLiningGather');v1191RefreshFixProduct();const motorL=$('eAngle')?.checked&&$('eFixation')?.value==='TRILHO MOTORIZADO';$('eMotorAngleWrap')?.classList.toggle('hidden',!motorL);if($('eWidth'))$('eWidth').readOnly=!!$('eAngle')?.checked;
 }
 const _v1191FabricCalc=fabricCalc;
@@ -1269,11 +1269,10 @@ v12RefreshFixations=function(){
   _v1204Refresh();
   if(liningOnly){
     const lp=$('eLiningPleat'); if(lp){const old=lp.value;fillSelect(lp,V1204_LINING_PLEATS,V1204_LINING_PLEATS.includes(old)?old:'FRANZIDO SUÍÇO');}
-    // WAVE sozinho é cortina principal: trilho suíço e duplo espaçado branco como padrão.
+    // WAVE sozinho continua sendo apenas uma prega; não força a família de fixação.
     if(($('eLiningPleat')?.value||'')==='WAVE'){
-      if($('eFixation'))$('eFixation').value='TRILHO SUÍÇO';
-      const generic=$('eFixationWrap'),prod=$('eRailProductWrap'),color=$('eFixColorWrap');generic?.classList.remove('hidden');prod?.classList.remove('hidden');color?.classList.add('hidden');
-      v12FillProductSelect($('eRailProduct'),v12RailProducts(),'SELECIONE O TRILHO DO ESTOQUE',v118DefaultSwissRail()?.id);
+      const generic=$('eFixationWrap'); generic?.classList.remove('hidden');
+      v1191Conditional();
     }
     v1191GatherOptions('eLiningGather');
   }
@@ -1327,7 +1326,7 @@ renderReworks=function(){const tb=$('reworksTable');if(!tb)return;tb.innerHTML=(
 if(!document.getElementById('v1213style')){const st=document.createElement('style');st.id='v1213style';st.textContent='.rework-red-row{background:#ffe3e3!important;border-left:5px solid #b42318}.rework-red-row td{border-color:#f1b7b7!important}';document.head.appendChild(st)}
 
 const _v1213SetupSelectors=setupSelectors;setupSelectors=function(){_v1213SetupSelectors();const el=$('eFixation');if(el){const vals=[...el.options].map(o=>o.value);for(const v of ['TRILHO SQUARE COM COMANDO'])if(!vals.includes(v))el.add(new Option(v,v));}v12RefreshFixations()};
-const _v1213RefreshFix=v12RefreshFixations;v12RefreshFixations=function(){_v1213RefreshFix();const el=$('eFixation');if(el&&![...el.options].some(o=>o.value==='TRILHO SQUARE COM COMANDO'))el.add(new Option('TRILHO SQUARE COM COMANDO','TRILHO SQUARE COM COMANDO'));const kind=el?.value||'',prod=$('eRailProductWrap');if(['VARÃO WAVE COM COMANDO POR CORDA','TRILHO SQUARE COM COMANDO','TRILHO MOTORIZADO'].includes(kind)){const list=v1213SpecialProductList(kind);if(list.length){prod?.classList.remove('hidden');v12FillProductSelect($('eRailProduct'),list,'SELECIONE O CONJUNTO POR TAMANHO');}}};
+const _v1213RefreshFix=v12RefreshFixations;v12RefreshFixations=function(){_v1213RefreshFix();const el=$('eFixation');if(el){[...el.options].filter(o=>o.value==='TRILHO SQUARE COM COMANDO').forEach(o=>o.remove())}const kind=el?.value||'',prod=$('eRailProductWrap');if(['VARÃO WAVE COM COMANDO POR CORDA','TRILHO MOTORIZADO'].includes(kind)){const list=v1213SpecialProductList(kind);if(list.length){prod?.classList.remove('hidden');v12FillProductSelect($('eRailProduct'),list,'SELECIONE O CONJUNTO POR TAMANHO');}}};
 const _v1213EnvFromForm=envFromForm;envFromForm=function(){const e=_v1213EnvFromForm();if(['VARÃO WAVE COM COMANDO POR CORDA','TRILHO SQUARE COM COMANDO','TRILHO MOTORIZADO'].includes(e.fixation)){const p=officialProductById($('eRailProduct')?.value);e.fixProductId=p?.id||null;e.fixProductName=p?.product_name||'';e.fixColor=p?.color||e.fixColor;e.railProductId=p?.id||null;e.railProductName=p?.product_name||'';e.railInternalCode=p?.internal_code||'';}return e};
 const _v1213FixationCalc=fixationCalc;fixationCalc=function(kind,widthM,model,leaves,fixColor,railProductId,supportMaterial='ALUMINIO'){if(kind==='TRILHO MOTORIZADO'){const rail=officialProductById(railProductId)||v1213FindTierProduct('TRILHO MOTORIZADO',widthM,fixColor)||v1213FindTierProduct('TRILHO MOTORIZADO',widthM);if(!rail)return {kind,total:0,hardwareBase:0,meters:0,detail:widthM>6?'ACIMA DE 6M • DEFINIR SOLUÇÃO ESPECIAL':'Selecione o trilho motorizado'};const remote=officialProductByName('CONTROLE REMOTO TRILHO MOTORIZADO')||officialProductLike(['CONTROLE','REMOTO','MOTORIZADO']);const total=Number(rail.price_4x||0)+Number(remote?.price_4x||0);return {kind,total,hardwareBase:total,meters:0,units:1,railProductId:rail.id,railName:rail.product_name,remoteProductId:remote?.id||null,detail:`${rail.product_name} • 1 un • controle remoto incluído`}}if(kind==='VARÃO WAVE COM COMANDO POR CORDA'){const rod=officialProductById(railProductId)||v1213FindTierProduct('VARÃO COM COMANDO POR CORDA',widthM,fixColor)||v1213FindTierProduct('VARÃO COM COMANDO POR CORDA',widthM);if(!rod)return {kind,total:0,hardwareBase:0,detail:widthM>6?'ACIMA DE 6M • DEFINIR SOLUÇÃO ESPECIAL':'Selecione o varão por tamanho'};const supports=widthM<=2?2:widthM<=3.5?3:widthM<=4.5?4:5;const sup=officialProductByName('SUPORTE WAVE 28',fixColor)||officialProductLike(['SUPORTE','WAVE','28'],fixColor);const total=Number(rod.price_4x||0)+supports*Number(sup?.price_4x||0);return {kind,total,hardwareBase:total,meters:0,units:1,supports,supportProductId:sup?.id||null,supportName:sup?.product_name||'SUPORTE WAVE 28',railProductId:rod.id,detail:`${rod.product_name} • 1 un • ${supports} suportes`}}if(kind==='TRILHO SQUARE COM COMANDO'){const rail=officialProductById(railProductId)||v1213FindTierProduct('TRILHO SQUARE COM COMANDO',widthM,fixColor)||v1213FindTierProduct('TRILHO SQUARE COM COMANDO',widthM);if(!rail)return {kind,total:0,hardwareBase:0,detail:widthM>6?'ACIMA DE 6M • DEFINIR SOLUÇÃO ESPECIAL':'Selecione o Square por tamanho'};const claws=Math.max(2,Math.ceil(widthM/0.60));const claw=officialProductLike(['GARRA','TRILHO'],fixColor)||officialProductLike(['GARRA']);const total=Number(rail.price_4x||0)+claws*Number(claw?.price_4x||0);return {kind,total,hardwareBase:total,meters:0,units:1,clamps:claws,railProductId:rail.id,clawProductId:claw?.id||null,detail:`${rail.product_name} • 1 un • ${claws} garras`}}return _v1213FixationCalc(kind,widthM,model,leaves,fixColor,railProductId,supportMaterial)};
 
@@ -1366,7 +1365,7 @@ function v1214RefreshFixProduct(){
   if(!sel)return;
   const oldP=officialProductById(sel.value),oldColor=oldP?.color||$('eFixColor')?.value||'';
   const list=v1214FixProductsForCurrentWidth(kind);
-  const usesProduct=['TRILHO SUÍÇO','VARÃO WAVE','VARÃO WAVE COM COMANDO POR CORDA','TRILHO SQUARE COM COMANDO','TRILHO MOTORIZADO'].includes(kind);
+  const usesProduct=['TRILHO SUÍÇO','VARÃO WAVE','VARÃO WAVE COM COMANDO POR CORDA','TRILHO MOTORIZADO'].includes(kind);
   if(!usesProduct){wrap?.classList.add('hidden');return;}
   wrap?.classList.remove('hidden');colorWrap?.classList.add('hidden');
   let placeholder='SELECIONE A FIXAÇÃO DO ESTOQUE';
@@ -1394,7 +1393,7 @@ v12RefreshFixations=function(){
   _v1214RefreshFix();
   const el=$('eFixation');
   if(el){
-    for(const k of ['TRILHO SUÍÇO','VARÃO WAVE','VARÃO WAVE COM COMANDO POR CORDA','TRILHO SQUARE COM COMANDO','TRILHO MOTORIZADO']){
+    for(const k of ['TRILHO SUÍÇO','VARÃO WAVE','VARÃO WAVE COM COMANDO POR CORDA','TRILHO MOTORIZADO']){
       if(![...el.options].some(o=>o.value===k))el.add(new Option(k,k));
     }
   }
@@ -1530,7 +1529,7 @@ const _v1216RefreshFix=v12RefreshFixations;
 v12RefreshFixations=function(){
   _v1216RefreshFix();
   const el=$('eFixation');
-  if(el){for(const k of ['TRILHO SUÍÇO','VARÃO WAVE','VARÃO WAVE COM COMANDO POR CORDA','TRILHO SQUARE COM COMANDO','TRILHO MOTORIZADO'])if(![...el.options].some(o=>o.value===k))el.add(new Option(k,k));}
+  if(el){for(const k of ['TRILHO SUÍÇO','VARÃO WAVE','VARÃO WAVE COM COMANDO POR CORDA','TRILHO MOTORIZADO'])if(![...el.options].some(o=>o.value===k))el.add(new Option(k,k));}
   v1216RefreshFixProduct();
 };
 
@@ -1707,7 +1706,7 @@ document.addEventListener('DOMContentLoaded',()=>{
    em todo change, impedindo selecionar Varão Wave, Varão com comando, Square e Motorizado.
 */
 (function(){
-  const SPECIAL_FIXES=['TRILHO SUÍÇO','VARÃO WAVE','VARÃO WAVE COM COMANDO POR CORDA','TRILHO SQUARE COM COMANDO','TRILHO MOTORIZADO'];
+  const SPECIAL_FIXES=['TRILHO SUÍÇO','VARÃO WAVE','VARÃO WAVE COM COMANDO POR CORDA','TRILHO MOTORIZADO'];
   const FOLD=x=>v1216Fold(x||'');
 
   // Todas as fixações compatíveis ficam disponíveis quando não é família de tubo/argola.
@@ -1879,7 +1878,7 @@ document.addEventListener('DOMContentLoaded',()=>{
 */
 (function(){
   const F=x=>v1216Fold(x||'');
-  const FAMILIES=['TRILHO SUÍÇO','VARÃO WAVE','TRILHO SQUARE COM COMANDO','VARÃO COM COMANDO','TRILHO MOTORIZADO'];
+  const FAMILIES=['TRILHO SUÍÇO','VARÃO WAVE','VARÃO COM COMANDO','TRILHO MOTORIZADO'];
   const INTERNAL={
     'TRILHO SUÍÇO':'TRILHO SUÍÇO',
     'VARÃO WAVE':'VARÃO WAVE',
@@ -2007,7 +2006,7 @@ document.addEventListener('DOMContentLoaded',()=>{
    Neutraliza rotinas legadas que forçavam WAVE -> TRILHO SUÍÇO.
 */
 (function(){
-  const FAMILY_OPTIONS=['TRILHO SUÍÇO','VARÃO WAVE','TRILHO SQUARE COM COMANDO','VARÃO COM COMANDO','TRILHO MOTORIZADO'];
+  const FAMILY_OPTIONS=['TRILHO SUÍÇO','VARÃO WAVE','VARÃO COM COMANDO','TRILHO MOTORIZADO'];
   const INTERNAL={
     'TRILHO SUÍÇO':'TRILHO SUÍÇO',
     'VARÃO WAVE':'VARÃO WAVE',
@@ -2328,7 +2327,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   });
 })();
 
-/* ===== V12.2.3 • WAVE USA A MESMA MATRIZ DE FIXAÇÃO DO FRANZIDO SUÍÇO =====
+/* ===== V12.2.4 • WAVE USA A MESMA MATRIZ DE FIXAÇÃO DO FRANZIDO SUÍÇO =====
    Correção definitiva: rotinas legadas ainda podiam reescrever eFixation para TRILHO SUÍÇO
    durante updatePreview()/updateModelFields(). Para pregas que NÃO usam tubo, a prega não
    interfere mais na família de fixação. WAVE e FRANZIDO SUÍÇO exibem a mesma lista.
@@ -2413,3 +2412,8 @@ document.addEventListener('DOMContentLoaded',()=>{
     },300);
   });
 })();
+
+/* ===== V12.2.4 • INVARIANTE DE DOMÍNIO =====
+   Prega de acabamento e fixação são dimensões independentes.
+   WAVE nunca altera eFixation. A seleção de fixação só muda por ação do vendedor.
+*/
