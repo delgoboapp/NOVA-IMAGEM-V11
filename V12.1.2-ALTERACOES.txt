@@ -1,0 +1,8 @@
+V12.1.2 - CORREÇÕES ATACADO
+- Venda atacado: removidos custo unitário, custo total, lucro bruto e margem da tela operacional.
+- Itens da venda exibem somente SKU, produto, quantidade, markup editável, valor unitário de venda, total e ações.
+- Pedido atacado fechado exibe produto, quantidade, valor unitário de venda e total, sem custo/lucro/margem.
+- Finalização refeita com endpoint dedicado /api/wholesale-sale.
+- Pedido e baixa do estoque são gravados juntos no servidor em um único batch D1.
+- Após finalizar, o ERP recarrega dados e estoque e abre Pedidos Atacado.
+- Cache bust atualizado para V12.1.2.
