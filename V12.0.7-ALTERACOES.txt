@@ -1,0 +1,11 @@
+NOVA IMAGEM ERP • V12.0.7 • ATACADO / MARKUP
+
+- ATACADO agora possui: Clientes Atacado, Nova Venda e Vendas Atacado.
+- Nova Venda aceita exclusivamente produtos ativos com saldo no estoque oficial.
+- Markup padrão de atacado: 65% sobre o custo do produto.
+- O markup é editável individualmente ao selecionar/adicionar cada produto.
+- Preço unitário recalculado automaticamente: custo x (1 + markup/100).
+- Markup, custo e preço usados ficam congelados no histórico da venda.
+- Quantidade é validada contra o estoque disponível.
+- Ao finalizar a venda, o estoque oficial é baixado automaticamente.
+- Histórico das vendas mostra cliente, data, itens, total e usuário responsável.

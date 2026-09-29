@@ -1,0 +1,13 @@
+NOVA IMAGEM V12.0.8 - ATACADO / CRÉDITO E FECHAMENTO
+
+- Menu ATACADO: Clientes Atacado, Nova Venda e Pedidos Atacado.
+- Venda atacado exclusivamente com produtos disponíveis no estoque oficial.
+- Markup padrão 65%, editável por item na venda.
+- Cadastro do cliente atacadista com Limite de Crédito.
+- Clientes Atacado passa a mostrar Total Comprado, Saldo Devedor e Crédito Disponível.
+- Botão Fechamento por cliente com histórico completo dos pedidos.
+- Fechamento mostra Total Comprado, Total Recebido, Saldo Devedor, Limite e Crédito Disponível.
+- Pedidos Atacado possuem pagamentos e status EM ABERTO / PARCIAL / QUITADO.
+- Registro de recebimento por pedido atualiza automaticamente o fechamento e o crédito disponível.
+- Cliente com pedidos não pode ser excluído; pode ser inativado.
+- Recebimentos e alterações ficam registrados na Auditoria.

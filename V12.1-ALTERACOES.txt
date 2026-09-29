@@ -1,0 +1,24 @@
+NOVA IMAGEM ERP — V12.1
+
+ATACADO — GESTÃO COMERCIAL E FINANCEIRA
+
+• Novo Dashboard Atacado com faturamento mensal, saldo em aberto, vencidos, ticket médio, lucro bruto e margem média.
+• Curva ABC de clientes e produtos.
+• Rentabilidade por cliente e produto.
+• Alertas de inadimplência, uso de limite, metas abaixo do ritmo, clientes sem compra, pedidos parados em separação e estoque crítico.
+• Sugestão automática de reposição com base no estoque mínimo oficial.
+• Configurações gerais do atacado: markup padrão (65%), markup mínimo protegido, prazo padrão e bloqueio de crédito.
+• Política comercial por cliente: limite de crédito, meta mensal, markup padrão e prazo padrão.
+• Nova Venda Atacado apenas com itens do estoque oficial.
+• Markup editável por item; abaixo do mínimo exige autorização do Gestor e fica registrado na Auditoria.
+• Bloqueio por limite de crédito; exceção somente mediante autorização do Gestor, também auditada.
+• Prazos: à vista, 7, 14, 21, 28 dias ou vencimento personalizado.
+• Resumo da venda com custo, lucro bruto e margem.
+• Pedidos Atacado com vencimento, status financeiro e status logístico: SEPARAÇÃO, PRONTO, RETIRADO/ENVIADO e CONCLUÍDO.
+• Duplicação de pedido para compras recorrentes.
+• Pagamentos parciais e quitação com liberação automática do crédito disponível.
+• Fechamento mensal por cliente, com extrato cronológico de pedidos e pagamentos.
+• Indicadores de risco objetivos: valor vencido, dias de atraso e utilização do limite.
+• Meta mensal por cliente e acompanhamento do realizado.
+• Exportação do atacado em CSV e opção de impressão/PDF pelo navegador.
+• Mantidas as demais regras e módulos da V12.0.8.
