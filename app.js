@@ -2148,3 +2148,109 @@ document.addEventListener('DOMContentLoaded',()=>{
     const oldLoad220=loadCloud;loadCloud=async function(){await oldLoad220();setTimeout(()=>{refresh(true);try{updatePreview()}catch(e){}},10)};
   }
 })();
+
+/* ===== V12.2.1 • WAVE SEM RESET DE FIXAÇÃO + PADRONIZAÇÃO SEM SQUARE =====
+   Correção baseada no fluxo real observado: ao selecionar prega WAVE, rotinas legadas
+   ainda retornavam a fixação para TRILHO SUÍÇO. Esta camada final preserva a fixação
+   escolhida pelo vendedor e remove TRILHO SQUARE COM COMANDO do orçamento.
+*/
+(function(){
+  const ALLOWED=['TRILHO SUÍÇO','VARÃO WAVE','VARÃO WAVE COM COMANDO POR CORDA','TRILHO MOTORIZADO'];
+  const fold=x=>v1216Fold(x||'');
+
+  function cleanFixOptions(preserve=true){
+    const el=$('eFixation'); if(!el)return;
+    const old=preserve?el.value:'';
+    setSelectOptions(el,ALLOWED,ALLOWED.includes(old)?old:'TRILHO SUÍÇO');
+    if(ALLOWED.includes(old))el.value=old;
+  }
+
+  // Não permitir que WAVE determine a fixação. WAVE define apenas prega/aviamentos.
+  v118ApplyConditionalForm=function(){
+    const fp=$('eFinishPleat')?.value||'', tube=isTubePleat(fp), wave=fp==='WAVE';
+    if(wave){
+      const lining=$('eLiningPleat'),allowed=['FRANZIDO SUÍÇO','WAVE','SOBREPOSTO'];
+      if(lining){const old=lining.value;fillSelect(lining,allowed,allowed.includes(old)?old:'FRANZIDO SUÍÇO')}
+    }
+    $('eSupportMaterialWrap')?.classList.toggle('hidden',!tube);
+    const bar=$('eFinishBar')?.value||'BARRA SIMPLES';
+    $('eSoutacheColorWrap')?.classList.toggle('hidden',!['BARRA SOUTACHE','BARRA SOUTACHE DUPLA'].includes(bar));
+    if(tube) setSelectOptions($('eFixColor'),V118_TUBE_COLORS,$('eFixColor')?.value);
+  };
+
+  v1191CompatibleFixations=function(){
+    const fp=$('eFinishPleat')?.value||'', lp=$('eLiningPleat')?.value||'';
+    if(isTubePleat(fp)||isTubePleat(lp))return [];
+    return [...ALLOWED];
+  };
+
+  // Substitui a regra antiga que fazia: if(wave) eFixation='TRILHO SUÍÇO'.
+  v1191Conditional=function(){
+    const fp=$('eFinishPleat')?.value||'', lp=$('eLiningPleat')?.value||'';
+    const wanted=$('eFixation')?.value||'TRILHO SUÍÇO';
+    if(['FRANZIDO COM ARGOLAS 19MM','FRANZIDO COM ARGOLAS 29MM'].includes(fp)){
+      const el=$('eLiningPleat'),allowed=['FRANZIDO SUÍÇO','SOBREPOSTO'];
+      if(el){const old=el.value;fillSelect(el,allowed,allowed.includes(old)?old:'FRANZIDO SUÍÇO')}
+    }else if(fp==='WAVE'){
+      const el=$('eLiningPleat'),allowed=['FRANZIDO SUÍÇO','SOBREPOSTO'];
+      if(el){const old=el.value;fillSelect(el,allowed,allowed.includes(old)?old:'FRANZIDO SUÍÇO')}
+    }else{
+      const el=$('eLiningPleat'),all=['FRANZIDO SUÍÇO','FRANZIDO COM ARGOLAS 19MM','FRANZIDO COM ARGOLAS 29MM','ILHÓS REDONDO','ILHÓS QUADRADO','WAVE','SOBREPOSTO','OUTRO'];
+      if(el){const old=el.value;fillSelect(el,all,all.includes(old)?old:'FRANZIDO SUÍÇO')}
+    }
+    const tube=isTubePleat(fp)||isTubePleat($('eLiningPleat')?.value||'');
+    if(!tube){ cleanFixOptions(true); if(ALLOWED.includes(wanted))$('eFixation').value=wanted; }
+    if(typeof v1218RefreshFixProduct==='function')v1218RefreshFixProduct();
+    v1191GatherOptions('eFinishGather');v1191GatherOptions('eLiningGather');
+  };
+
+  // Refresh final: preserva a família escolhida mesmo ao trocar prega para WAVE.
+  v12RefreshFixations=function(){
+    const m=$('eModel')?.value||'COMPLETE',fp=$('eFinishPleat')?.value||'';
+    const wanted=$('eFixation')?.value||'TRILHO SUÍÇO';
+    const lining=$('eLiningPleat'),allowed=v12AllowedLiningPleats(fp);
+    if(lining){const old=lining.value,def=(fp==='ILHÓS REDONDO'||fp==='ILHÓS QUADRADO'||fp==='FRANZIDO COM ARGOLAS 19MM'||fp==='FRANZIDO COM ARGOLAS 29MM')?'FRANZIDO COM ARGOLAS 19MM':'FRANZIDO SUÍÇO';fillSelect(lining,allowed,allowed.includes(old)?old:def)}
+    const fTube=isTubePleat(fp),lTube=isTubePleat($('eLiningPleat')?.value||'');
+    const fw=$('eFinishTubeWrap'),lw=$('eLiningTubeWrap'),generic=$('eFixationWrap');
+    generic?.classList.toggle('hidden',fTube||lTube);
+    fw?.classList.toggle('hidden',m==='LINING'||!fTube);lw?.classList.toggle('hidden',m==='FINISH'||!lTube);
+    if(fTube){const size=fp.includes('19MM')?'19':'28';v12FillProductSelect($('eFinishTube'),v12TubeProducts(size),'SELECIONE A FIXAÇÃO DO ACABAMENTO')}
+    if(lTube){const lpp=$('eLiningPleat').value,size=lpp.includes('19MM')?'19':'28';v12FillProductSelect($('eLiningTube'),v12TubeProducts(size),'SELECIONE A FIXAÇÃO DO FORRO')}
+    if(!(fTube||lTube)){
+      cleanFixOptions(false);
+      if(ALLOWED.includes(wanted))$('eFixation').value=wanted;
+      if(typeof v1218RefreshFixProduct==='function')v1218RefreshFixProduct();
+    }
+    v1191GatherOptions('eFinishGather');v1191GatherOptions('eLiningGather');
+  };
+
+  function finalSync(){
+    cleanFixOptions(true);
+    // remove qualquer opção Square reinserida por rotinas antigas
+    const el=$('eFixation'); if(el){[...el.options].filter(o=>fold(o.value).includes('SQUARE')).forEach(o=>o.remove())}
+    if(typeof v1218RefreshFixProduct==='function')v1218RefreshFixProduct();
+  }
+
+  // Captura mudança de prega e restaura a fixação escolhida após todos os listeners legados.
+  document.addEventListener('DOMContentLoaded',()=>{
+    const pleat=$('eFinishPleat');
+    if(pleat){
+      pleat.addEventListener('change',()=>{
+        const chosen=$('eFixation')?.value||'TRILHO SUÍÇO';
+        setTimeout(()=>{
+          cleanFixOptions(false);
+          if(ALLOWED.includes(chosen))$('eFixation').value=chosen;
+          v1191Conditional();
+          finalSync();
+          updatePreview();
+        },0);
+      });
+    }
+    const fix=$('eFixation');
+    if(fix){fix.addEventListener('change',()=>setTimeout(()=>{finalSync();updatePreview()},0))}
+    setTimeout(finalSync,150);
+  });
+
+  const oldLoad1221=loadCloud;
+  loadCloud=async function(){await oldLoad1221();setTimeout(()=>{finalSync();updatePreview()},0)};
+})();
