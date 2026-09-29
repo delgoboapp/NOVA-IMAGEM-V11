@@ -2327,3 +2327,89 @@ document.addEventListener('DOMContentLoaded',()=>{
     },250);
   });
 })();
+
+/* ===== V12.2.3 • WAVE USA A MESMA MATRIZ DE FIXAÇÃO DO FRANZIDO SUÍÇO =====
+   Correção definitiva: rotinas legadas ainda podiam reescrever eFixation para TRILHO SUÍÇO
+   durante updatePreview()/updateModelFields(). Para pregas que NÃO usam tubo, a prega não
+   interfere mais na família de fixação. WAVE e FRANZIDO SUÍÇO exibem a mesma lista.
+*/
+(function(){
+  const FIXES=['TRILHO SUÍÇO','VARÃO WAVE','VARÃO WAVE COM COMANDO POR CORDA','TRILHO MOTORIZADO'];
+  let rememberedFix='TRILHO SUÍÇO';
+  const prior1191=v1191Conditional;
+  const prior12=v12RefreshFixations;
+
+  function preserveFix(){
+    const el=$('eFixation');
+    if(!el)return rememberedFix;
+    if(FIXES.includes(el.value))rememberedFix=el.value;
+    return rememberedFix;
+  }
+
+  function setFixes(preferred){
+    const el=$('eFixation');if(!el)return;
+    const keep=FIXES.includes(preferred)?preferred:(FIXES.includes(el.value)?el.value:rememberedFix);
+    setSelectOptions(el,FIXES,FIXES.includes(keep)?keep:'TRILHO SUÍÇO');
+    el.value=FIXES.includes(keep)?keep:'TRILHO SUÍÇO';
+    rememberedFix=el.value;
+  }
+
+  function applyLiningCompatibility(){
+    const fp=$('eFinishPleat')?.value||'';
+    const lining=$('eLiningPleat');if(!lining)return;
+    let allowed;
+    if(fp==='WAVE')allowed=['FRANZIDO SUÍÇO','SOBREPOSTO'];
+    else if(fp==='ILHÓS REDONDO'||fp==='ILHÓS QUADRADO')allowed=['FRANZIDO COM ARGOLAS 19MM'];
+    else if(fp==='FRANZIDO COM ARGOLAS 29MM'||fp==='FRANZIDO COM ARGOLAS 19MM')allowed=['FRANZIDO COM ARGOLAS 19MM'];
+    else allowed=['FRANZIDO SUÍÇO','FRANZIDO COM ARGOLAS 19MM','FRANZIDO COM ARGOLAS 29MM','ILHÓS REDONDO','ILHÓS QUADRADO','WAVE','SOBREPOSTO','OUTRO'];
+    const old=lining.value;
+    fillSelect(lining,allowed,allowed.includes(old)?old:(allowed.includes('FRANZIDO SUÍÇO')?'FRANZIDO SUÍÇO':allowed[0]));
+  }
+
+  function refreshNonTube(preferred){
+    setFixes(preferred);
+    const generic=$('eFixationWrap');generic?.classList.remove('hidden');
+    if(typeof v1218RefreshFixProduct==='function')v1218RefreshFixProduct();
+    else if(typeof v1217RefreshFixProduct==='function')v1217RefreshFixProduct();
+    else if(typeof v1191RefreshFixProduct==='function')v1191RefreshFixProduct();
+    const motorL=$('eAngle')?.checked&&$('eFixation')?.value==='TRILHO MOTORIZADO';
+    $('eMotorAngleWrap')?.classList.toggle('hidden',!motorL);
+    if($('eWidth'))$('eWidth').readOnly=!!$('eAngle')?.checked;
+    v1191GatherOptions('eFinishGather');
+    v1191GatherOptions('eLiningGather');
+  }
+
+  v1191Conditional=function(){
+    const fp=$('eFinishPleat')?.value||'',lp=$('eLiningPleat')?.value||'';
+    const preferred=preserveFix();
+    if(isTubePleat(fp)||isTubePleat(lp))return prior1191();
+    applyLiningCompatibility();
+    refreshNonTube(preferred);
+  };
+
+  v12RefreshFixations=function(){
+    const fp=$('eFinishPleat')?.value||'',lp=$('eLiningPleat')?.value||'';
+    const preferred=preserveFix();
+    if(isTubePleat(fp)||isTubePleat(lp))return prior12();
+    applyLiningCompatibility();
+    refreshNonTube(preferred);
+  };
+
+  // O updatePreview chama updateModelFields; esta proteção restaura a escolha depois de toda
+  // atualização visual, evitando que qualquer camada antiga volte para TRILHO SUÍÇO.
+  const priorUpdateModelFields=updateModelFields;
+  updateModelFields=function(){
+    const preferred=preserveFix();
+    priorUpdateModelFields();
+    const fp=$('eFinishPleat')?.value||'',lp=$('eLiningPleat')?.value||'';
+    if(!(isTubePleat(fp)||isTubePleat(lp)))refreshNonTube(preferred);
+  };
+
+  document.addEventListener('DOMContentLoaded',()=>{
+    const f=$('eFixation');if(f&&FIXES.includes(f.value))rememberedFix=f.value;
+    setTimeout(()=>{
+      const fp=$('eFinishPleat')?.value||'',lp=$('eLiningPleat')?.value||'';
+      if(!(isTubePleat(fp)||isTubePleat(lp)))refreshNonTube(rememberedFix);
+    },300);
+  });
+})();
