@@ -1,0 +1,11 @@
+V12.0.6 — ATACADO
+
+- Novo grupo ATACADO no menu, abaixo de COMERCIAL e acima de OPERACIONAL.
+- Nova tela Clientes Atacado, separada dos clientes de varejo.
+- Cadastro de clientes lojistas/revendedores com:
+  nome fantasia, razão social, CPF/CNPJ, responsável, telefone/WhatsApp, e-mail,
+  endereço completo, cidade/UF, tipo de loja, status e observações.
+- Busca por loja, responsável, documento e cidade.
+- Edição e exclusão com registro em Auditoria.
+- Dados persistidos na nuvem em wholesaleClients.
+- Administração do atacado restrita ao perfil GESTOR nesta primeira etapa.
