@@ -2149,7 +2149,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   }
 })();
 
-/* ===== V12.2.1 • WAVE SEM RESET DE FIXAÇÃO + PADRONIZAÇÃO SEM SQUARE =====
+/* ===== V12.2.2 • WAVE SEM RESET DE FIXAÇÃO + PADRONIZAÇÃO SEM SQUARE =====
    Correção baseada no fluxo real observado: ao selecionar prega WAVE, rotinas legadas
    ainda retornavam a fixação para TRILHO SUÍÇO. Esta camada final preserva a fixação
    escolhida pelo vendedor e remove TRILHO SQUARE COM COMANDO do orçamento.
@@ -2253,4 +2253,77 @@ document.addEventListener('DOMContentLoaded',()=>{
 
   const oldLoad1221=loadCloud;
   loadCloud=async function(){await oldLoad1221();setTimeout(()=>{finalSync();updatePreview()},0)};
+})();
+
+/* ===== V12.2.2 • WAVE NÃO BLOQUEIA FIXAÇÃO =====
+   Regra final: a prega WAVE não altera nem restringe a família de fixação.
+   O vendedor pode usar TRILHO SUÍÇO, VARÃO WAVE, VARÃO WAVE COM COMANDO POR CORDA
+   ou TRILHO MOTORIZADO. O seletor de produto do estoque acompanha a família escolhida.
+   TRILHO SQUARE COM COMANDO permanece removido do orçamento.
+*/
+(function(){
+  const FIXES=['TRILHO SUÍÇO','VARÃO WAVE','VARÃO WAVE COM COMANDO POR CORDA','TRILHO MOTORIZADO'];
+  let lastFix='TRILHO SUÍÇO';
+
+  function syncWaveFixation(preferred){
+    const fix=$('eFixation'); if(!fix)return;
+    const keep=FIXES.includes(preferred)?preferred:(FIXES.includes(fix.value)?fix.value:lastFix);
+    setSelectOptions(fix,FIXES,FIXES.includes(keep)?keep:'TRILHO SUÍÇO');
+    fix.value=FIXES.includes(keep)?keep:'TRILHO SUÍÇO';
+    lastFix=fix.value;
+    if(typeof v1218RefreshFixProduct==='function')v1218RefreshFixProduct();
+    else if(typeof v1217RefreshFixProduct==='function')v1217RefreshFixProduct();
+    else if(typeof v1191RefreshFixProduct==='function')v1191RefreshFixProduct();
+  }
+
+  function applyWavePleatRules(){
+    const lining=$('eLiningPleat');
+    if(lining){
+      const allowed=['FRANZIDO SUÍÇO','SOBREPOSTO'];
+      const old=lining.value;
+      fillSelect(lining,allowed,allowed.includes(old)?old:'FRANZIDO SUÍÇO');
+    }
+    v1191GatherOptions('eFinishGather');
+    v1191GatherOptions('eLiningGather');
+    syncWaveFixation(lastFix);
+    try{updateModelFields()}catch(_){ }
+    try{updatePreview()}catch(_){ }
+  }
+
+  // Captura ANTES dos listeners legados. Quando a prega é WAVE, nenhum listener antigo
+  // pode trocar a fixação escolhida para TRILHO SUÍÇO.
+  document.addEventListener('change',function(ev){
+    const t=ev.target;
+    if(!t)return;
+
+    if(t.id==='eFixation'){
+      const fp=$('eFinishPleat')?.value||'';
+      if(fp==='WAVE'){
+        ev.stopImmediatePropagation();
+        lastFix=FIXES.includes(t.value)?t.value:'TRILHO SUÍÇO';
+        syncWaveFixation(lastFix);
+        try{updatePreview()}catch(_){ }
+      }else if(FIXES.includes(t.value)){
+        lastFix=t.value;
+      }
+      return;
+    }
+
+    if(t.id==='eFinishPleat' && t.value==='WAVE'){
+      const current=$('eFixation')?.value;
+      if(FIXES.includes(current))lastFix=current;
+      ev.stopImmediatePropagation();
+      applyWavePleatRules();
+      return;
+    }
+  },true);
+
+  document.addEventListener('DOMContentLoaded',()=>{
+    const fix=$('eFixation');
+    if(fix&&FIXES.includes(fix.value))lastFix=fix.value;
+    // Se o formulário abrir já em WAVE, deixa todas as quatro famílias disponíveis.
+    setTimeout(()=>{
+      if(($('eFinishPleat')?.value||'')==='WAVE')syncWaveFixation(lastFix);
+    },250);
+  });
 })();
