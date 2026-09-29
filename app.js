@@ -2001,3 +2001,150 @@ document.addEventListener('DOMContentLoaded',()=>{
   const oldLoad=loadCloud;
   loadCloud=async function(){await oldLoad();setTimeout(()=>{buildUI();refreshUI(true);updatePreview()},0)};
 })();
+
+/* ===== V12.2.0 • FIXAÇÃO RECONSTRUÍDA NO SELETOR ORIGINAL =====
+   O seletor eFixation passa a ser a fonte única da família de fixação.
+   Neutraliza rotinas legadas que forçavam WAVE -> TRILHO SUÍÇO.
+*/
+(function(){
+  const FAMILY_OPTIONS=['TRILHO SUÍÇO','VARÃO WAVE','TRILHO SQUARE COM COMANDO','VARÃO COM COMANDO','TRILHO MOTORIZADO'];
+  const INTERNAL={
+    'TRILHO SUÍÇO':'TRILHO SUÍÇO',
+    'VARÃO WAVE':'VARÃO WAVE',
+    'TRILHO SQUARE COM COMANDO':'TRILHO SQUARE COM COMANDO',
+    'VARÃO COM COMANDO':'VARÃO WAVE COM COMANDO POR CORDA',
+    'TRILHO MOTORIZADO':'TRILHO MOTORIZADO'
+  };
+  const DISPLAY={
+    'TRILHO SUÍÇO':'TRILHO SUÍÇO',
+    'VARÃO WAVE':'VARÃO WAVE',
+    'TRILHO SQUARE COM COMANDO':'TRILHO SQUARE COM COMANDO',
+    'VARÃO WAVE COM COMANDO POR CORDA':'VARÃO COM COMANDO',
+    'TRILHO MOTORIZADO':'TRILHO MOTORIZADO'
+  };
+  const fold=x=>v1216Fold(x||'');
+  const active=()=> (priceProducts||[]).filter(p=>Number(p.active??1)===1);
+  const widthM=()=>Math.max(0,Number($('eWidth')?.value||0)/100);
+  let desired='TRILHO SUÍÇO';
+  let refreshing=false;
+  const uniq=a=>[...new Set(a.filter(Boolean))];
+  function tierLimit(name){return v1216TierLimit(name)}
+  function chooseTier(list,w){
+    const limits=uniq(list.map(p=>tierLimit(p.product_name)).filter(x=>x!=null)).sort((a,b)=>a-b);
+    const t=limits.find(x=>w<=Number(x)+1e-9);if(t==null)return [];
+    return list.filter(p=>Math.abs(Number(tierLimit(p.product_name))-Number(t))<1e-9);
+  }
+  function swissProducts(){
+    const ids=new Set((officialSwissRails()||[]).map(p=>Number(p.id)));
+    return active().filter(p=>ids.has(Number(p.id)));
+  }
+  function currentDisplay(){
+    const v=$('eFixation')?.value||desired||'TRILHO SUÍÇO';
+    return DISPLAY[v]||v;
+  }
+  function currentInternal(){return INTERNAL[currentDisplay()]||currentDisplay()}
+  function familyProducts(display){
+    const all=active(),w=widthM();
+    if(display==='TRILHO SUÍÇO')return swissProducts();
+    if(display==='VARÃO WAVE')return all.filter(p=>fold(p.product_name)==='VARAO WAVE 28');
+    if(display==='VARÃO COM COMANDO')return chooseTier(all.filter(p=>fold(p.product_name).startsWith('VARAO COM COMANDO POR CORDA ATE')),w);
+    if(display==='TRILHO SQUARE COM COMANDO')return chooseTier(all.filter(p=>fold(p.product_name).startsWith('TRILHO SQUARE COM COMANDO ATE')),w);
+    if(display==='TRILHO MOTORIZADO')return chooseTier(all.filter(p=>fold(p.product_name).startsWith('TRILHO MOTORIZADO ATE')),w);
+    return [];
+  }
+  function swissModelKey(p){return String(p.product_name||'').trim()}
+  function colorsFor(display,model){
+    if(['TRILHO SQUARE COM COMANDO','TRILHO MOTORIZADO'].includes(display))return ['BRANCO','PRETO'];
+    if(display==='VARÃO COM COMANDO')return ['CROMADO','BRANCO','PRETO','PRATA ESCOVADO','OURO VELHO'];
+    const list=familyProducts(display);
+    if(display==='TRILHO SUÍÇO')return uniq(list.filter(p=>!model||swissModelKey(p)===model).map(p=>String(p.color||'').toUpperCase()));
+    return uniq(list.map(p=>String(p.color||'').toUpperCase()));
+  }
+  function populate(sel,vals,wanted,placeholder){
+    if(!sel)return;sel.innerHTML='';
+    if(placeholder)sel.add(new Option(placeholder,''));
+    vals.forEach(v=>sel.add(new Option(v,v)));
+    if(wanted&&vals.includes(wanted))sel.value=wanted; else if(vals.length)sel.value=vals[0];
+  }
+  function resolveProduct(){
+    const display=currentDisplay(), color=$('eFixColor')?.value||'', list=familyProducts(display);
+    if(display==='TRILHO SUÍÇO'){
+      const model=$('eRailProduct')?.value||'';
+      return list.find(p=>swissModelKey(p)===model&&fold(p.color)===fold(color))||list.find(p=>swissModelKey(p)===model)||null;
+    }
+    return list.find(p=>fold(p.color)===fold(color))||list[0]||null;
+  }
+  function relabel(){
+    const fw=$('eFixationWrap');if(fw){fw.classList.remove('hidden');for(const n of fw.childNodes){if(n.nodeType===3&&n.textContent.trim()){n.textContent='FIXAÇÃO E DESLIZAMENTO';break}}}
+    const rw=$('eRailProductWrap');if(rw){for(const n of rw.childNodes){if(n.nodeType===3&&n.textContent.trim()){n.textContent='MODELO DO TRILHO SUÍÇO';break}}}
+    const cw=$('eFixColorWrap');if(cw){cw.classList.remove('hidden');for(const n of cw.childNodes){if(n.nodeType===3&&n.textContent.trim()){n.textContent='PADRÃO DE COR';break}}}
+  }
+  function removeParallelSelector(){
+    $('eFixationModeWrap')?.remove();$('eSwissModelWrap')?.remove();$('eFixResolved')?.remove();
+  }
+  function refresh(preserve=true){
+    if(refreshing)return;refreshing=true;
+    try{
+      removeParallelSelector();relabel();
+      const f=$('eFixation'),r=$('eRailProduct'),rw=$('eRailProductWrap'),c=$('eFixColor');if(!f||!r||!c)return;
+      const previous=preserve?(DISPLAY[f.value]||f.value||desired):desired;
+      if(FAMILY_OPTIONS.includes(previous))desired=previous;
+      populate(f,FAMILY_OPTIONS,desired);
+      desired=f.value||desired;
+      const display=currentDisplay();
+      if(display==='TRILHO SUÍÇO'){
+        rw?.classList.remove('hidden');
+        const oldModel=preserve?r.value:'';
+        const models=uniq(swissProducts().map(swissModelKey));
+        populate(r,models,models.includes(oldModel)?oldModel:'','SELECIONE O MODELO');
+        const oldColor=preserve?c.value:'';
+        populate(c,colorsFor(display,r.value),oldColor,'SELECIONE A COR');
+      }else{
+        rw?.classList.add('hidden');
+        const oldColor=preserve?c.value:'';
+        populate(c,colorsFor(display,''),oldColor,'SELECIONE A COR');
+      }
+      const motorL=$('eAngle')?.checked&&display==='TRILHO MOTORIZADO';$('eMotorAngleWrap')?.classList.toggle('hidden',!motorL);
+    }finally{refreshing=false}
+  }
+  function syncAndPreview(){refresh(true);try{updatePreview()}catch(e){console.warn('V12.2 preview',e)}}
+
+  // Impede que rotinas antigas alterem a escolha do usuário.
+  document.addEventListener('change',function(ev){
+    if(ev.target?.id==='eFixation'){
+      const chosen=DISPLAY[ev.target.value]||ev.target.value;
+      if(FAMILY_OPTIONS.includes(chosen))desired=chosen;
+      setTimeout(syncAndPreview,0);
+    }else if(['eRailProduct','eFixColor'].includes(ev.target?.id))setTimeout(syncAndPreview,0);
+  },true);
+  document.addEventListener('input',function(ev){if(ev.target?.id==='eWidth')setTimeout(syncAndPreview,0)},true);
+
+  // Mantém compatibilidade com chamadas antigas sem permitir reset para trilho suíço.
+  if(typeof v118ApplyConditionalForm==='function'){
+    const old118=v118ApplyConditionalForm;
+    v118ApplyConditionalForm=function(){const keep=desired;old118();desired=keep;refresh(true)};
+  }
+  if(typeof v1191Conditional==='function'){
+    const old1191=v1191Conditional;
+    v1191Conditional=function(){const keep=desired;old1191();desired=keep;refresh(true)};
+  }
+  if(typeof v12RefreshFixations==='function'){
+    const old12=v12RefreshFixations;
+    v12RefreshFixations=function(){const keep=desired;old12();desired=keep;refresh(true)};
+  }
+
+  const previousEnv=envFromForm;
+  envFromForm=function(){
+    const e=previousEnv();
+    const display=currentDisplay(),internal=currentInternal(),p=resolveProduct();
+    e.fixation=internal;e.fixColor=$('eFixColor')?.value||p?.color||'';
+    e.fixProductId=p?.id||null;e.fixProductName=p?.product_name||'';
+    e.railProductId=p?.id||null;e.railProductName=p?.product_name||'';e.railInternalCode=p?.internal_code||'';
+    return e;
+  };
+
+  document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>{desired='TRILHO SUÍÇO';refresh(false);try{updatePreview()}catch(e){}},180));
+  if(typeof loadCloud==='function'){
+    const oldLoad220=loadCloud;loadCloud=async function(){await oldLoad220();setTimeout(()=>{refresh(true);try{updatePreview()}catch(e){}},10)};
+  }
+})();
