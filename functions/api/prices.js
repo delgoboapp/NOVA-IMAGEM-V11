@@ -18,7 +18,11 @@ function isV115AccessoryName(name){
   const n=text(name).toUpperCase();
   return n.startsWith('ARGOLA 19MM')||n.startsWith('ARGOLA 29MM')||n.startsWith('ILHOS QUADRADO')||n.startsWith('ILHOS REDONDO')||n.startsWith('SUPORTE 19MM PVC')||n.startsWith('SUPORTE 28MM PVC')||n.startsWith('SUPORTE 19/28 PVC')||n.startsWith('SUPORTE 28MM ALUMINIO')||n.startsWith('SUPORTE 19MM ALUMINIO')||n.startsWith('SUPORTE 19/28 ALUMINIO')||n.startsWith('TAMPA PARA TUBO EM ALUMINIO 28MM')||n.startsWith('TAMPA PARA TUBO EM ALUMINIO 19MM');
 }
-function calculatedPrices(cost,markup,name){const p4=Number(cost)*(1+Number(markup)/100);const cash=p4*(isV115AccessoryName(name)?0.92:0.929);const p18=cash/(isV115AccessoryName(name)?0.82:0.83);return {p4,cash,p18}}
+function isSpecialPaymentProduct(name){
+  const n=text(name).toUpperCase();
+  return n.startsWith('TRILHO MOTORIZADO ATE ')||n==='CONTROLE REMOTO TRILHO MOTORIZADO'||n.startsWith('VARÃO COM COMANDO POR CORDA ATE ')||n.startsWith('VARAO COM COMANDO POR CORDA ATE ')||n.startsWith('TRILHO SQUARE COM COMANDO ATE ');
+}
+function calculatedPrices(cost,markup,name){const p4=Number(cost)*(1+Number(markup)/100);const special=isV115AccessoryName(name)||isSpecialPaymentProduct(name);const cash=p4*(special?0.92:0.929);const p18=cash/(special?0.82:0.83);return {p4,cash,p18}}
 
 async function getProduct(env,id){
   return await env.DB.prepare(
@@ -159,6 +163,20 @@ export async function onRequestPost(context){
       return json({ok:true,created,updated:true});
     }
 
+    if(action==='SINCRONIZAR_PRECOS_ESPECIAIS'){
+      if(!gestorOnly(user))return json({error:'Apenas usuários GESTOR podem sincronizar os preços especiais.'},403);
+      const rows=await context.env.DB.prepare(`SELECT id,product_name,cost,markup_percent FROM price_products WHERE active=1`).all();
+      const stm=[];let updated=0;
+      for(const p of rows.results||[]){
+        if(!isSpecialPaymentProduct(p.product_name))continue;
+        const cost=num(p.cost,0),markup=num(p.markup_percent,80),mult=1+markup/100,pr=calculatedPrices(cost,markup,p.product_name);
+        stm.push(context.env.DB.prepare(`UPDATE price_products SET multiplier=?,price_4x=?,price_cash=?,price_18x=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(mult,pr.p4,pr.cash,pr.p18,Number(p.id)));
+        updated++;
+      }
+      if(stm.length)await context.env.DB.batch(stm);
+      return json({ok:true,updated});
+    }
+
     if(action==='SINCRONIZAR_GARRAS_TRILHOS'){
       const allowed=['TRILHO SIMPLES','TRILHO SIMPLES ALTO','TRILHO DUPLO','TRILHO DUPLO ESPAÇADO','TRILHO TRIPLO','TRILHO 3 VIAS','TRILHO COM ABA','TRILHO CURVO'];
       const placeholders=allowed.map(()=>'?').join(',');
@@ -236,7 +254,7 @@ export async function onRequestPost(context){
       const duplicate=await context.env.DB.prepare(`SELECT id,internal_code FROM price_products WHERE active=1 AND UPPER(category)=UPPER(?) AND UPPER(product_name)=UPPER(?) AND UPPER(COALESCE(color,''))=UPPER(?) AND COALESCE(width_cm,0)=? AND UPPER(COALESCE(unit,''))=? LIMIT 1`).bind(category,productName,color,widthCm,unit).first();
       if(duplicate)return json({error:`Já existe este produto oficial (${duplicate.internal_code}).`},400);
       const rows=await context.env.DB.prepare(`SELECT internal_code FROM price_products WHERE internal_code LIKE 'NI-%'`).all();let max=0;for(const r of rows.results||[]){const m=String(r.internal_code||'').match(/^NI-(\d+)$/i);if(m)max=Math.max(max,Number(m[1]))}const internalCode=`NI-${String(max+1).padStart(4,'0')}`;
-      const multiplier=1+markup/100,price4x=cost*multiplier,priceCash=price4x*0.929,price18x=priceCash/0.83;
+      const multiplier=1+markup/100,pr=calculatedPrices(cost,markup,productName),price4x=pr.p4,priceCash=pr.cash,price18x=pr.p18;
       const r=await context.env.DB.prepare(`INSERT INTO price_products (internal_code,supplier_code,category,supplier,product_name,color,width_cm,unit,stock_quantity,multiplier,cost,markup_percent,price_cash,price_4x,price_18x,ncm,cfop_internal,cfop_interstate,active,price_manual,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,0,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)`).bind(internalCode,supplierCode,category,supplier,productName,color,widthCm,unit,stock,multiplier,cost,markup,priceCash,price4x,price18x,ncm,cfopIn,cfopOut).run();
       const product=await getProduct(context.env,r.meta?.last_row_id||r.lastRowId);
       if(product)await history(context.env,{productId:product.id,internalCode,action:'CRIAR',fieldName:'product',oldValue:'',newValue:`${productName} / ${color}`,reason:'Cadastro de novo produto oficial',changedBy:user.username});

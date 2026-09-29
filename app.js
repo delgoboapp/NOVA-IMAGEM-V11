@@ -1303,7 +1303,7 @@ function v1213TierName(prefix,m){return `${prefix} ATÉ ${String(m).replace('.',
 function v1213FindTierProduct(prefix,width,color=''){const arr=(priceProducts||[]).filter(p=>Number(p.active??1)===1&&norm(p.product_name).startsWith(norm(prefix))&&(!color||norm(p.color)===norm(color)));const parsed=arr.map(p=>{const mm=norm(p.product_name).match(/ATE\s*([0-9]+(?:[,.][0-9]+)?)M/);return {p,m:mm?Number(mm[1].replace(',','.')):999}}).sort((a,b)=>a.m-b.m);return parsed.find(x=>width<=x.m+1e-9)?.p||null}
 function v1213SpecialProductList(kind){const k=norm(kind);if(k==='VARAO WAVE COM COMANDO POR CORDA')return (priceProducts||[]).filter(p=>Number(p.active??1)===1&&norm(p.product_name).startsWith('VARAO COM COMANDO POR CORDA'));if(k==='TRILHO SQUARE COM COMANDO')return (priceProducts||[]).filter(p=>Number(p.active??1)===1&&norm(p.product_name).startsWith('TRILHO SQUARE COM COMANDO'));if(k==='TRILHO MOTORIZADO')return (priceProducts||[]).filter(p=>Number(p.active??1)===1&&norm(p.product_name).startsWith('TRILHO MOTORIZADO ATE'));return []}
 function v1213EnsureWholesaleClients(){db.wholesaleClients=db.wholesaleClients||[];let changed=false;for(const name of V1213_WHOLESALE_CLIENTS){if(!db.wholesaleClients.some(c=>norm(c.fantasyName||c.legalName)===norm(name))){db.wholesaleClients.push({id:uid(),fantasyName:name,legalName:'',responsible:'',phone:'',email:'',street:'',number:'',neighborhood:'',cep:'',city:'',state:'',complement:'',active:true,storeType:'',creditLimit:0,monthlyGoal:0,defaultMarkup:65,defaultTermDays:28,notes:'Pré-cadastrado na V12.1.3',createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});changed=true}}if(changed)queueSave()}
-async function v1213EnsureSpecialProducts(){if(!isGestor())return;const specs=[];for(const x of V1213_SPECIAL_SPECS.motor)for(const color of ['BRANCO','PRETO'])specs.push({name:v1213TierName('TRILHO MOTORIZADO',x.m),color,cost:x.c});specs.push({name:'CONTROLE REMOTO TRILHO MOTORIZADO',color:'SEM COR',cost:140});for(const x of V1213_SPECIAL_SPECS.cordRod)for(const color of ['CROMADO','BRANCO','PRETO','PRATA ESCOVADO','OURO VELHO'])specs.push({name:v1213TierName('VARÃO COM COMANDO POR CORDA',x.m),color,cost:x.c});for(const x of V1213_SPECIAL_SPECS.square)for(const color of ['BRANCO','PRETO'])specs.push({name:v1213TierName('TRILHO SQUARE COM COMANDO',x.m),color,cost:x.c});let created=0;for(const s of specs){if((priceProducts||[]).some(p=>Number(p.active??1)===1&&norm(p.product_name)===norm(s.name)&&norm(p.color)===norm(s.color)))continue;try{await api('prices',{method:'POST',body:JSON.stringify({action:'CRIAR',supplier:'A DEFINIR',supplier_code:'',category:'ACESSÓRIO',product_name:s.name,color:s.color,width_cm:0,unit:'UN',stock_quantity:0,cost:s.cost,markup_percent:80,ncm:'',cfop_internal:'',cfop_interstate:''})});created++}catch(e){console.warn('V12.1.3 cadastro especial:',s.name,s.color,e.message)}}if(created)await reloadOfficialProducts()}
+async function v1213EnsureSpecialProducts(){if(!isGestor())return;const specs=[];for(const x of V1213_SPECIAL_SPECS.motor)for(const color of ['BRANCO','PRETO'])specs.push({name:v1213TierName('TRILHO MOTORIZADO',x.m),color,cost:x.c});specs.push({name:'CONTROLE REMOTO TRILHO MOTORIZADO',color:'SEM COR',cost:140});for(const x of V1213_SPECIAL_SPECS.cordRod)for(const color of ['CROMADO','BRANCO','PRETO','PRATA ESCOVADO','OURO VELHO'])specs.push({name:v1213TierName('VARÃO COM COMANDO POR CORDA',x.m),color,cost:x.c});for(const x of V1213_SPECIAL_SPECS.square)for(const color of ['BRANCO','PRETO'])specs.push({name:v1213TierName('TRILHO SQUARE COM COMANDO',x.m),color,cost:x.c});let created=0;for(const s of specs){if((priceProducts||[]).some(p=>Number(p.active??1)===1&&norm(p.product_name)===norm(s.name)&&norm(p.color)===norm(s.color)))continue;try{await api('prices',{method:'POST',body:JSON.stringify({action:'CRIAR',supplier:'A DEFINIR',supplier_code:'',category:'ACESSÓRIO',product_name:s.name,color:s.color,width_cm:0,unit:'UN',stock_quantity:0,cost:s.cost,markup_percent:80,ncm:'',cfop_internal:'',cfop_interstate:''})});created++}catch(e){console.warn('V12.1.3 cadastro especial:',s.name,s.color,e.message)}}try{await api('prices',{method:'POST',body:JSON.stringify({action:'SINCRONIZAR_PRECOS_ESPECIAIS'})})}catch(e){console.warn('V12.1.5 sincronização de preços especiais:',e.message)}await reloadOfficialProducts()}
 
 if(!NAV.some(x=>x[0]==='wholesaleQuotes'))NAV.splice(NAV.findIndex(x=>x[0]==='wholesaleDashboard')+1,0,['wholesaleQuotes','Orçamentos Atacado','gestor']);
 const v1213wg=NAV_GROUPS.find(g=>g.id==='wholesale');if(v1213wg&&!v1213wg.items.includes('wholesaleQuotes'))v1213wg.items.splice(1,0,'wholesaleQuotes');
@@ -1340,3 +1340,126 @@ convertQuote=function(n){if(conversionInProgress)return alert('Conversão já es
 const _v1213PrintCustomerOrder=printCustomerOrder;printCustomerOrder=function(o){ensureV119();const original=paymentConditionLabel;o.paymentConditionLabel=v1213PaymentLabel(o);const q=db.quotes.find(x=>Number(x.numero)===Number(o.quoteNumber));const cond=v1213PaymentLabel(o);let envs='';for(const e of o.environments||[]){const c=calcEnvironment(e);if(!c)continue;const mats=environmentMaterialRows(e,o.paymentCondition==='custom'?'p4':o.paymentCondition);envs+=`<div class="env-block"><div class="env-title">${esc(e.name)}</div><table class="env-table"><tr><th>Medidas</th><td>${e.width} × ${e.height} cm</td><th>Aberturas</th><td>${Math.max(0,Number(e.leaves||1)-1)}</td></tr><tr><th>Acabamento</th><td>${c.finishCalc?esc(`${e.finish} / ${e.finishColor} / ${e.finishPleat} ${e.finishGather}:1`):'—'}</td><th>Forro</th><td>${c.liningCalc?esc(`${e.lining} / ${e.liningColor} / ${e.liningPleat} ${e.liningGather}:1`):'—'}</td></tr><tr><th>Fixação</th><td colspan="3">${esc(e.fixation||'-')} • ${esc(e.fixColor||'')}</td></tr><tr><th>${esc(cond)}</th><td colspan="3"><strong>${money(o.agreedValue)}</strong></td></tr></table><div class="section-title">Materiais deste ambiente</div><table class="summary-table"><tr><th>SKU</th><th>Produto</th><th>Cor</th><th>Quantidade</th><th>Valor Unitário</th><th>Valor Total</th></tr>${mats||'<tr><td colspan="6">Sem material oficial vinculado.</td></tr>'}</table></div>`}const cset=companySettings(),warranty=o.documentVersions?.warrantyText||cset.warranty||V119_WARRANTY;const body=`<div class="pdf-head"><img src="${location.origin}/icon-512.png"><div class="store-client"><strong>Nova Imagem Cortinas e Persianas</strong><br>Luiz Sergio Delgobo ME<br>CNPJ 15.115.803/0001-69 • IE 90.588.753-06<br>Av. Bonifácio Vilela, 170 • Ponta Grossa–PR • CEP 84010-330<br><br><strong>PEDIDO Nº ${String(o.numero).padStart(6,'0')}</strong><br><strong>Cliente:</strong> ${esc(o.client||'-')}<br><strong>Contato:</strong> ${esc(o.contact||'-')}<br><strong>Endereço:</strong> ${esc(o.address||'-')}<br><strong>Instalação prevista:</strong> ${fmtDate(o.deliveryDate)}<br><strong>Vendedor:</strong> ${esc(displaySeller(o))}</div></div>${envs}<div class="section-title">Acompanhe seu pedido</div><div class="customer-access-box"><img class="customer-qr" src="${customerPortalQrUrl(o.numero)}" alt="QR Code para acompanhar o pedido"><div><strong>Portal do Cliente Nova Imagem</strong><br>Aponte a câmera para o QR Code.<br><br>Pedido: <strong>${String(o.numero).padStart(6,'0')}</strong><br>Senha: <strong>${esc(o.clientAccessCode||'NÃO GERADA')}</strong><br><a class="customer-portal-link" href="${customerPortalUrl(o.numero)}" target="_blank">Clique aqui para acompanhar seu pedido</a></div></div><div class="section-title">Condição contratada</div><p class="totals">${esc(cond)}: ${money(o.agreedValue)}</p><div class="section-title">CONTRATO DE FORNECIMENTO E INSTALAÇÃO</div><div class="conditions"><p><strong>CONTRATADA:</strong> Luiz Sergio Delgobo ME, CNPJ 15.115.803/0001-69.</p><p><strong>CONTRATANTE:</strong> ${esc(o.client||'-')}, endereço ${esc(o.address||'-')}.</p><p><strong>OBJETO:</strong> fornecimento e instalação dos produtos descritos neste pedido.</p><p><strong>CONDIÇÃO:</strong> ${esc(cond)}, valor contratado de ${money(o.agreedValue)}.</p><p><strong>PRAZO PREVISTO:</strong> instalação/entrega em ${fmtDate(o.deliveryDate)}.</p></div><div class="signature-grid"><div><div class="signature-line"></div><strong>Cliente / Contratante</strong></div><div><div class="signature-line"></div><strong>Nova Imagem / Vendedor</strong></div></div><div style="page-break-before:always"></div><div class="section-title">TERMO DE GARANTIA</div><div style="white-space:pre-line;line-height:1.55">${esc(warranty)}</div><br><p><strong>Pedido:</strong> ${String(o.numero).padStart(6,'0')} • <strong>Cliente:</strong> ${esc(o.client||'-')}</p><div class="signature-grid"><div><div class="signature-line"></div><strong>Cliente</strong></div><div><div class="signature-line"></div><strong>Nova Imagem</strong></div></div>`;printWindow(body)};
 
 document.addEventListener('DOMContentLoaded',()=>{if($('newWholesaleQuoteBtn'))$('newWholesaleQuoteBtn').onclick=()=>{wholesaleDraft={clientId:'',date:today(),termDays:Number(wholesaleSettings().defaultTermDays||28),dueDate:'',items:[]};setView('wholesaleSale')};if($('wholesaleQuoteSearch'))$('wholesaleQuoteSearch').oninput=renderWholesaleQuotes});
+
+/* ===== V12.1.4 • HOTFIX FIXAÇÕES / PDF ORÇAMENTO / CONTRATO ===== */
+function v1214TierLimitFromName(name){
+  const m=norm(name).match(/ATE\s*([0-9]+(?:[,.][0-9]+)?)M/);
+  return m?Number(m[1].replace(',','.')):null;
+}
+function v1214FixProductsForCurrentWidth(kind){
+  const k=norm(kind),w=Math.max(0,Number($('eWidth')?.value||0)/100);
+  if(k==='TRILHO SUICO')return officialSwissRails().filter(p=>Number(p.active??1)===1);
+  if(k==='VARAO WAVE')return (priceProducts||[]).filter(p=>Number(p.active??1)===1&&norm(p.product_name)==='VARAO WAVE 28');
+  let list=[];
+  if(k==='VARAO WAVE COM COMANDO POR CORDA')list=(priceProducts||[]).filter(p=>Number(p.active??1)===1&&norm(p.product_name).startsWith('VARAO COM COMANDO POR CORDA ATE'));
+  else if(k==='TRILHO SQUARE COM COMANDO')list=(priceProducts||[]).filter(p=>Number(p.active??1)===1&&norm(p.product_name).startsWith('TRILHO SQUARE COM COMANDO ATE'));
+  else if(k==='TRILHO MOTORIZADO')list=(priceProducts||[]).filter(p=>Number(p.active??1)===1&&norm(p.product_name).startsWith('TRILHO MOTORIZADO ATE'));
+  else return [];
+  if(!list.length)return [];
+  const tiers=[...new Set(list.map(p=>v1214TierLimitFromName(p.product_name)).filter(x=>x!=null))].sort((a,b)=>a-b);
+  const tier=tiers.find(x=>w<=x+1e-9) ?? null;
+  if(tier==null)return [];
+  return list.filter(p=>Math.abs(Number(v1214TierLimitFromName(p.product_name))-tier)<1e-9);
+}
+function v1214RefreshFixProduct(){
+  const kind=$('eFixation')?.value||'',sel=$('eRailProduct'),wrap=$('eRailProductWrap'),colorWrap=$('eFixColorWrap');
+  if(!sel)return;
+  const oldP=officialProductById(sel.value),oldColor=oldP?.color||$('eFixColor')?.value||'';
+  const list=v1214FixProductsForCurrentWidth(kind);
+  const usesProduct=['TRILHO SUÍÇO','VARÃO WAVE','VARÃO WAVE COM COMANDO POR CORDA','TRILHO SQUARE COM COMANDO','TRILHO MOTORIZADO'].includes(kind);
+  if(!usesProduct){wrap?.classList.add('hidden');return;}
+  wrap?.classList.remove('hidden');colorWrap?.classList.add('hidden');
+  let placeholder='SELECIONE A FIXAÇÃO DO ESTOQUE';
+  if(kind==='TRILHO SUÍÇO')placeholder='SELECIONE O TRILHO DO ESTOQUE';
+  else if(kind==='VARÃO WAVE')placeholder='SELECIONE A COR DO VARÃO WAVE';
+  else if(kind==='VARÃO WAVE COM COMANDO POR CORDA')placeholder='SELECIONE A COR DO VARÃO COM COMANDO';
+  else if(kind==='TRILHO SQUARE COM COMANDO')placeholder='SELECIONE A COR DO TRILHO SQUARE';
+  else if(kind==='TRILHO MOTORIZADO')placeholder='SELECIONE A COR DO TRILHO MOTORIZADO';
+  if(!list.length){
+    const w=Number($('eWidth')?.value||0)/100;
+    sel.innerHTML=`<option value="">${w>6?'MEDIDA ACIMA DE 6M — DEFINIR SOLUÇÃO ESPECIAL':'NENHUM PRODUTO COMPATÍVEL CADASTRADO NO ESTOQUE'}</option>`;
+    return;
+  }
+  v12FillProductSelect(sel,list,placeholder);
+  const sameColor=list.find(p=>norm(p.color)===norm(oldColor));
+  if(sameColor)sel.value=String(sameColor.id);
+  else if(kind==='TRILHO SUÍÇO'){
+    const d=v118DefaultSwissRail();if(d&&list.some(p=>Number(p.id)===Number(d.id)))sel.value=String(d.id);
+  }
+  const p=officialProductById(sel.value);
+  if(p&&$('eFixColor'))$('eFixColor').value=p.color||'';
+}
+const _v1214RefreshFix=v12RefreshFixations;
+v12RefreshFixations=function(){
+  _v1214RefreshFix();
+  const el=$('eFixation');
+  if(el){
+    for(const k of ['TRILHO SUÍÇO','VARÃO WAVE','VARÃO WAVE COM COMANDO POR CORDA','TRILHO SQUARE COM COMANDO','TRILHO MOTORIZADO']){
+      if(![...el.options].some(o=>o.value===k))el.add(new Option(k,k));
+    }
+  }
+  v1214RefreshFixProduct();
+};
+const _v1214LoadCloud=loadCloud;
+loadCloud=async function(){await _v1214LoadCloud();try{await v1213EnsureSpecialProducts();}catch(e){console.warn('V12.1.4 produtos especiais:',e)}v1214RefreshFixProduct();};
+
+function v1214MaterialRowsNoPrice(e){
+  const rows=officialOrderRequirements({environments:[e]}).filter(x=>{
+    const n=norm(x.product_name||'');
+    return !n.includes('CONFECCAO')&&!n.includes('INSTALACAO')&&!n.includes('MAO DE OBRA')&&!n.includes('PRODUCAO');
+  });
+  return rows.map(x=>`<tr><td>${esc(x.internal_code||'-')}</td><td>${esc(x.product_name||'-')}</td><td>${esc(x.color||'-')}</td><td>${Number(x.qty||0).toFixed(norm(x.unit)==='M'?2:0)} ${esc(norm(x.unit||'UN'))}</td></tr>`).join('');
+}
+printQuote=function(q,type='summary'){
+  const t=quoteTotals(q);let body=`<div class="pdf-head"><img src="${location.origin}/icon-512.png"><div class="store-client"><strong>Nova Imagem Cortinas & Persianas</strong><br><span>ORÇAMENTO COMERCIAL</span><br><br><strong>Cliente:</strong> ${esc(q.client||'-')}<br><strong>Contato:</strong> ${esc(q.contact||'-')}<br><strong>Endereço:</strong> ${esc(q.address||'-')}<br><strong>Vendedor:</strong> ${esc(displaySeller(q))}<br><strong>Data:</strong> ${fmtDate(q.date)}</div></div><div class="quote-number">ORÇAMENTO Nº ${String(q.numero).padStart(6,'0')}</div>`;
+  for(const e of q.environments||[]){
+    const c=calcEnvironment(e);if(!c)continue;
+    const mats=v1214MaterialRowsNoPrice(e);
+    body+=`<div class="env-block"><div class="env-title">${esc(e.name)}</div><table class="env-table"><tr><th>Medidas</th><td>${e.width} × ${e.height} cm</td><th>Aberturas</th><td>${Math.max(0,Number(e.leaves||1)-1)}</td></tr><tr><th>Acabamento</th><td>${c.finishCalc?esc(`${e.finish} / ${e.finishColor} / ${e.finishPleat} ${e.finishGather}:1`):'—'}</td><th>Forro</th><td>${c.liningCalc?esc(`${e.lining} / ${e.liningColor} / ${e.liningPleat} ${e.liningGather}:1`):'—'}</td></tr><tr><th>Fixação</th><td colspan="3">${esc(e.fixation||'-')} • ${esc(e.fixColor||'')}</td></tr>${e.notes?`<tr><th>Observações</th><td colspan="3">${esc(e.notes)}</td></tr>`:''}</table><div class="section-title">Materiais previstos para este ambiente</div><table class="summary-table"><tr><th>SKU</th><th>Material</th><th>Cor</th><th>Quantidade</th></tr>${mats||'<tr><td colspan="4">Sem material oficial vinculado.</td></tr>'}</table></div>`;
+  }
+  if((q.blinds||[]).length){body+=`<div class="section-title">Persianas</div><table class="summary-table"><tr><th>Ambiente</th><th>Modelo</th><th>Cor</th><th>Medidas</th><th>Qtd.</th></tr>${q.blinds.map(x=>`<tr><td>${esc(x.environment||'PERSIANA')}</td><td>${esc(x.model||'-')}</td><td>${esc(x.color||'-')}</td><td>${x.width} × ${x.height} cm</td><td>${Number(x.qty||1)} un.</td></tr>`).join('')}</table>`;}
+  if((q.looseProducts||[]).length){body+=`<div class="section-title">Produtos adicionais</div><table class="summary-table"><tr><th>Descrição</th><th>Produto</th><th>Cor</th><th>Quantidade</th></tr>${q.looseProducts.map(a=>`<tr><td>${esc(a.description||a.name)}</td><td>${esc(a.name||'-')}</td><td>${esc(a.color||'-')}</td><td>${Number(a.qty||0)} ${esc(a.unit||'UN')}</td></tr>`).join('')}</table>`;}
+  body+=`<div class="section-title">Valores finais</div><table class="summary-table"><tr><th>Condição</th><th>Valor final</th></tr><tr><td>À vista (PIX/Dinheiro)</td><td class="totals">${money(t.cash)}</td></tr><tr><td>Em até 4x</td><td class="totals">${money(t.p4)}</td></tr><tr><td>Em até 18x</td><td class="totals">${money(t.p18)}</td></tr></table>${q.discountPercent?`<p><strong>Desconto:</strong> ${q.discountPercent}% • ${esc(q.discountReason||'')}</p>`:''}<div class="section-title">Condições comerciais</div><div class="conditions">Validade do orçamento: 5 dias. Medidas, tecidos, cores e fixações devem ser conferidos antes da ordem de produção. Prazo sugerido de instalação: 20 dias após a emissão do pedido, ajustado automaticamente para terça, quarta ou quinta-feira; a data pode ser alterada.</div><p class="sign"><strong>Atenciosamente, ${esc(displaySeller(q))}</strong></p>`;
+  printWindow(body);
+};
+
+function v1214OrderInstallments(o){if(o.paymentCondition==='cash')return 1;if(o.paymentCondition==='p18')return 18;if(o.paymentCondition==='custom')return Math.max(1,Number(o.installments||1));return 4;}
+function v1214ContractPaymentText(o){
+  const total=Number(o.agreedValue||0),n=v1214OrderInstallments(o);
+  if(o.paymentCondition==='cash')return `Valor contratado de ${money(total)}, pago à vista via PIX/dinheiro.`;
+  return `Valor contratado de ${money(total)}, sendo pago em ${n} parcelas de ${money(total/n)}.`;
+}
+function v1214EnvironmentOrderValue(e,o,q){
+  const c=calcEnvironment(e);if(!c)return 0;
+  const cond=o.paymentCondition==='cash'?'cash':o.paymentCondition==='p18'?'p18':'p4';
+  const raw=cond==='cash'?Number(c.cash||0):cond==='p18'?Number(c.p18||0):Number(c.base4||0);
+  const pm=1+Number(quotePartnerMarkup(q||o)||0)/100;
+  const qd=1-Math.max(0,Math.min(100,Number(q?.discountPercent||0)))/100;
+  const od=1-Math.max(0,Math.min(100,Number(o.discountPercent||0)))/100;
+  return raw*pm*qd*od;
+}
+printCustomerOrder=function(o){
+  ensureV119();
+  if(!/^\d{6}$/.test(String(o.clientAccessCode||''))){o.clientAccessCode=String(crypto.getRandomValues(new Uint32Array(1))[0]%1000000).padStart(6,'0');queueSave();}
+  const q=db.quotes.find(x=>Number(x.numero)===Number(o.quoteNumber));
+  const cond=v1213PaymentLabel(o),n=v1214OrderInstallments(o),payText=v1214ContractPaymentText(o);
+  let envs='';
+  for(const e of o.environments||[]){
+    const c=calcEnvironment(e);if(!c)continue;
+    const envValue=v1214EnvironmentOrderValue(e,o,q);
+    const mats=environmentMaterialRows(e,o.paymentCondition==='custom'?'p4':o.paymentCondition);
+    envs+=`<div class="env-block"><div class="env-title">${esc(e.name)}</div><table class="env-table"><tr><th>Medidas</th><td>${e.width} × ${e.height} cm</td><th>Aberturas</th><td>${Math.max(0,Number(e.leaves||1)-1)}</td></tr><tr><th>Acabamento</th><td>${c.finishCalc?esc(`${e.finish} / ${e.finishColor} / ${e.finishPleat} ${e.finishGather}:1`):'—'}</td><th>Forro</th><td>${c.liningCalc?esc(`${e.lining} / ${e.liningColor} / ${e.liningPleat} ${e.liningGather}:1`):'—'}</td></tr><tr><th>Fixação</th><td colspan="3">${esc(e.fixation||'-')} • ${esc(e.fixColor||'')}</td></tr><tr><th>Valor deste ambiente</th><td colspan="3"><strong>${money(envValue)}</strong>${o.paymentCondition!=='cash'?` • ${n}x de ${money(envValue/n)}`:''}</td></tr></table><div class="section-title">Materiais deste ambiente</div><table class="summary-table"><tr><th>SKU</th><th>Produto</th><th>Cor</th><th>Quantidade</th><th>Valor Unitário</th><th>Valor Total</th></tr>${mats||'<tr><td colspan="6">Sem material oficial vinculado.</td></tr>'}</table></div>`;
+  }
+  const cset=companySettings(),warranty=o.documentVersions?.warrantyText||cset.warranty||V119_WARRANTY;
+  const body=`<div class="pdf-head"><img src="${location.origin}/icon-512.png"><div class="store-client"><strong>Nova Imagem Cortinas e Persianas</strong><br>Luiz Sergio Delgobo ME<br>CNPJ 15.115.803/0001-69 • IE 90.588.753-06<br>Av. Bonifácio Vilela, 170 • Ponta Grossa–PR • CEP 84010-330<br><br><strong>PEDIDO Nº ${String(o.numero).padStart(6,'0')}</strong><br><strong>Cliente:</strong> ${esc(o.client||'-')}<br><strong>Contato:</strong> ${esc(o.contact||'-')}<br><strong>Endereço:</strong> ${esc(o.address||'-')}<br><strong>Instalação prevista:</strong> ${fmtDate(o.deliveryDate)}<br><strong>Vendedor:</strong> ${esc(displaySeller(o))}</div></div>${envs}<div class="section-title">Acompanhe seu pedido</div><div class="customer-access-box"><img class="customer-qr" src="${customerPortalQrUrl(o.numero)}" alt="QR Code para acompanhar o pedido"><div><strong>Portal do Cliente Nova Imagem</strong><br>Aponte a câmera para o QR Code.<br><br>Pedido: <strong>${String(o.numero).padStart(6,'0')}</strong><br>Senha: <strong>${esc(o.clientAccessCode)}</strong><br><a class="customer-portal-link" href="${customerPortalUrl(o.numero)}" target="_blank">Clique aqui para acompanhar seu pedido</a></div></div><div class="section-title">Condição contratada</div><p class="totals">${esc(payText)}</p><div class="section-title">CONTRATO DE FORNECIMENTO E INSTALAÇÃO</div><div class="conditions"><p><strong>CONTRATADA:</strong> Luiz Sergio Delgobo ME, CNPJ 15.115.803/0001-69.</p><p><strong>CONTRATANTE:</strong> ${esc(o.client||'-')}, endereço ${esc(o.address||'-')}.</p><p><strong>OBJETO:</strong> fornecimento e instalação dos produtos descritos neste pedido.</p><p><strong>CONDIÇÃO:</strong> ${esc(payText)}</p><p><strong>PRAZO PREVISTO:</strong> instalação/entrega em ${fmtDate(o.deliveryDate)}.</p></div><div class="signature-grid"><div><div class="signature-line"></div><strong>${esc(o.client||'Cliente')}</strong><br><small>Cliente / Contratante</small></div><div><div class="signature-line"></div><strong>NOVA IMAGEM CORTINAS E PERSIANAS</strong><br><small>Eric Luiz Delgobo</small></div></div><div style="page-break-before:always"></div><div class="section-title">TERMO DE GARANTIA</div><div style="white-space:pre-line;line-height:1.55">${esc(warranty)}</div><br><p><strong>Pedido:</strong> ${String(o.numero).padStart(6,'0')} • <strong>Cliente:</strong> ${esc(o.client||'-')}</p><div class="signature-grid"><div><div class="signature-line"></div><strong>${esc(o.client||'Cliente')}</strong><br><small>Cliente / Contratante</small></div><div><div class="signature-line"></div><strong>NOVA IMAGEM CORTINAS E PERSIANAS</strong><br><small>Eric Luiz Delgobo</small></div></div>`;
+  printWindow(body);
+};
+
+document.addEventListener('DOMContentLoaded',()=>{
+  $('eFixation')?.addEventListener('change',()=>{v1214RefreshFixProduct();updatePreview();});
+  $('eWidth')?.addEventListener('input',()=>{v1214RefreshFixProduct();updatePreview();});
+  $('eRailProduct')?.addEventListener('change',()=>{const p=officialProductById($('eRailProduct')?.value);if(p&&$('eFixColor'))$('eFixColor').value=p.color||'';updatePreview();});
+  v1214RefreshFixProduct();
+});
+
+/* ===== V12.1.5 • PRECIFICAÇÃO ESPECIAL: BASE 80% / À VISTA -8% / 18X = À VISTA ÷ 0,82 ===== */

@@ -1,0 +1,21 @@
+NOVA IMAGEM ERP V12.1.4
+
+- Corrigido seletor de fixações para voltar a listar os produtos reais do estoque.
+- VARÃO WAVE 28: exibe as cores/SKUs cadastrados no estoque.
+- VARÃO WAVE COM COMANDO POR CORDA: escolhe automaticamente a faixa de tamanho conforme a largura e permite selecionar a cor disponível (Cromado, Branco, Preto, Prata Escovado e Ouro Velho).
+- TRILHO SQUARE COM COMANDO: faixa automática por largura e cores Branco/Preto.
+- TRILHO MOTORIZADO: faixa automática por largura e cores Branco/Preto; controle remoto automático.
+- Mantido markup padrão de 80% nos conjuntos prontos e controle remoto.
+- Varão com comando mantém suportes do Varão Wave.
+- Square com comando mantém garras do trilho suíço (1 a cada 60 cm, mínimo 2).
+- Motorizado vem montado e não adiciona presilhas próprias extras.
+- Produtos prontos continuam gerando material para solicitar ao converter em pedido.
+- PDF do orçamento agora mostra, por ambiente, tabela de materiais e quantidades sem preços individuais, confecção ou instalação.
+- PDF do orçamento mostra preços apenas no resumo final: à vista, até 4x e até 18x.
+- Corrigido PDF do pedido para não repetir o valor total do pedido dentro de cada ambiente.
+- Valor de cada ambiente é calculado na condição contratada, com rateio dos descontos.
+- Contrato informa valor total e divisão pelo número de parcelas.
+- Assinatura do cliente mostra sempre o nome do cliente.
+- Assinatura da empresa: NOVA IMAGEM CORTINAS E PERSIANAS / Eric Luiz Delgobo, com espaço para assinatura manual.
+- Termo de Garantia permanece anexado ao mesmo PDF do pedido.
+- QR Code de acompanhamento é obrigatório no PDF; se a senha do portal estiver ausente, é gerada antes da impressão.

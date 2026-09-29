@@ -1,0 +1,11 @@
+NOVA IMAGEM ERP • V12.1.5
+
+CORREÇÃO DE PRECIFICAÇÃO DOS CONJUNTOS PRONTOS
+
+- Trilho Motorizado, Controle Remoto do Motorizado, Varão com Comando por Corda e Trilho Square com Comando mantêm markup padrão de 80% (editável).
+- Preço-base / até 4x = custo × (1 + markup/100).
+- À vista = preço-base × 0,92 (8% de desconto).
+- Até 18x = valor à vista ÷ 0,82.
+- Produtos especiais já existentes no D1 são sincronizados automaticamente preservando custo, estoque e markup atuais; apenas os preços comerciais são recalculados.
+- Novos cadastros dessas famílias já nascem usando a mesma regra.
+- Mantidas todas as correções da V12.1.4 (fixações, cores/estoque, orçamento e contrato).
