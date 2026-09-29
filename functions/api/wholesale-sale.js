@@ -13,8 +13,35 @@ export async function onRequestPost(context){
     const db=await readDB(context.env);
     db.wholesaleClients=db.wholesaleClients||[];
     db.wholesaleSales=db.wholesaleSales||[];
+    db.wholesaleQuotes=db.wholesaleQuotes||[];
     db.auditLog=db.auditLog||[];
     db.settings=db.settings||{};
+
+    const action=text(body.action).toUpperCase();
+    if(action==='DELETE'||action==='RETURN_TO_QUOTE'){
+      const sale=db.wholesaleSales.find(s=>s.id===body.saleId&&s.cancelled!==true);
+      if(!sale)return json({error:'Pedido de atacado não encontrado.'},404);
+      const statements=[];
+      for(const m of sale.stockMovements||[]){
+        const product=await context.env.DB.prepare('SELECT * FROM price_products WHERE id=?').bind(Number(m.product_id)).first();
+        if(!product)continue;
+        const current=num(product.stock_quantity,0),next=current+num(m.qty,0);
+        statements.push(context.env.DB.prepare('UPDATE price_products SET stock_quantity=?, updated_at=CURRENT_TIMESTAMP WHERE id=?').bind(next,Number(m.product_id)));
+        statements.push(context.env.DB.prepare(`INSERT INTO price_product_history (product_id,internal_code,action,field_name,old_value,new_value,reason,changed_by) VALUES (?,?,?,?,?,?,?,?)`).bind(Number(m.product_id),text(product.internal_code),'ESTORNO ATACADO','stock_quantity',String(current),String(next),`Estorno do pedido ${sale.number} • ${action==='RETURN_TO_QUOTE'?'retorno a orçamento':'exclusão'}`,text(user.username)));
+      }
+      let quote=null;
+      if(action==='RETURN_TO_QUOTE'){
+        const qn=Math.max(1,Number(db.settings.nextWholesaleQuoteNumber||1));
+        quote={id:uid(),number:qn,date:new Date().toISOString().slice(0,10),clientId:sale.clientId,clientName:sale.clientName,items:(sale.items||[]).map(x=>({...x,id:uid()})),total:num(sale.total,0),termDays:num(sale.termDays,0),dueDate:sale.dueDate||'',sourceSaleNumber:sale.number,status:'ORÇAMENTO',createdAt:new Date().toISOString(),createdBy:text(user.username)};
+        db.wholesaleQuotes.unshift(quote);db.settings.nextWholesaleQuoteNumber=qn+1;
+      }
+      sale.cancelled=true;sale.cancelledAt=new Date().toISOString();sale.cancelledBy=text(user.username);sale.cancelReason=action==='RETURN_TO_QUOTE'?'RETORNADO A ORÇAMENTO':'EXCLUÍDO';
+      db.auditLog.unshift({id:uid(),at:new Date().toISOString(),module:'ATACADO',action:action==='RETURN_TO_QUOTE'?'RETORNO A ORÇAMENTO':'EXCLUSÃO',target:sale.clientName,details:`Pedido ${sale.number}`,user:text(user.username)});
+      db.updatedAt=new Date().toISOString();
+      statements.push(context.env.DB.prepare(`INSERT INTO app_state (id,data,updated_at) VALUES (1,?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data,updated_at=excluded.updated_at`).bind(JSON.stringify(db),db.updatedAt));
+      await context.env.DB.batch(statements);
+      return json({ok:true,quote,updatedAt:db.updatedAt});
+    }
 
     const client=db.wholesaleClients.find(c=>c.id===body.clientId&&c.active!==false);
     if(!client)return json({error:'Cliente de atacado não encontrado ou inativo.'},400);
@@ -29,7 +56,7 @@ export async function onRequestPost(context){
       if(!p||Number(p.active)===0)return json({error:`Produto oficial não encontrado ou inativo: ${id}.`},400);
       const current=num(p.stock_quantity,0),next=current-qty;
       const name=text(p.product_name).toUpperCase();
-      const allowNegative=name.includes('MOTORIZAD')||(name.includes('VARÃO')&&name.includes('COMANDO'));
+      const allowNegative=name.includes('MOTORIZAD')||(name.includes('VARÃO')&&name.includes('COMANDO'))||(name.includes('SQUARE')&&name.includes('COMANDO'));
       if(!allowNegative&&next<0)return json({error:`Estoque insuficiente de ${p.product_name} / ${p.color||'-'}. Disponível: ${current} ${p.unit||'UN'}.`},400);
       const cost=num(p.cost,0),unitPrice=cost*(1+markup/100);
       prepared.push({p,qty,markup,cost,unitPrice,current,next});

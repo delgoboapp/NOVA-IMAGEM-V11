@@ -194,7 +194,7 @@ export async function onRequestPost(context){
         const isRestore=action==='ESTORNAR_PEDIDO';
         const next=isRestore?current+qty:current-qty;
         const name=text(product.product_name).toUpperCase();
-        const allowNegative=name.includes('MOTORIZAD')||(name.includes('VARÃO')&&name.includes('COMANDO'));
+        const allowNegative=name.includes('MOTORIZAD')||(name.includes('VARÃO')&&name.includes('COMANDO'))||(name.includes('SQUARE')&&name.includes('COMANDO'));
         if(!isRestore&&!allowNegative&&next<0){
           return json({error:`Estoque insuficiente de ${product.product_name} / ${product.color||'-'}. Necessário ${qty.toFixed(String(product.unit).toUpperCase()==='M'?2:0)} ${product.unit||'UN'}; disponível ${current.toFixed(String(product.unit).toUpperCase()==='M'?2:0)} ${product.unit||'UN'}.`},400);
         }

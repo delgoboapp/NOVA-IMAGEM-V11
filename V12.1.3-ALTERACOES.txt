@@ -1,0 +1,14 @@
+V12.1.3
+- Orçamentos Atacado abaixo do Dashboard Atacado.
+- Pedidos Atacado: Apagar e Retornar a orçamento, com estorno do estoque oficial.
+- Clientes Atacado pré-cadastrados: IRMA SCHWAB; TEREZINHA DIRCE F. DE LIMA; FERNANDO GELAK; DEUSMARA - MARAVILHA CORTINAS; ESTILO CORTINAS; CASA BELA CORTINAS; CLAUDIO - BELISSIMA CORTINAS; THAIS; JHULLY - ATELIE CORTINAS.
+- Retrabalho: Enviar para Produção com reinício em Recepção, destaque vermelho e permanência visível para Instalações; botão Concluir.
+- Fixações: reexibição conforme estoque + Varão com comando por corda + Trilho Square com comando + Trilho Motorizado por unidade/faixa.
+- Markup padrão 80% para motorizado, Square, varão com comando e controle remoto.
+- Motorizado inclui controle remoto automaticamente e não cobra presilhas próprias.
+- Varão com comando usa suportes do Varão Wave.
+- Square com comando usa garras do trilho suíço.
+- Materiais prontos geram solicitação de compra ao virar pedido.
+- Conversão para pedido: À vista (PIX/dinheiro), até 4x, 18x ou Outro com número de parcelas.
+- Pedido/contrato exibe condição escolhida.
+- PDF do pedido inclui Termo de Garantia e QR Code obrigatório de acompanhamento.
