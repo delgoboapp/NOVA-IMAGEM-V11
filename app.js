@@ -1872,3 +1872,132 @@ document.addEventListener('DOMContentLoaded',()=>{
     },50);
   });
 })();
+
+
+/* ===== V12.1.9 • NOVO FLUXO INDEPENDENTE DE FIXAÇÃO E DESLIZAMENTO =====
+   Reconstrução do seletor para não depender do eFixation legado.
+*/
+(function(){
+  const F=x=>v1216Fold(x||'');
+  const FAMILIES=['TRILHO SUÍÇO','VARÃO WAVE','TRILHO SQUARE COM COMANDO','VARÃO COM COMANDO','TRILHO MOTORIZADO'];
+  const INTERNAL={
+    'TRILHO SUÍÇO':'TRILHO SUÍÇO',
+    'VARÃO WAVE':'VARÃO WAVE',
+    'TRILHO SQUARE COM COMANDO':'TRILHO SQUARE COM COMANDO',
+    'VARÃO COM COMANDO':'VARÃO WAVE COM COMANDO POR CORDA',
+    'TRILHO MOTORIZADO':'TRILHO MOTORIZADO'
+  };
+  function currentFamily(){return $('eFixationMode')?.value||'TRILHO SUÍÇO'}
+  function internalFamily(){return INTERNAL[currentFamily()]||'TRILHO SUÍÇO'}
+  function widthM(){return Math.max(0,Number($('eWidth')?.value||0)/100)}
+  function activeProducts(){return (priceProducts||[]).filter(p=>Number(p.active??1)===1)}
+  function swissProducts(){return activeProducts().filter(p=>officialSwissRails().some(r=>Number(r.id)===Number(p.id)))}
+  function tierLimit(name){return v1216TierLimit(name)}
+  function chooseTier(list,w){
+    const limits=[...new Set(list.map(p=>tierLimit(p.product_name)).filter(x=>x!=null))].sort((a,b)=>a-b);
+    const t=limits.find(x=>w<=x+1e-9); if(t==null)return [];
+    return list.filter(p=>Math.abs(Number(tierLimit(p.product_name))-t)<1e-9);
+  }
+  function familyProducts(fam){
+    const w=widthM(), all=activeProducts();
+    if(fam==='TRILHO SUÍÇO')return swissProducts();
+    if(fam==='VARÃO WAVE')return all.filter(p=>F(p.product_name)==='VARAO WAVE 28');
+    if(fam==='VARÃO COM COMANDO')return chooseTier(all.filter(p=>F(p.product_name).startsWith('VARAO COM COMANDO POR CORDA ATE')),w);
+    if(fam==='TRILHO SQUARE COM COMANDO')return chooseTier(all.filter(p=>F(p.product_name).startsWith('TRILHO SQUARE COM COMANDO ATE')),w);
+    if(fam==='TRILHO MOTORIZADO')return chooseTier(all.filter(p=>F(p.product_name).startsWith('TRILHO MOTORIZADO ATE')),w);
+    return [];
+  }
+  function uniq(arr){return [...new Set(arr.filter(Boolean))]}
+  function swissModelName(p){return String(p.product_name||'').trim()}
+  function selectedSwissModel(){return $('eSwissModel')?.value||''}
+  function allowedColors(fam){
+    if(['TRILHO SQUARE COM COMANDO','TRILHO MOTORIZADO'].includes(fam))return ['BRANCO','PRETO'];
+    if(fam==='VARÃO COM COMANDO')return ['CROMADO','BRANCO','PRETO','PRATA ESCOVADO','OURO VELHO'];
+    if(fam==='VARÃO WAVE')return uniq(familyProducts(fam).map(p=>String(p.color||'').toUpperCase()));
+    if(fam==='TRILHO SUÍÇO'){
+      const m=selectedSwissModel();
+      return uniq(familyProducts(fam).filter(p=>!m||swissModelName(p)===m).map(p=>String(p.color||'').toUpperCase()));
+    }
+    return [];
+  }
+  function setSimpleOptions(sel,values,wanted,placeholder){
+    if(!sel)return;
+    sel.innerHTML='';
+    if(placeholder){const o=new Option(placeholder,'');sel.add(o)}
+    values.forEach(v=>sel.add(new Option(v,v)));
+    if(wanted&&values.includes(wanted))sel.value=wanted;
+    else if(values.length)sel.value=values[0];
+  }
+  function resolveProduct(){
+    const fam=currentFamily(), color=$('eFixColor')?.value||'', list=familyProducts(fam);
+    if(fam==='TRILHO SUÍÇO'){
+      const model=selectedSwissModel();
+      return list.find(p=>swissModelName(p)===model&&F(p.color)===F(color))||list.find(p=>swissModelName(p)===model)||null;
+    }
+    return list.find(p=>F(p.color)===F(color))||list[0]||null;
+  }
+  function syncLegacy(){
+    const old=$('eFixation'), fam=internalFamily();
+    if(old){if(![...old.options].some(o=>o.value===fam))old.add(new Option(fam,fam));old.value=fam}
+    const p=resolveProduct();
+    if(p&&$('eRailProduct')){
+      const rp=$('eRailProduct');
+      if(![...rp.options].some(o=>String(o.value)===String(p.id)))rp.add(new Option(`${p.product_name} — ${p.color}`,String(p.id)));
+      rp.value=String(p.id);
+    }
+  }
+  function refreshUI(preserve=true){
+    const fam=currentFamily();
+    const modelWrap=$('eSwissModelWrap'), color=$('eFixColor');
+    modelWrap?.classList.toggle('hidden',fam!=='TRILHO SUÍÇO');
+    const oldModel=preserve?selectedSwissModel():'';
+    if(fam==='TRILHO SUÍÇO'){
+      const models=uniq(familyProducts(fam).map(swissModelName));
+      setSimpleOptions($('eSwissModel'),models,oldModel,'SELECIONE O MODELO');
+    }
+    const oldColor=preserve?(color?.value||''):'';
+    setSimpleOptions(color,allowedColors(fam),oldColor,'SELECIONE A COR');
+    const p=resolveProduct();
+    const info=$('eFixResolved');
+    if(info){
+      if(p)info.textContent=`SKU selecionado: ${p.product_name} • ${p.color||'SEM COR'}${p.internal_code?' • '+p.internal_code:''}`;
+      else if(widthM()>6&&fam!=='TRILHO SUÍÇO'&&fam!=='VARÃO WAVE')info.textContent='Medida acima de 6,00 m — definir solução especial.';
+      else info.textContent='Nenhum SKU compatível encontrado para esta combinação.';
+    }
+    syncLegacy();
+  }
+  function buildUI(){
+    if($('eFixationMode'))return;
+    const legacyWrap=$('eFixationWrap');
+    if(!legacyWrap)return;
+    legacyWrap.classList.add('hidden');
+    const fam=document.createElement('label');fam.className='field';fam.id='eFixationModeWrap';fam.innerHTML='<span>FIXAÇÃO E DESLIZAMENTO</span><select id="eFixationMode"></select>';
+    legacyWrap.parentNode.insertBefore(fam,legacyWrap);
+    const swiss=document.createElement('label');swiss.className='field';swiss.id='eSwissModelWrap';swiss.innerHTML='<span>MODELO DO TRILHO SUÍÇO</span><select id="eSwissModel"></select>';
+    fam.parentNode.insertBefore(swiss,legacyWrap);
+    const colorWrap=$('eFixColorWrap');if(colorWrap){colorWrap.classList.remove('hidden');colorWrap.firstChild.textContent='PADRÃO DE COR';}
+    const railWrap=$('eRailProductWrap');if(railWrap)railWrap.classList.add('hidden');
+    const info=document.createElement('div');info.id='eFixResolved';info.style.cssText='grid-column:1/-1;font-size:12px;color:#47606a;margin-top:-4px';
+    swiss.parentNode.insertBefore(info,$('eMotorAngleWrap')||legacyWrap.nextSibling);
+    setSimpleOptions($('eFixationMode'),FAMILIES,'TRILHO SUÍÇO');
+    refreshUI(false);
+    $('eFixationMode')?.addEventListener('change',()=>{refreshUI(false);updatePreview()});
+    $('eSwissModel')?.addEventListener('change',()=>{refreshUI(true);updatePreview()});
+    $('eFixColor')?.addEventListener('change',()=>{syncLegacy();updatePreview()});
+    $('eWidth')?.addEventListener('input',()=>{refreshUI(true);updatePreview()});
+  }
+  const previousEnv=envFromForm;
+  envFromForm=function(){
+    const e=previousEnv();
+    if(!$('eFixationMode'))return e;
+    const fam=currentFamily(), internal=internalFamily(), p=resolveProduct();
+    e.fixation=internal;
+    e.fixColor=$('eFixColor')?.value||p?.color||'';
+    e.fixProductId=p?.id||null;e.fixProductName=p?.product_name||'';
+    e.railProductId=p?.id||null;e.railProductName=p?.product_name||'';e.railInternalCode=p?.internal_code||'';
+    return e;
+  };
+  document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>{buildUI();refreshUI(false);updatePreview()},120));
+  const oldLoad=loadCloud;
+  loadCloud=async function(){await oldLoad();setTimeout(()=>{buildUI();refreshUI(true);updatePreview()},0)};
+})();
