@@ -2417,3 +2417,251 @@ document.addEventListener('DOMContentLoaded',()=>{
    Prega de acabamento e fixação são dimensões independentes.
    WAVE nunca altera eFixation. A seleção de fixação só muda por ação do vendedor.
 */
+
+
+/* ============================================================
+   V12.2.5 - HOTFIX FINAL
+   PREGA E FIXAÇÃO SÃO INDEPENDENTES
+
+   WAVE = modelo de confecção/franzimento.
+   WAVE NÃO escolhe nem força a fixação.
+
+   Corrige especificamente o problema em que:
+   PREGA WAVE -> sistema retornava para TRILHO SUÍÇO.
+   ============================================================ */
+
+(function () {
+
+  const FIXACOES_LIVRES = [
+    'TRILHO SUÍÇO',
+    'VARÃO WAVE',
+    'VARÃO WAVE COM COMANDO POR CORDA',
+    'TRILHO MOTORIZADO'
+  ];
+
+  let FIXACAO_ESCOLHIDA_PELO_VENDEDOR = null;
+
+  function el(id) {
+    return document.getElementById(id);
+  }
+
+  function pregaUsaTubo(prega) {
+    const p = String(prega || '').toUpperCase();
+
+    return (
+      p.includes('ARGOLAS') ||
+      p.includes('ILHÓS')
+    );
+  }
+
+  function montagemLivreDeFixacao() {
+
+    const acabamento = el('eFinishPleat')?.value || '';
+    const forro = el('eLiningPleat')?.value || '';
+
+    return !pregaUsaTubo(acabamento) && !pregaUsaTubo(forro);
+  }
+
+  function atualizarProdutosDaFixacao() {
+
+    try {
+
+      if (typeof v1218RefreshFixProduct === 'function') {
+        v1218RefreshFixProduct();
+        return;
+      }
+
+      if (typeof v1217RefreshFixProduct === 'function') {
+        v1217RefreshFixProduct();
+        return;
+      }
+
+      if (typeof v1191RefreshFixProduct === 'function') {
+        v1191RefreshFixProduct();
+      }
+
+    } catch (erro) {
+      console.warn(
+        'V12.2.5 - erro ao atualizar produto da fixação:',
+        erro
+      );
+    }
+  }
+
+  function reconstruirFixacoes() {
+
+    const campo = el('eFixation');
+
+    if (!campo) return;
+
+    if (!montagemLivreDeFixacao()) {
+      return;
+    }
+
+    let desejada =
+      FIXACAO_ESCOLHIDA_PELO_VENDEDOR ||
+      campo.value ||
+      'TRILHO SUÍÇO';
+
+    if (!FIXACOES_LIVRES.includes(desejada)) {
+      desejada = 'TRILHO SUÍÇO';
+    }
+
+    campo.innerHTML = '';
+
+    FIXACOES_LIVRES.forEach(nome => {
+
+      const option = document.createElement('option');
+
+      option.value = nome;
+      option.textContent = nome;
+
+      campo.appendChild(option);
+    });
+
+    campo.value = desejada;
+
+    FIXACAO_ESCOLHIDA_PELO_VENDEDOR = desejada;
+
+    atualizarProdutosDaFixacao();
+  }
+
+  function aplicarRegraWave() {
+
+    const prega = el('eFinishPleat')?.value || '';
+
+    if (prega !== 'WAVE') {
+      reconstruirFixacoes();
+      return;
+    }
+
+    const gather = el('eFinishGather');
+
+    if (gather) {
+
+      const valorAnterior = gather.value;
+
+      const opcoes = [
+        '2.0',
+        '2.5',
+        '3.0',
+        '3.5',
+        '4.0'
+      ];
+
+      gather.innerHTML = '';
+
+      opcoes.forEach(valor => {
+
+        const option = document.createElement('option');
+
+        option.value = valor;
+        option.textContent = valor;
+
+        gather.appendChild(option);
+      });
+
+      gather.value =
+        opcoes.includes(valorAnterior)
+          ? valorAnterior
+          : '3.0';
+    }
+
+    reconstruirFixacoes();
+  }
+
+  document.addEventListener(
+    'change',
+
+    function (evento) {
+
+      const alvo = evento.target;
+
+      if (!alvo) return;
+
+      if (alvo.id === 'eFixation') {
+
+        if (FIXACOES_LIVRES.includes(alvo.value)) {
+          FIXACAO_ESCOLHIDA_PELO_VENDEDOR =
+            alvo.value;
+        }
+
+        setTimeout(function () {
+
+          reconstruirFixacoes();
+
+          try {
+            if (typeof updatePreview === 'function') {
+              updatePreview();
+            }
+          } catch (e) {}
+
+        }, 0);
+
+        setTimeout(function () {
+          reconstruirFixacoes();
+        }, 50);
+
+        return;
+      }
+
+      if (
+        alvo.id === 'eFinishPleat' ||
+        alvo.id === 'eLiningPleat'
+      ) {
+
+        const antes =
+          FIXACAO_ESCOLHIDA_PELO_VENDEDOR ||
+          el('eFixation')?.value ||
+          'TRILHO SUÍÇO';
+
+        if (FIXACOES_LIVRES.includes(antes)) {
+          FIXACAO_ESCOLHIDA_PELO_VENDEDOR =
+            antes;
+        }
+
+        setTimeout(function () {
+
+          aplicarRegraWave();
+
+          try {
+            if (typeof updatePreview === 'function') {
+              updatePreview();
+            }
+          } catch (e) {}
+
+        }, 0);
+
+        setTimeout(function () {
+          aplicarRegraWave();
+        }, 50);
+
+      }
+
+    },
+
+    true
+  );
+
+  document.addEventListener(
+    'DOMContentLoaded',
+
+    function () {
+
+      setTimeout(function () {
+
+        const atual = el('eFixation')?.value;
+
+        if (FIXACOES_LIVRES.includes(atual)) {
+          FIXACAO_ESCOLHIDA_PELO_VENDEDOR =
+            atual;
+        }
+
+        aplicarRegraWave();
+
+      }, 500);
+
+    }
+  );
+
+})();
