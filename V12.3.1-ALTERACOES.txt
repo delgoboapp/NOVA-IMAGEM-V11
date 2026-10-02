@@ -1,0 +1,8 @@
+V12.3.1
+
+- Outubro Rosa: laço rosa discreto na página inicial do portal e na tela de login.
+- APENAS O FORRO: liberadas as pregas Franzido Suíço, Sobreposto, Wave, Argolas 19/29 mm e Ilhós Redondo/Quadrado.
+- A regra acima fica restrita exclusivamente ao modo APENAS O FORRO; CORTINA COMPLETA e APENAS O ACABAMENTO permanecem com as regras anteriores.
+- Corrigida a persistência da seleção WAVE no modo APENAS O FORRO.
+- No orçamento, o campo “Mão de obra (18x)” foi renomeado para “CONFECÇÃO”.
+- No orçamento de APENAS O FORRO com prega WAVE, garantida a exibição da FITA WAVE e dos DESLIZANTES WAVE nos materiais previstos.

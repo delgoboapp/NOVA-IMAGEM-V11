@@ -1450,7 +1450,7 @@ printQuote=function(q,type='summary'){
     const mats=v1214MaterialRowsNoPrice(e);
     const pm=1+quotePartnerMarkup(q)/100,qd=1-Math.max(0,Math.min(100,Number(q.discountPercent||0)))/100;
     const envCash=Number(c.cash||0)*pm*qd,envP4=Number(c.base4||0)*pm*qd,envP18=Number(c.p18||0)*pm*qd,envLabor18=Number(c.laborTotal||0)*(1+Number(db.priceConfig.terms.p18AddPct||0)/100)*pm*qd;
-    body+=`<div class="env-block"><div class="env-title">${esc(e.name)}</div><table class="env-table"><tr><th>Medidas</th><td>${e.width} × ${e.height} cm</td><th>Aberturas</th><td>${Math.max(0,Number(e.leaves||1)-1)}</td></tr><tr><th>Acabamento</th><td>${c.finishCalc?esc(`${e.finish} / ${e.finishColor} / ${e.finishPleat} ${e.finishGather}:1`):'—'}</td><th>Forro</th><td>${c.liningCalc?esc(`${e.lining} / ${e.liningColor} / ${e.liningPleat} ${e.liningGather}:1`):'—'}</td></tr><tr><th>Fixação</th><td>${esc(e.fixation||'-')} • ${esc(e.fixColor||'')}</td><th>Mão de obra (18x)</th><td><strong>${money(envLabor18)}</strong></td></tr><tr><th>VALORES</th><td><strong>Até 18x</strong><br>${money(envP18)}</td><td><strong>Até 4x</strong><br>${money(envP4)}</td><td><strong>À VISTA</strong><br>${money(envCash)}</td></tr>${e.notes?`<tr><th>Observações</th><td colspan="3">${esc(e.notes)}</td></tr>`:''}</table><div class="section-title">Materiais previstos para este ambiente</div><table class="summary-table"><tr><th>SKU</th><th>Material</th><th>Cor</th><th>Quantidade</th></tr>${mats||'<tr><td colspan="4">Sem material oficial vinculado.</td></tr>'}</table></div>`;
+    body+=`<div class="env-block"><div class="env-title">${esc(e.name)}</div><table class="env-table"><tr><th>Medidas</th><td>${e.width} × ${e.height} cm</td><th>Aberturas</th><td>${Math.max(0,Number(e.leaves||1)-1)}</td></tr><tr><th>Acabamento</th><td>${c.finishCalc?esc(`${e.finish} / ${e.finishColor} / ${e.finishPleat} ${e.finishGather}:1`):'—'}</td><th>Forro</th><td>${c.liningCalc?esc(`${e.lining} / ${e.liningColor} / ${e.liningPleat} ${e.liningGather}:1`):'—'}</td></tr><tr><th>Fixação</th><td>${esc(e.fixation||'-')} • ${esc(e.fixColor||'')}</td><th>CONFECÇÃO</th><td><strong>${money(envLabor18)}</strong></td></tr><tr><th>VALORES</th><td><strong>Até 18x</strong><br>${money(envP18)}</td><td><strong>Até 4x</strong><br>${money(envP4)}</td><td><strong>À VISTA</strong><br>${money(envCash)}</td></tr>${e.notes?`<tr><th>Observações</th><td colspan="3">${esc(e.notes)}</td></tr>`:''}</table><div class="section-title">Materiais previstos para este ambiente</div><table class="summary-table"><tr><th>SKU</th><th>Material</th><th>Cor</th><th>Quantidade</th></tr>${mats||'<tr><td colspan="4">Sem material oficial vinculado.</td></tr>'}</table></div>`;
   }
   if((q.blinds||[]).length){body+=`<div class="section-title">Persianas</div><table class="summary-table"><tr><th>Ambiente</th><th>Modelo</th><th>Cor</th><th>Medidas</th><th>Qtd.</th></tr>${q.blinds.map(x=>`<tr><td>${esc(x.environment||'PERSIANA')}</td><td>${esc(x.model||'-')}</td><td>${esc(x.color||'-')}</td><td>${x.width} × ${x.height} cm</td><td>${Number(x.qty||1)} un.</td></tr>`).join('')}</table>`;}
   if((q.looseProducts||[]).length){body+=`<div class="section-title">Produtos adicionais</div><table class="summary-table"><tr><th>Descrição</th><th>Produto</th><th>Cor</th><th>Quantidade</th></tr>${q.looseProducts.map(a=>`<tr><td>${esc(a.description||a.name)}</td><td>${esc(a.name||'-')}</td><td>${esc(a.color||'-')}</td><td>${Number(a.qty||0)} ${esc(a.unit||'UN')}</td></tr>`).join('')}</table>`;}
@@ -2371,6 +2371,7 @@ document.addEventListener('DOMContentLoaded',()=>{
 (function(){
   const FIXES=['TRILHO SUÍÇO','VARÃO WAVE','VARÃO WAVE COM COMANDO POR CORDA','TRILHO MOTORIZADO'];
   let rememberedFix='TRILHO SUÍÇO';
+  let rememberedLiningPleat='FRANZIDO SUÍÇO';
   const prior1191=v1191Conditional;
   const prior12=v12RefreshFixations;
 
@@ -2717,6 +2718,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   const LINING_PLEATS=['FRANZIDO SUÍÇO','FRANZIDO COM ARGOLAS 19MM','FRANZIDO COM ARGOLAS 29MM','ILHÓS REDONDO','ILHÓS QUADRADO','WAVE','SOBREPOSTO','OUTRO'];
   const FREE_FIXES=['TRILHO SUÍÇO','VARÃO WAVE','VARÃO WAVE COM COMANDO POR CORDA','TRILHO MOTORIZADO'];
   let rememberedFix='TRILHO SUÍÇO';
+  let rememberedLiningPleat='FRANZIDO SUÍÇO';
 
   function byId(id){return document.getElementById(id)}
   function isLiningOnly(){return (byId('eModel')?.value||'')==='LINING'}
@@ -2739,8 +2741,11 @@ document.addEventListener('DOMContentLoaded',()=>{
   function refillLiningPleats(){
     const lp=byId('eLiningPleat');
     if(!lp)return;
-    const old=lp.value;
-    fillSelect(lp,LINING_PLEATS,LINING_PLEATS.includes(old)?old:'FRANZIDO SUÍÇO');
+    const current=lp.value;
+    if(LINING_PLEATS.includes(current))rememberedLiningPleat=current;
+    const keep=LINING_PLEATS.includes(rememberedLiningPleat)?rememberedLiningPleat:'FRANZIDO SUÍÇO';
+    fillSelect(lp,LINING_PLEATS,keep);
+    lp.value=keep;
   }
   function refreshLiningOnly(){
     if(!isLiningOnly())return;
@@ -2815,10 +2820,28 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.addEventListener('change',function(ev){
     const t=ev.target;
     if(!t)return;
+
+    // APENAS FORRO: captura a escolha antes dos listeners legados,
+    // evitando que eles devolvam a prega para FRANZIDO SUÍÇO.
+    if(t.id==='eLiningPleat' && isLiningOnly()){
+      if(LINING_PLEATS.includes(t.value))rememberedLiningPleat=t.value;
+      ev.stopImmediatePropagation();
+      refreshLiningOnly();
+      try{ if(typeof applyPleatGatherRules==='function')applyPleatGatherRules(); }catch(_){ }
+      setTimeout(()=>{
+        refreshLiningOnly();
+        try{ if(typeof updatePreview==='function')updatePreview(); }catch(_){ }
+        setTimeout(refreshLiningOnly,0);
+      },0);
+      return;
+    }
+
     if(t.id==='eFixation' && FREE_FIXES.includes(t.value))rememberedFix=t.value;
-    if(['eModel','eLiningPleat','eFixation','eLiningTube'].includes(t.id)){
+    if(['eModel','eFixation','eLiningTube'].includes(t.id)){
       setTimeout(()=>{
         if(isLiningOnly()){
+          const lp=byId('eLiningPleat');
+          if(lp && LINING_PLEATS.includes(lp.value))rememberedLiningPleat=lp.value;
           refreshLiningOnly();
           try{ if(typeof updatePreview==='function')updatePreview(); }catch(_){ }
         }
@@ -2830,6 +2853,8 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.addEventListener('DOMContentLoaded',()=>{
     setTimeout(()=>{
       rememberFix();
+      const lp=byId('eLiningPleat');
+      if(lp && LINING_PLEATS.includes(lp.value))rememberedLiningPleat=lp.value;
       refreshLiningOnly();
     },450);
   });
@@ -2960,3 +2985,38 @@ function payrollRows(competence){const h=hrData(),rows=[];for(const e of h.emplo
 // Navegação do Dashboard de Gestão: toda abertura desta versão inclui VOLTAR ao nível anterior, preservando filtros.
 
 /* === V12.3.0 • BLOG + HOLERITE/RECIBOS + PDF PEDIDOS === */
+
+
+/* ===== V12.3.2 • APENAS FORRO: WAVE ISOLADO + MATERIAIS NO ORÇAMENTO =====
+   Escopo estrito: somente quando eModel === LINING.
+   Não altera CORTINA COMPLETA nem APENAS ACABAMENTO.
+   Garante no PDF/orçamento os materiais WAVE do forro: fita e deslizantes.
+*/
+(function(){
+  const oldMaterialRows=v1214MaterialRowsNoPrice;
+  v1214MaterialRowsNoPrice=function(e){
+    let html=oldMaterialRows(e);
+    if(!e || e.model!=='LINING' || e.liningPleat!=='WAVE')return html;
+
+    const c=calcEnvironment(e);
+    if(!c || !c.liningCalc)return html;
+
+    const hasTape=/FITA WAVE/i.test(html);
+    const hasSlider=/DESLIZANTE WAVE/i.test(html);
+
+    if(!hasTape){
+      const tapeName=(typeof WAVE_TAPE_BY_GATHER!=='undefined' && WAVE_TAPE_BY_GATHER[String(e.liningGather)]) ||
+        ({'2.0':'FITA WAVE 10X10','2.5':'FITA WAVE 12X12','3.0':'FITA WAVE 10X15','3.5':'FITA WAVE 12X16','4.0':'FITA WAVE 18X16'}[String(e.liningGather)]) || 'FITA WAVE';
+      const tape=officialProductByName(tapeName)||officialProductLike(['FITA','WAVE']);
+      const qty=Number(c.liningCalc.gathered||0);
+      html+=`<tr><td>${esc(tape?.internal_code||'-')}</td><td>${esc(tape?.product_name||tapeName)}</td><td>${esc(tape?.color||'SEM COR')}</td><td>${qty.toFixed(2)} M</td></tr>`;
+    }
+
+    if(!hasSlider){
+      const slider=officialSliderProduct(e.fixColor);
+      const qty=Number(c.liningSliders||0);
+      if(qty>0)html+=`<tr><td>${esc(slider?.internal_code||'-')}</td><td>${esc(slider?.product_name||'DESLIZANTE WAVE')}</td><td>${esc(slider?.color||e.fixColor||'BRANCO')}</td><td>${qty.toFixed(0)} UN</td></tr>`;
+    }
+    return html;
+  };
+})();
