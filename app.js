@@ -3088,3 +3088,144 @@ function payrollRows(competence){const h=hrData(),rows=[];for(const e of h.emplo
 
   document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>suggestDefaultRail(true),650));
 })();
+
+/* ===== V12.3.4 • SEM TRILHO E SEM INSTALAÇÃO =====
+   Opção comercial para venda somente da cortina, quando o cliente já possui
+   trilho/varão/tubo ou quando a cortina será despachada.
+   - aparece como última opção do campo FIXAÇÃO;
+   - não cobra trilho, varão, tubo, suportes, garras ou tampas;
+   - não cobra mão de obra de instalação;
+   - preserva tecidos, aviamentos da cortina, costura e mão de obra de confecção.
+*/
+(function(){
+  const NO_FIX='SEM TRILHO E SEM INSTALAÇÃO';
+  const TERMS=()=>db?.priceConfig?.terms||{};
+  let noFixSelected=false;
+
+  function el(id){return document.getElementById(id)}
+  function isNoFix(v){return String(v||'').trim().toUpperCase()===NO_FIX}
+
+  function ensureNoFixOption(){
+    const sel=el('eFixation');
+    if(!sel)return;
+    const current=noFixSelected?NO_FIX:sel.value;
+    const existing=[...sel.options].find(o=>isNoFix(o.value));
+    if(!existing)sel.add(new Option(NO_FIX,NO_FIX));
+    else sel.appendChild(existing); // sempre por último
+    if(noFixSelected || isNoFix(current)){
+      sel.value=NO_FIX;
+      noFixSelected=true;
+    }
+    syncNoFixUI();
+  }
+
+  function syncNoFixUI(){
+    const sel=el('eFixation');
+    const active=noFixSelected || isNoFix(sel?.value);
+    if(active){
+      noFixSelected=true;
+      if(sel)sel.value=NO_FIX;
+      el('eRailProductWrap')?.classList.add('hidden');
+      el('eFixColorWrap')?.classList.add('hidden');
+      el('eFinishTubeWrap')?.classList.add('hidden');
+      el('eLiningTubeWrap')?.classList.add('hidden');
+      el('eMotorAngleWrap')?.classList.add('hidden');
+    }else{
+      noFixSelected=false;
+    }
+  }
+
+  // Custo da fixação zerado.
+  const oldFixationCalc=fixationCalc;
+  fixationCalc=function(kind,widthM,model,leaves,fixColor,railProductId,supportMaterial='ALUMINIO'){
+    if(isNoFix(kind))return {kind:NO_FIX,total:0,hardwareBase:0,meters:0,supports:0,ends:0,clamps:0,detail:NO_FIX};
+    return oldFixationCalc(kind,widthM,model,leaves,fixColor,railProductId,supportMaterial);
+  };
+
+  // Remove exclusivamente a instalação do cálculo. Costura/confecção e aviamentos permanecem.
+  const oldCalcEnvironment=calcEnvironment;
+  calcEnvironment=function(e){
+    const c=oldCalcEnvironment(e);
+    if(!c || !isNoFix(e?.fixation))return c;
+    const install=Number(c.installCost||0);
+    const laborTotal=Math.max(0,Number(c.laborTotal||0)-install);
+    const base4=Math.max(0,Number(c.base4||0)-install);
+    const p18=base4*(1+Number(TERMS().p18AddPct||0)/100);
+    const cash=base4*(1-Number(TERMS().cashDiscountPct||0)/100);
+    return {...c,fixationCalc:{kind:NO_FIX,total:0,hardwareBase:0,meters:0,supports:0,ends:0,clamps:0,detail:NO_FIX},installCost:0,laborTotal,base4,p18,cash};
+  };
+
+  // Garante que o ambiente salvo leve a opção SEM TRILHO, sem SKU/cor de fixação.
+  const oldEnvFromForm=envFromForm;
+  envFromForm=function(){
+    const e=oldEnvFromForm();
+    if(noFixSelected || isNoFix(el('eFixation')?.value)){
+      e.fixation=NO_FIX;
+      e.fixColor='';
+      e.fixProductId=null;e.fixProductName='';
+      e.railProductId=null;e.railProductName='';e.railInternalCode='';
+    }
+    return e;
+  };
+
+  // Rotinas antigas reconstruem o select; recoloca SEM TRILHO sempre ao final.
+  ['v118ApplyConditionalForm','v1191Conditional','v12RefreshFixations','updateModelFields'].forEach(name=>{
+    try{
+      const old=window[name];
+      if(typeof old!=='function')return;
+      window[name]=function(){
+        const keep=noFixSelected || isNoFix(el('eFixation')?.value);
+        const r=old.apply(this,arguments);
+        if(keep)noFixSelected=true;
+        ensureNoFixOption();
+        return r;
+      };
+    }catch(_){ }
+  });
+
+  document.addEventListener('change',ev=>{
+    const t=ev.target;if(!t)return;
+    if(t.id==='eFixation'){
+      noFixSelected=isNoFix(t.value);
+      ensureNoFixOption();
+      syncNoFixUI();
+      setTimeout(()=>{ensureNoFixOption();try{updatePreview()}catch(_){ }},0);
+      setTimeout(ensureNoFixOption,80);
+    }else if(['eFinishPleat','eLiningPleat','eModel'].includes(t.id)){
+      setTimeout(ensureNoFixOption,0);
+      setTimeout(ensureNoFixOption,100);
+    }
+  },true);
+
+  const oldClear=typeof clearEnv==='function'?clearEnv:null;
+  if(oldClear){
+    clearEnv=function(){
+      noFixSelected=false;
+      const r=oldClear.apply(this,arguments);
+      setTimeout(ensureNoFixOption,0);
+      return r;
+    };
+  }
+
+  const oldReset=typeof resetQuote==='function'?resetQuote:null;
+  if(oldReset){
+    resetQuote=function(){
+      noFixSelected=false;
+      const r=oldReset.apply(this,arguments);
+      setTimeout(ensureNoFixOption,20);
+      return r;
+    };
+  }
+
+  const oldLoad=typeof loadCloud==='function'?loadCloud:null;
+  if(oldLoad){
+    loadCloud=async function(){
+      const r=await oldLoad.apply(this,arguments);
+      noFixSelected=false;
+      setTimeout(ensureNoFixOption,100);
+      return r;
+    };
+  }
+
+  document.addEventListener('DOMContentLoaded',()=>setTimeout(ensureNoFixOption,800));
+})();

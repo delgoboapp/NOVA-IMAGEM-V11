@@ -1,0 +1,7 @@
+V12.3.4
+
+- Adicionada a opção “SEM TRILHO E SEM INSTALAÇÃO” como última opção do campo FIXAÇÃO.
+- Indicada para clientes que já possuem trilho, varão ou tubo e para vendas despachadas/encomendas.
+- Nesta opção, não entram no cálculo trilhos, varões, tubos, suportes, garras, tampas nem mão de obra de instalação.
+- Permanecem no cálculo os materiais da cortina, aviamentos aplicáveis, deslizantes/fita Wave quando cabíveis e a mão de obra de confecção/costura.
+- A opção não altera as demais regras de fixação existentes.
