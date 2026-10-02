@@ -2703,6 +2703,146 @@ document.addEventListener('DOMContentLoaded',()=>{
 })();
 
 
+
+
+/* ===== V12.3.1 • APENAS FORRO LIBERA TODAS AS PREGAS =====
+   Em APENAS O FORRO, o forro passa a ser a cortina principal.
+   Logo:
+   - eLiningPleat exibe todas as pregas disponíveis;
+   - a fixação passa a obedecer à prega do forro;
+   - WAVE no forro não força TRILHO SUÍÇO;
+   - ARGOLAS/ILHÓS usam o seletor de tubo do forro.
+*/
+(function(){
+  const LINING_PLEATS=['FRANZIDO SUÍÇO','FRANZIDO COM ARGOLAS 19MM','FRANZIDO COM ARGOLAS 29MM','ILHÓS REDONDO','ILHÓS QUADRADO','WAVE','SOBREPOSTO','OUTRO'];
+  const FREE_FIXES=['TRILHO SUÍÇO','VARÃO WAVE','VARÃO WAVE COM COMANDO POR CORDA','TRILHO MOTORIZADO'];
+  let rememberedFix='TRILHO SUÍÇO';
+
+  function byId(id){return document.getElementById(id)}
+  function isLiningOnly(){return (byId('eModel')?.value||'')==='LINING'}
+  function pleatUsesTube(pleat){
+    const p=String(pleat||'').toUpperCase();
+    return p.includes('ARGOLAS') || p.includes('ILHÓS');
+  }
+  function rememberFix(){
+    const current=byId('eFixation')?.value||'';
+    if(FREE_FIXES.includes(current))rememberedFix=current;
+    return rememberedFix;
+  }
+  function refreshFixProduct(){
+    try{
+      if(typeof v1218RefreshFixProduct==='function')return v1218RefreshFixProduct();
+      if(typeof v1217RefreshFixProduct==='function')return v1217RefreshFixProduct();
+      if(typeof v1191RefreshFixProduct==='function')return v1191RefreshFixProduct();
+    }catch(_){ }
+  }
+  function refillLiningPleats(){
+    const lp=byId('eLiningPleat');
+    if(!lp)return;
+    const old=lp.value;
+    fillSelect(lp,LINING_PLEATS,LINING_PLEATS.includes(old)?old:'FRANZIDO SUÍÇO');
+  }
+  function refreshLiningOnly(){
+    if(!isLiningOnly())return;
+    refillLiningPleats();
+    const lp=byId('eLiningPleat')?.value||'FRANZIDO SUÍÇO';
+    const tube=pleatUsesTube(lp);
+    const genericWrap=byId('eFixationWrap');
+    const railWrap=byId('eRailProductWrap');
+    const finishTubeWrap=byId('eFinishTubeWrap');
+    const liningTubeWrap=byId('eLiningTubeWrap');
+    const fixColorWrap=byId('eFixColorWrap');
+
+    genericWrap?.classList.toggle('hidden',tube);
+    finishTubeWrap?.classList.add('hidden');
+    liningTubeWrap?.classList.toggle('hidden',!tube);
+    if(fixColorWrap)fixColorWrap.classList.remove('hidden');
+
+    if(tube){
+      railWrap?.classList.add('hidden');
+      if(typeof v12FillProductSelect==='function' && typeof v12TubeProducts==='function'){
+        const size=(lp.includes('19MM') || lp.includes('REDONDO')) ? '19' : '28';
+        v12FillProductSelect(byId('eLiningTube'),v12TubeProducts(size),'SELECIONE A FIXAÇÃO DO FORRO');
+      }
+    }else{
+      const fix=byId('eFixation');
+      const preferred=rememberFix();
+      if(fix){
+        const chosen=FREE_FIXES.includes(preferred)?preferred:(FREE_FIXES.includes(fix.value)?fix.value:'TRILHO SUÍÇO');
+        setSelectOptions(fix,FREE_FIXES,chosen);
+        fix.value=chosen;
+        rememberedFix=chosen;
+      }
+      railWrap?.classList.toggle('hidden',(byId('eFixation')?.value||'')!=='TRILHO SUÍÇO');
+      refreshFixProduct();
+    }
+
+    if(typeof v1191GatherOptions==='function')v1191GatherOptions('eLiningGather');
+  }
+
+  const prevAllowed=(typeof v12AllowedLiningPleats==='function')?v12AllowedLiningPleats:null;
+  if(prevAllowed){
+    v12AllowedLiningPleats=function(fp){
+      if(isLiningOnly())return LINING_PLEATS;
+      return prevAllowed(fp);
+    };
+  }
+
+  const prev1191=(typeof v1191Conditional==='function')?v1191Conditional:null;
+  if(prev1191){
+    v1191Conditional=function(){
+      if(isLiningOnly())return refreshLiningOnly();
+      return prev1191();
+    };
+  }
+
+  const prevRefresh=(typeof v12RefreshFixations==='function')?v12RefreshFixations:null;
+  if(prevRefresh){
+    v12RefreshFixations=function(){
+      if(isLiningOnly())return refreshLiningOnly();
+      return prevRefresh();
+    };
+  }
+
+  const prevUpdate=(typeof updateModelFields==='function')?updateModelFields:null;
+  if(prevUpdate){
+    updateModelFields=function(){
+      prevUpdate();
+      if(isLiningOnly())refreshLiningOnly();
+    };
+  }
+
+  document.addEventListener('change',function(ev){
+    const t=ev.target;
+    if(!t)return;
+    if(t.id==='eFixation' && FREE_FIXES.includes(t.value))rememberedFix=t.value;
+    if(['eModel','eLiningPleat','eFixation','eLiningTube'].includes(t.id)){
+      setTimeout(()=>{
+        if(isLiningOnly()){
+          refreshLiningOnly();
+          try{ if(typeof updatePreview==='function')updatePreview(); }catch(_){ }
+        }
+      },0);
+      setTimeout(()=>{ if(isLiningOnly())refreshLiningOnly(); },80);
+    }
+  },true);
+
+  document.addEventListener('DOMContentLoaded',()=>{
+    setTimeout(()=>{
+      rememberFix();
+      refreshLiningOnly();
+    },450);
+  });
+
+  if(typeof loadCloud==='function'){
+    const oldLoadCloud=loadCloud;
+    loadCloud=async function(){
+      await oldLoadCloud();
+      setTimeout(()=>refreshLiningOnly(),0);
+    };
+  }
+})();
+
 /* === V12.2.9 • DESLIZANTES COMPLETOS + CABEÇALHO DE VALORES DO ORÇAMENTO ===
    - Cortina completa: 1 deslizante/3 cm no total, arredondado para cima em múltiplo de 4.
    - PDF do orçamento: mão de obra ao lado da fixação e VALORES em 18x | 4x | à vista.
