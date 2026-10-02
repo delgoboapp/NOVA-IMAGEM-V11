@@ -1138,9 +1138,11 @@ setupSelectors=function(){
   // WAVE: forro compatível e trilho suíço duplo espaçado branco como padrão.
   v118ApplyConditionalForm();
 };
-function v118DefaultSwissRail(){return officialSwissRails().find(p=>norm(p.product_name).includes('DUPLO ESPAÇADO')&&norm(p.color)==='BRANCO')||null}
+function v118DefaultSwissRail(){const rails=officialSwissRails();return rails.find(p=>String(p.internal_code||'').replace(/[^A-Z0-9]/gi,'').toUpperCase()==='NI0007')||rails.find(p=>norm(p.product_name).includes('DUPLO ESPAÇADO')&&norm(p.color)==='BRANCO')||null}
 function v118ApplyConditionalForm(){
-  const fp=$('eFinishPleat')?.value||'', tube=isTubePleat(fp), wave=fp==='WAVE';
+  const liningOnly=($('eModel')?.value||'')==='LINING';
+  const fp=$('eFinishPleat')?.value||'', tube=!liningOnly&&isTubePleat(fp), wave=!liningOnly&&fp==='WAVE';
+  // Em APENAS FORRO, o acabamento está oculto e não pode filtrar a prega do forro.
   if(wave){
     const lining=$('eLiningPleat'),allowed=['FRANZIDO SUÍÇO','WAVE','SOBREPOSTO'];
     if(lining){const old=lining.value;fillSelect(lining,allowed,allowed.includes(old)?old:'FRANZIDO SUÍÇO')}
@@ -1230,7 +1232,7 @@ function v1191GatherOptions(selectId){const el=$(selectId);if(!el)return;const i
 function v1191CompatibleFixations(){const fp=$('eFinishPleat')?.value||'',lp=$('eLiningPleat')?.value||'',tube=isTubePleat(fp)||isTubePleat(lp);if(tube)return [];const opts=[];if(officialSwissRails().length)opts.push('TRILHO SUÍÇO');if(fixationColors('VARÃO WAVE').length)opts.push('VARÃO WAVE','VARÃO WAVE COM COMANDO POR CORDA');opts.push('TRILHO MOTORIZADO');return opts}
 function v1191FixProducts(kind){const n=norm(kind);if(n==='TRILHO SUÍÇO')return officialSwissRails();if(n.startsWith('VARÃO WAVE'))return (priceProducts||[]).filter(p=>Number(p.active??1)===1&&norm(p.product_name).includes('VARÃO WAVE 28'));if(n==='TUBO 19 MM'||n==='TUBO 28 MM')return (priceProducts||[]).filter(p=>Number(p.active??1)===1&&norm(p.product_name)===n);return []}
 function v1191RefreshFixProduct(){const kind=$('eFixation')?.value||'',sel=$('eRailProduct'),wrap=$('eRailProductWrap'),colorWrap=$('eFixColorWrap');if(!sel)return;const list=v1191FixProducts(kind),show=list.length>0;if(wrap)wrap.classList.toggle('hidden',!show);if(colorWrap)colorWrap.classList.toggle('hidden',show);if(show){const old=sel.value;sel.innerHTML='<option value="">SELECIONE O PRODUTO</option>'+list.map(p=>`<option value="${p.id}">${esc(p.product_name)} • ${esc(p.color||'SEM COR')} • ${esc(p.internal_code||'-')} • ${money(p.price_4x||0)}/${esc(p.unit||'M')} • estoque ${Number(p.stock_quantity||0).toFixed(2)} ${esc(p.unit||'M')}</option>`).join('');if([...sel.options].some(o=>o.value===old))sel.value=old;else if(kind==='TRILHO SUÍÇO'){const d=v118DefaultSwissRail();if(d)sel.value=String(d.id)}}}
-function v1191Conditional(){const fp=$('eFinishPleat')?.value||'',tube=isTubePleat(fp)||isTubePleat($('eLiningPleat')?.value||''),wave=fp==='WAVE';if(['FRANZIDO COM ARGOLAS 19MM','FRANZIDO COM ARGOLAS 29MM'].includes(fp)){const el=$('eLiningPleat'),allowed=['FRANZIDO SUÍÇO','SOBREPOSTO'];if(el){const old=el.value;fillSelect(el,allowed,allowed.includes(old)?old:'FRANZIDO SUÍÇO')}}else if(wave){const el=$('eLiningPleat'),allowed=['FRANZIDO SUÍÇO','SOBREPOSTO'];if(el){const old=el.value;fillSelect(el,allowed,allowed.includes(old)?old:'FRANZIDO SUÍÇO')}}else{const el=$('eLiningPleat'),all=['FRANZIDO SUÍÇO','FRANZIDO COM ARGOLAS 19MM','FRANZIDO COM ARGOLAS 29MM','ILHÓS REDONDO','ILHÓS QUADRADO','WAVE','SOBREPOSTO','OUTRO'];if(el){const old=el.value;fillSelect(el,all,all.includes(old)?old:'FRANZIDO SUÍÇO')}}
+function v1191Conditional(){const liningOnly=($('eModel')?.value||'')==='LINING';const fp=$('eFinishPleat')?.value||'',tube=(!liningOnly&&isTubePleat(fp))||isTubePleat($('eLiningPleat')?.value||''),wave=!liningOnly&&fp==='WAVE';if(liningOnly){const el=$('eLiningPleat'),all=['FRANZIDO SUÍÇO','FRANZIDO COM ARGOLAS 19MM','FRANZIDO COM ARGOLAS 29MM','ILHÓS REDONDO','ILHÓS QUADRADO','WAVE','SOBREPOSTO','OUTRO'];if(el){const old=el.value;fillSelect(el,all,all.includes(old)?old:'FRANZIDO SUÍÇO')}}else if(['FRANZIDO COM ARGOLAS 19MM','FRANZIDO COM ARGOLAS 29MM'].includes(fp)){const el=$('eLiningPleat'),allowed=['FRANZIDO SUÍÇO','SOBREPOSTO'];if(el){const old=el.value;fillSelect(el,allowed,allowed.includes(old)?old:'FRANZIDO SUÍÇO')}}else if(wave){const el=$('eLiningPleat'),allowed=['FRANZIDO SUÍÇO','SOBREPOSTO'];if(el){const old=el.value;fillSelect(el,allowed,allowed.includes(old)?old:'FRANZIDO SUÍÇO')}}else{const el=$('eLiningPleat'),all=['FRANZIDO SUÍÇO','FRANZIDO COM ARGOLAS 19MM','FRANZIDO COM ARGOLAS 29MM','ILHÓS REDONDO','ILHÓS QUADRADO','WAVE','SOBREPOSTO','OUTRO'];if(el){const old=el.value;fillSelect(el,all,all.includes(old)?old:'FRANZIDO SUÍÇO')}}
   if(!tube){const fix=v1191CompatibleFixations(),el=$('eFixation');if(el){const old=el.value;setSelectOptions(el,fix,fix.includes(old)?old:fix[0])}}
   v1191GatherOptions('eFinishGather');v1191GatherOptions('eLiningGather');v1191RefreshFixProduct();const motorL=$('eAngle')?.checked&&$('eFixation')?.value==='TRILHO MOTORIZADO';$('eMotorAngleWrap')?.classList.toggle('hidden',!motorL);if($('eWidth'))$('eWidth').readOnly=!!$('eAngle')?.checked;
 }
@@ -2394,7 +2396,8 @@ document.addEventListener('DOMContentLoaded',()=>{
     const fp=$('eFinishPleat')?.value||'';
     const lining=$('eLiningPleat');if(!lining)return;
     let allowed;
-    if(fp==='WAVE')allowed=['FRANZIDO SUÍÇO','SOBREPOSTO'];
+    if(($('eModel')?.value||'')==='LINING')allowed=['FRANZIDO SUÍÇO','FRANZIDO COM ARGOLAS 19MM','FRANZIDO COM ARGOLAS 29MM','ILHÓS REDONDO','ILHÓS QUADRADO','WAVE','SOBREPOSTO','OUTRO'];
+    else if(fp==='WAVE')allowed=['FRANZIDO SUÍÇO','SOBREPOSTO'];
     else if(fp==='ILHÓS REDONDO'||fp==='ILHÓS QUADRADO')allowed=['FRANZIDO COM ARGOLAS 19MM'];
     else if(fp==='FRANZIDO COM ARGOLAS 29MM'||fp==='FRANZIDO COM ARGOLAS 19MM')allowed=['FRANZIDO COM ARGOLAS 19MM'];
     else allowed=['FRANZIDO SUÍÇO','FRANZIDO COM ARGOLAS 19MM','FRANZIDO COM ARGOLAS 29MM','ILHÓS REDONDO','ILHÓS QUADRADO','WAVE','SOBREPOSTO','OUTRO'];
@@ -3019,4 +3022,69 @@ function payrollRows(competence){const h=hrData(),rows=[];for(const e of h.emplo
     }
     return html;
   };
+})();
+
+
+/* ===== V12.3.3 • HOTFIX FORRO WAVE + PADRÃO NI-0007 =====
+   - Corrige a causa raiz: rotinas antigas não podem usar a prega de acabamento oculta
+     para filtrar o forro quando o modelo é APENAS O FORRO.
+   - CORTINA COMPLETA e APENAS ACABAMENTO mantêm a matriz anterior.
+   - TRILHO DUPLO ESPAÇADO BRANCO NI-0007 é a sugestão padrão do trilho suíço.
+     O vendedor continua podendo selecionar qualquer outro trilho.
+*/
+(function(){
+  let railChangedByUser=false;
+  function el(id){return document.getElementById(id)}
+  function defaultRail(){
+    if(typeof v118DefaultSwissRail!=='function')return null;
+    return v118DefaultSwissRail();
+  }
+  function suggestDefaultRail(force=false){
+    const fix=el('eFixation'),sel=el('eRailProduct');
+    if(!fix||!sel||fix.value!=='TRILHO SUÍÇO')return;
+    if(railChangedByUser&&!force)return;
+    const d=defaultRail();
+    if(d&&[...sel.options].some(o=>String(o.value)===String(d.id))){
+      sel.value=String(d.id);
+      const color=el('eFixColor'); if(color)color.value=d.color||'BRANCO';
+    }
+  }
+
+  document.addEventListener('change',ev=>{
+    const t=ev.target;if(!t)return;
+    if(t.id==='eRailProduct')railChangedByUser=true;
+    if(t.id==='eFixation'&&t.value==='TRILHO SUÍÇO')setTimeout(()=>suggestDefaultRail(false),0);
+  });
+
+  const oldClear=(typeof clearEnv==='function')?clearEnv:null;
+  if(oldClear){
+    clearEnv=function(){
+      const r=oldClear.apply(this,arguments);
+      railChangedByUser=false;
+      setTimeout(()=>suggestDefaultRail(true),0);
+      return r;
+    };
+  }
+
+  const oldReset=(typeof resetQuote==='function')?resetQuote:null;
+  if(oldReset){
+    resetQuote=function(){
+      const r=oldReset.apply(this,arguments);
+      railChangedByUser=false;
+      setTimeout(()=>suggestDefaultRail(true),20);
+      return r;
+    };
+  }
+
+  const oldLoad=(typeof loadCloud==='function')?loadCloud:null;
+  if(oldLoad){
+    loadCloud=async function(){
+      const r=await oldLoad.apply(this,arguments);
+      railChangedByUser=false;
+      setTimeout(()=>suggestDefaultRail(true),80);
+      return r;
+    };
+  }
+
+  document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>suggestDefaultRail(true),650));
 })();

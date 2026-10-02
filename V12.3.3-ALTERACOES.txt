@@ -1,0 +1,8 @@
+V12.3.3
+
+- Corrigida definitivamente a seleção de WAVE em PREGA FORRO quando o modelo é APENAS O FORRO.
+- A correção foi isolada: CORTINA COMPLETA e APENAS O ACABAMENTO mantêm as regras anteriores.
+- Corrigidas rotinas antigas que ainda filtravam o forro usando a prega de acabamento oculta.
+- TRILHO DUPLO ESPAÇADO BRANCO NI-0007 passa a ser a sugestão padrão em FIXAÇÃO SELECIONADA NO ESTOQUE quando a fixação é TRILHO SUÍÇO.
+- O vendedor continua podendo alterar manualmente para qualquer outro trilho disponível.
+- Mantidas as correções anteriores de Outubro Rosa, CONFECÇÃO no orçamento e materiais WAVE do forro.
