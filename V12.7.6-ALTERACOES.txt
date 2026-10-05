@@ -1,0 +1,22 @@
+NOVA IMAGEM ERP — V12.7.6
+
+HOTFIX ISOLADO DO PDF DO PEDIDO
+
+Motivo:
+A versão V12.7.5 possuía múltiplas definições históricas de printCustomerOrder
+no app.js. Para eliminar qualquer conflito, a V12.7.6 usa um arquivo separado
+carregado DEPOIS do app.js e liga o botão ABRIR PEDIDO diretamente à nova rotina.
+
+No documento do pedido, entre a identificação do ambiente e "Materiais deste ambiente":
+- MÃO DE OBRA: valor em R$
+- INSUMOS: valor em R$
+
+Regras:
+- INSUMOS = soma exata da coluna Valor Total dos materiais daquele ambiente.
+- MÃO DE OBRA = Valor deste ambiente - Insumos.
+- Peça sem fixação: mão de obra identificada como confecção / costura.
+- Peça normal: confecção + instalação.
+- A tabela de materiais exibe TOTAL DOS INSUMOS no rodapé.
+- Rodapé de diagnóstico: PDF do Pedido • ERP Nova Imagem V12.7.6.
+
+Base: V12.7.5.
