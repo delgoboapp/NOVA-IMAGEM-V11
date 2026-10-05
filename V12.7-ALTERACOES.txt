@@ -1,0 +1,6 @@
+NOVA IMAGEM ERP — V12.7
+
+- ALTERAR DATA DO PEDIDO (somente GESTOR), com impacto de competência e auditoria.
+- GERAR ETIQUETAS no modal do Pedido e na Ordem de Produção.
+- PDF do pedido com VALOR DESTE AMBIENTE, INSUMOS e MÃO DE OBRA por ambiente.
+- Mantidas as correções de EDITAR AMBIENTE e EXCLUIR/RESTAURAR FIXAÇÃO da V12.6.4.
