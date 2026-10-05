@@ -1,0 +1,20 @@
+NOVA IMAGEM ERP — V12.7.5
+
+HOTFIX DO PDF DO PEDIDO
+
+- Corrigido o documento "ABRIR PEDIDO".
+- Em cada ambiente aparecem obrigatoriamente:
+  1. VALOR DESTE AMBIENTE
+  2. INSUMOS
+  3. MÃO DE OBRA
+
+- INSUMOS = soma exata da coluna VALOR TOTAL da tabela de materiais daquele ambiente.
+- MÃO DE OBRA = VALOR DESTE AMBIENTE - INSUMOS.
+  Dessa forma o resumo fecha exatamente com o valor do ambiente.
+- Em peça sem fixação, a legenda de mão de obra indica "confecção / costura".
+- Em peça normal, indica "confecção + instalação".
+- Adicionado TOTAL DOS INSUMOS no rodapé da tabela de materiais.
+- Adicionada identificação "Documento gerado pelo ERP Nova Imagem • V12.7.5"
+  para facilitar a validação visual da versão do PDF.
+
+Base: V12.7.4 consolidada.

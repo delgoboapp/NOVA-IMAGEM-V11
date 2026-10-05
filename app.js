@@ -4496,3 +4496,231 @@ function payrollRows(competence){const h=hrData(),rows=[];for(const e of h.emplo
   setTimeout(()=>{bindOrderFilters1274();renderOrders();renderHR();renderPayables()},300);
 })();
 
+
+/* ============================================================================
+   V12.7.5 • HOTFIX PDF DO PEDIDO — INSUMOS + MÃO DE OBRA
+   Esta definição é deliberadamente a ÚLTIMA do arquivo para prevalecer sobre
+   qualquer versão antiga de printCustomerOrder.
+   ============================================================================ */
+(function(){
+  const VERSION='V12.7.5';
+  try{companySettings().version=VERSION}catch(_){}
+
+  function orderConditionKey1275(o){
+    if(o?.paymentCondition==='cash')return 'cash';
+    if(o?.paymentCondition==='p18')return 'p18';
+    return 'p4';
+  }
+
+  function orderInstallments1275(o){
+    if(typeof v1214OrderInstallments==='function')return Number(v1214OrderInstallments(o)||1);
+    if(o?.paymentCondition==='cash')return 1;
+    if(o?.paymentCondition==='p18')return 18;
+    return 4;
+  }
+
+  function envNoFix1275(e){
+    const f=norm(e?.fixation||'');
+    return !!e?.excludeFixation ||
+      f==='SEM FIXACAO' ||
+      f==='SEM FIXACAO / SEM INSTALACAO' ||
+      f==='SEM TRILHO E SEM INSTALACAO';
+  }
+
+  function isFixHardware1275(r){
+    const t=norm([r?.product_name,r?.name,r?.source,r?.category].filter(Boolean).join(' '));
+    if(t.includes('DESLIZANTE'))return false;
+    if(t.includes('CORDAO WAVE'))return false;
+    if(t.includes('FITA WAVE'))return false;
+    if(t.includes('TECIDO'))return false;
+    if(t.includes('FORRO'))return false;
+    if(t.includes('ARGOLA'))return false;
+    if(t.includes('ILHOS'))return false;
+    return t.includes('TRILHO')||t.includes('GARRA')||t.includes('TAMPA')||
+      t.includes('VARAO')||t.includes('SUPORTE')||t.includes('TUBO ')||
+      t.includes('MOTOR')||t.includes('MOTORIZADO')||t.includes('CONTROLE REMOTO')||
+      t.includes('SQUARE')||t.includes('COMANDO POR CORDA');
+  }
+
+  function envRows1275(e,o){
+    let rows=[];
+    try{
+      rows=officialOrderRequirements({environments:[e]})||[];
+    }catch(_){}
+    if(envNoFix1275(e))rows=rows.filter(r=>!isFixHardware1275(r));
+    return rows;
+  }
+
+  function rowUnit1275(r,o){
+    const k=orderConditionKey1275(o);
+    if(k==='cash')return Number(r?.price_cash||0);
+    if(k==='p18')return Number(r?.price_18x||0);
+    return Number(r?.price_4x||0);
+  }
+
+  function envSale1275(e,o,q){
+    if(typeof v1214EnvironmentOrderValue==='function'){
+      const x=Number(v1214EnvironmentOrderValue(e,o,q)||0);
+      if(Number.isFinite(x)&&x>0)return x;
+    }
+    const c=calcEnvironment(e);
+    if(!c)return 0;
+    const k=orderConditionKey1275(o);
+    return k==='cash'?Number(c.cash||0):k==='p18'?Number(c.p18||0):Number(c.base4||0);
+  }
+
+  printCustomerOrder=function(o){
+    ensureV119();
+
+    if(!/^\d{6}$/.test(String(o.clientAccessCode||''))){
+      o.clientAccessCode=String(crypto.getRandomValues(new Uint32Array(1))[0]%1000000).padStart(6,'0');
+      queueSave();
+    }
+
+    const q=(db.quotes||[]).find(x=>Number(x.numero)===Number(o.quoteNumber));
+    const cond=typeof v1213PaymentLabel==='function'?v1213PaymentLabel(o):paymentConditionLabel(o.paymentCondition);
+    const installments=Math.max(1,orderInstallments1275(o));
+    const payText=typeof v1214ContractPaymentText==='function'
+      ? v1214ContractPaymentText(o)
+      : `${cond}: ${money(o.agreedValue)}`;
+
+    let envs='';
+
+    for(const e of o.environments||[]){
+      const c=calcEnvironment(e);
+      if(!c)continue;
+
+      const noFix=envNoFix1275(e);
+      const rows=envRows1275(e,o);
+      const materialValue=rows.reduce((sum,r)=>sum+rowUnit1275(r,o)*Number(r.qty||0),0);
+      const envValue=envSale1275(e,o,q);
+
+      // O usuário pediu que INSUMOS seja exatamente a soma da tabela.
+      // MÃO DE OBRA é o restante do valor do ambiente, fechando exatamente o total.
+      const laborValue=Math.max(0,envValue-materialValue);
+
+      const mats=rows.map(r=>{
+        const qty=Number(r.qty||0),unit=rowUnit1275(r,o);
+        return `<tr>
+          <td>${esc(r.internal_code||'-')}</td>
+          <td>${esc(r.product_name||'-')}</td>
+          <td>${esc(r.color||'-')}</td>
+          <td>${qty.toFixed(norm(r.unit)==='M'?2:0)} ${esc(norm(r.unit||'UN'))}</td>
+          <td>${money(unit)}</td>
+          <td>${money(unit*qty)}</td>
+        </tr>`;
+      }).join('');
+
+      envs+=`
+      <div class="env-block">
+        <div class="env-title">${esc(e.name||'-')}</div>
+
+        <table class="env-table">
+          <tr>
+            <th>Medidas</th><td>${Number(e.width||0)} × ${Number(e.height||0)} cm</td>
+            <th>Aberturas</th><td>${Math.max(0,Number(e.leaves||1)-1)}</td>
+          </tr>
+          <tr>
+            <th>Acabamento</th>
+            <td>${c.finishCalc?esc(`${e.finish} / ${e.finishColor} / ${e.finishPleat} ${e.finishGather}:1`):'—'}</td>
+            <th>Forro</th>
+            <td>${c.liningCalc?esc(`${e.lining} / ${e.liningColor} / ${e.liningPleat} ${e.liningGather}:1`):'—'}</td>
+          </tr>
+          <tr>
+            <th>Fixação</th>
+            <td colspan="3"><strong>${noFix?'SEM FIXAÇÃO':esc(`${e.fixation||'-'}${e.fixColor?' • '+e.fixColor:''}`)}</strong></td>
+          </tr>
+        </table>
+
+        <table class="summary-table" style="margin-top:6px">
+          <tr>
+            <th>VALOR DESTE AMBIENTE</th>
+            <th>INSUMOS</th>
+            <th>MÃO DE OBRA</th>
+          </tr>
+          <tr>
+            <td><strong>${money(envValue)}</strong>${installments>1?`<br><small>${installments}x de ${money(envValue/installments)}</small>`:''}</td>
+            <td><strong>${money(materialValue)}</strong><br><small>soma dos materiais abaixo</small></td>
+            <td><strong>${money(laborValue)}</strong><br><small>${noFix?'confecção / costura':'confecção + instalação'}</small></td>
+          </tr>
+        </table>
+
+        <div class="section-title">Materiais deste ambiente</div>
+        <table class="summary-table">
+          <tr><th>SKU</th><th>Produto</th><th>Cor</th><th>Quantidade</th><th>Valor Unitário</th><th>Valor Total</th></tr>
+          ${mats||'<tr><td colspan="6">Sem material oficial vinculado.</td></tr>'}
+          <tr>
+            <th colspan="5" style="text-align:right">TOTAL DOS INSUMOS</th>
+            <th>${money(materialValue)}</th>
+          </tr>
+        </table>
+      </div>`;
+    }
+
+    const cset=companySettings();
+    const warranty=o.documentVersions?.warrantyText||cset.warranty||V119_WARRANTY;
+
+    const body=`
+      <div class="pdf-head">
+        <img src="${location.origin}/icon-512.png">
+        <div class="store-client">
+          <strong>Nova Imagem Cortinas e Persianas</strong><br>
+          Luiz Sergio Delgobo ME<br>
+          CNPJ 15.115.803/0001-69 • IE 90.588.753-06<br>
+          Av. Bonifácio Vilela, 170 • Ponta Grossa–PR • CEP 84010-330<br><br>
+          <strong>PEDIDO Nº ${String(o.numero).padStart(6,'0')}</strong><br>
+          <strong>Cliente:</strong> ${esc(o.client||'-')}<br>
+          <strong>Contato:</strong> ${esc(o.contact||'-')}<br>
+          <strong>Endereço:</strong> ${esc(o.address||'-')}<br>
+          <strong>Instalação prevista:</strong> ${fmtDate(o.deliveryDate)}<br>
+          <strong>Vendedor:</strong> ${esc(displaySeller(o))}
+        </div>
+      </div>
+
+      ${envs}
+
+      <div class="section-title">Acompanhe seu pedido</div>
+      <div class="customer-access-box">
+        <img class="customer-qr" src="${customerPortalQrUrl(o.numero)}" alt="QR Code para acompanhar o pedido">
+        <div>
+          <strong>Portal do Cliente Nova Imagem</strong><br>
+          Aponte a câmera para o QR Code.<br><br>
+          Pedido: <strong>${String(o.numero).padStart(6,'0')}</strong><br>
+          Senha: <strong>${esc(o.clientAccessCode||'NÃO GERADA')}</strong><br>
+          <a class="customer-portal-link" href="${customerPortalUrl(o.numero)}" target="_blank">Clique aqui para acompanhar seu pedido</a>
+        </div>
+      </div>
+
+      <div class="section-title">Condição contratada</div>
+      <p class="totals">${esc(payText)}</p>
+
+      <div class="section-title">CONTRATO DE FORNECIMENTO E INSTALAÇÃO</div>
+      <div class="conditions">
+        <p><strong>CONTRATADA:</strong> Luiz Sergio Delgobo ME, CNPJ 15.115.803/0001-69.</p>
+        <p><strong>CONTRATANTE:</strong> ${esc(o.client||'-')}, endereço ${esc(o.address||'-')}.</p>
+        <p><strong>OBJETO:</strong> fornecimento e instalação dos produtos descritos neste pedido.</p>
+        <p><strong>CONDIÇÃO:</strong> ${esc(payText)}</p>
+        <p><strong>PRAZO PREVISTO:</strong> instalação/entrega em ${fmtDate(o.deliveryDate)}.</p>
+      </div>
+
+      <div class="signature-grid">
+        <div><div class="signature-line"></div><strong>Cliente / Contratante</strong></div>
+        <div><div class="signature-line"></div><strong>Nova Imagem / Vendedor</strong></div>
+      </div>
+
+      <div style="page-break-before:always"></div>
+      <div class="section-title">TERMO DE GARANTIA</div>
+      <div style="white-space:pre-line;line-height:1.55">${esc(warranty)}</div>
+      <br>
+      <p><strong>Pedido:</strong> ${String(o.numero).padStart(6,'0')} • <strong>Cliente:</strong> ${esc(o.client||'-')}</p>
+      <div class="signature-grid">
+        <div><div class="signature-line"></div><strong>Cliente</strong></div>
+        <div><div class="signature-line"></div><strong>Nova Imagem</strong></div>
+      </div>
+
+      <div style="font-size:8px;color:#667a79;margin-top:8px">Documento gerado pelo ERP Nova Imagem • V12.7.5</div>`;
+
+    printWindow(body);
+  };
+})();
+
