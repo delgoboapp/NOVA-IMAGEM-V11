@@ -1,0 +1,8 @@
+NOVA IMAGEM ERP — V12.6.1 CORREÇÃO
+
+- Corrigido botão EDITAR no resumo do orçamento.
+  O problema era uma chamada a CSS.escape incompatível com o navegador em uso, que interrompia a rotina depois de desenhar a linha do ambiente.
+- Corrigido botão EXCLUIR FIXAÇÃO com vínculo direto e confiável ao evento de clique.
+- Ao excluir fixação, DESLIZANTES e CORDÃO WAVE permanecem.
+- Reforçada a inicialização dos filtros/PDF de Pedidos e do resumo do orçamento.
+- Atualizado cache-buster do app.js para ?v=12.6.1, evitando carregar JS antigo do navegador.

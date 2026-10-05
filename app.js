@@ -3234,7 +3234,7 @@ function payrollRows(competence){const h=hrData(),rows=[];for(const e of h.emplo
    V12.5 • FOLHA DE PAGAMENTO + PEDIDOS + PRESTADORES + PDFs PADRONIZADOS
    ============================================================================ */
 (function(){
-  const V125='V12.6';
+  const V125='V12.6.1';
   const BR_DATE=d=>{try{return new Date(String(d)+'T12:00:00').toLocaleDateString('pt-BR')}catch{return d||'-'}};
   const monthLabel=m=>{if(!m)return '-';const [y,mo]=String(m).split('-');return `${mo}/${y}`};
   function ensureV125(){
@@ -3395,7 +3395,7 @@ function payrollRows(competence){const h=hrData(),rows=[];for(const e of h.emplo
    V12.6 • ETIQUETAS + EDIÇÃO DE AMBIENTE + FIXAÇÃO POR PEÇA + PEDIDOS
    ============================================================================ */
 (function(){
-  const V126='V12.6';
+  const V126='V12.6.1';
   try{companySettings().version=V126}catch(_){ }
 
   // ---------- PEDIDOS: filtros confiáveis + PDF ----------
@@ -3486,7 +3486,7 @@ function payrollRows(competence){const h=hrData(),rows=[];for(const e of h.emplo
   renderQuote=function(){
     v126OldRenderQuote();
     document.querySelectorAll('[data-del-env]').forEach(del=>{
-      const id=del.dataset.delEnv;if(del.parentElement?.querySelector(`[data-edit-env="${CSS.escape(id)}"]`))return;
+      const id=del.dataset.delEnv;if([...del.parentElement?.querySelectorAll('[data-edit-env]')||[]].some(x=>String(x.dataset.editEnv)===String(id)))return;
       const b=document.createElement('button');b.className='btn secondary';b.dataset.editEnv=id;b.textContent='Editar';b.style.marginRight='6px';b.onclick=()=>v126LoadEnvironment((draft.environments||[]).find(x=>String(x.id)===String(id)));del.parentElement?.insertBefore(b,del)
     });
   };
@@ -3519,5 +3519,7 @@ function payrollRows(competence){const h=hrData(),rows=[];for(const e of h.emplo
     const body=`<div class="screen-only" style="margin-bottom:8px"><button onclick="window.opener && window.opener.generateLabelsV126(${Number(o.numero)})">GERAR ETIQUETAS</button></div><div class="pdf-head"><img src="${location.origin}/icon-512.png"><div class="store-client"><strong>Nova Imagem Cortinas & Persianas</strong><br><strong>ORDEM DE SERVIÇO / PRODUÇÃO</strong><br><br><strong>Pedido:</strong> ${String(o.numero).padStart(6,'0')}<br><strong>Cliente:</strong> ${esc(o.client||'-')}<br><strong>Contato:</strong> ${esc(o.contact||'-')}<br><strong>Endereço:</strong> ${esc(o.address||'-')}<br><strong>Instalação prevista:</strong> ${fmtDate(o.deliveryDate)}<br><strong>Vendedor:</strong> ${esc(displaySeller(o))}</div></div>${envs}<div class="section-title">Observações gerais</div><p>${esc((o.notes||'').trim()||'Sem observações gerais.')}</p>`;printWindow(body)
   };
 
-  document.addEventListener('DOMContentLoaded',()=>{setTimeout(()=>{v126BindOrderFilters();v126FillOrderSellers();v126SyncFixButton();try{renderOrders()}catch(_){ }},300)});
+  function v126BindFixButton(){const b=$('toggleEnvFixBtn');if(!b)return;b.onclick=()=>{v126ExcludeFixation=!v126ExcludeFixation;v126SyncFixButton();try{updatePreview()}catch(e){console.error('V12.6.1 updatePreview fixation',e)}}}
+  const v126Boot=()=>setTimeout(()=>{v126BindOrderFilters();v126FillOrderSellers();v126SyncFixButton();v126BindFixButton();try{renderOrders()}catch(e){console.error('V12.6.1 renderOrders',e)}try{renderQuote()}catch(e){console.error('V12.6.1 renderQuote',e)}},300);
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',v126Boot);else v126Boot();
 })();
