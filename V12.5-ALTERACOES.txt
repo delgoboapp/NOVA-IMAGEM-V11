@@ -1,0 +1,29 @@
+NOVA IMAGEM ERP • V12.5
+
+1. DEPARTAMENTO PESSOAL / FOLHA
+- Botão GERAR FOLHA para colaboradores CLT.
+- Holerite com salário, gratificação por vendas, INSS, IRRF, FGTS informativo e líquido.
+- GERAR CONTAS A PAGAR liberado somente após VER EM PDF.
+- Novo menu GESTÃO > FOLHA DE PAGAMENTO.
+- Status visual por vencimento e retorno da folha ao Departamento Pessoal.
+- Inclusão de desconto e gratificação com data, natureza e justificativa do gestor.
+
+2. PRESTADORES DE SERVIÇO
+- Inserir desconto e gratificação.
+- Recibo considera ajustes cadastrados.
+- Upload e armazenamento do contrato de prestação de serviços (até 1 MB).
+- Botão para abrir o contrato armazenado.
+
+3. PEDIDOS
+- Filtros por vendedor, data inicial e data final.
+- GERAR PDF com soma dos pedidos a valor à vista e comissão do vendedor filtrado.
+- Gestor pode ALTERAR DATA DO PEDIDO, com aviso do impacto no fechamento e auditoria.
+- Pedido do cliente exibe VALOR DESTE AMBIENTE, TOTAL DE INSUMOS e TOTAL DE CONFECÇÃO.
+
+4. DOCUMENTOS / PDFs
+- Padronização visual dos documentos com cores, tabelas e logomarca da Nova Imagem.
+- TERMO DE GARANTIA removido do Painel Comercial e mantido no Pedido.
+
+5. ORGANIZAÇÃO DA ENTREGA
+- Versão atualizada para V12.5.
+- Pacote de entrega mantém apenas este arquivo de alterações; históricos antigos e ZIPs legados foram removidos do pacote.
