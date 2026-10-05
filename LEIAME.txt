@@ -1,0 +1,111 @@
+NOVA IMAGEM ERP — V12.5.7
+==========================
+
+Entrega consolidada sobre a base mais recente recebida do GitHub.
+Esta versão preserva as correções já existentes na base enviada e consolida as novas funções solicitadas.
+
+PRINCIPAIS NOVIDADES E VALIDAÇÕES
+---------------------------------
+
+1. ESTOQUE — CORRIGIR DADOS EM MASSA
+- Novo botão "CORRIGIR DADOS" na tela Estoque.
+- Permite editar vários produtos sem abrir item por item.
+- Campos editáveis em massa:
+  • Quantidade em estoque;
+  • Custo;
+  • Markup (%);
+  • Preço 4x.
+- Ao alterar custo ou markup, o sistema recalcula automaticamente 4x, à vista e 18x.
+- Ao alterar diretamente o preço 4x, o sistema recalcula o markup correspondente e depois recalcula à vista e 18x.
+- Linhas modificadas ficam destacadas antes da gravação.
+- Botão "REVERTER ALTERAÇÕES" restaura todos os dados ao estado carregado.
+- Botão "CONFIRMAR ALTERAÇÕES" grava apenas os itens efetivamente alterados.
+- Gravação em lote no D1 com histórico individual por campo alterado.
+- Motivo geral obrigatório para auditoria da correção em massa.
+
+2. DESCONTO NO ORÇAMENTO — % OU R$
+- Novo seletor de tipo de desconto:
+  • Percentual (%);
+  • Valor fixo (R$).
+- O valor fixo é abatido diretamente de cada condição comercial exibida no orçamento.
+- Continua obrigatória a justificativa quando houver desconto.
+- Para regras internas de limite/comissão, o desconto fixo recebe percentual equivalente calculado sobre a referência 4x.
+- Impressões passam a identificar corretamente se o desconto foi em percentual ou em reais.
+
+3. PEDIDOS — DATA DO PEDIDO
+- A listagem de Pedidos exibe a coluna DATA.
+- Mantidos filtros por vendedor e período.
+- Gestor pode alterar a data do pedido.
+- Alterações de data geram histórico e auditoria.
+- O sistema mostra o impacto de competência antes da confirmação da nova data.
+
+4. PEDIDOS — PDF / DOCUMENTO DO CLIENTE
+- Mantida e validada a rotina consolidada do PDF do pedido.
+- Em cada ambiente, antes da relação de materiais, são exibidos:
+  • MÃO DE OBRA;
+  • INSUMOS.
+- INSUMOS = soma dos materiais oficiais do ambiente.
+- MÃO DE OBRA = valor do ambiente menos os insumos apresentados.
+- Em peça sem fixação, a identificação fica como confecção/costura.
+- Em peça normal, a mão de obra contempla confecção + instalação.
+- A tabela de materiais mostra TOTAL DOS INSUMOS no rodapé.
+
+5. SEM TRILHO E SEM INSTALAÇÃO
+- Mantida a opção "SEM TRILHO E SEM INSTALAÇÃO" no orçamento.
+- A regra remove ferragens de fixação e custo de instalação.
+- Permanecem os componentes pertencentes à própria cortina, quando aplicáveis.
+- Documentos operacionais e PDF do pedido não exibem ferragens indevidas nesse modo.
+
+6. TECIDOS DE ACABAMENTO E FORRO DINÂMICOS
+- Validado que os seletores do orçamento são alimentados pelo estoque oficial.
+- Produto ativo em categoria "TECIDO DE ACABAMENTO" aparece automaticamente no campo de acabamento.
+- Produto ativo em categoria "TECIDO DE FORRO" aparece automaticamente no campo de forro.
+- Cores são carregadas conforme o produto selecionado.
+- Exemplo: um novo forro OXFORD cadastrado corretamente no estoque oficial passa a ficar disponível no orçamento sem cadastro fixo no código.
+
+7. DEPARTAMENTO PESSOAL — COLABORADORES CLT
+- Tela detalhada por colaborador.
+- ADICIONAR PAGAMENTO.
+- ADICIONAR GRATIFICAÇÃO.
+- ADICIONAR DESCONTO.
+- Gratificações e descontos aparecem no demonstrativo/holerite.
+- Estrutura preparada para gratificação tributável e não tributável.
+- Histórico de pagamentos integrado ao Contas a Pagar.
+- Mantida a distinção entre salário, gratificações/comissões, descontos e líquido.
+
+8. DEPARTAMENTO PESSOAL — PRESTADORES
+- Tela detalhada por prestador.
+- ADICIONAR PAGAMENTO.
+- ADICIONAR GRATIFICAÇÃO.
+- ADICIONAR DESCONTO.
+- Demonstrativo/recibo de prestação de serviço em vez de holerite.
+- Gratificações e descontos entram no líquido do demonstrativo.
+- Cadastro preserva contrato/anexo quando existente.
+
+9. DIAS ÚTEIS / DIAS TRABALHADOS
+- Mantida a lógica do módulo de Departamento Pessoal para período de trabalho e ocorrências cadastradas.
+- O sistema não deve tratar simples ausência de ponto como presença comprovada.
+- Demonstrativos devem distinguir dias úteis do período das ocorrências registradas.
+
+10. NOMENCLATURA COMERCIAL / GERENCIAL
+- "CONFECÇÃO" permanece como nomenclatura comercial para fabricação da cortina.
+- Relatórios gerenciais podem discriminar mão de obra, confecção, instalação e insumos conforme a finalidade do demonstrativo.
+
+11. VERSÃO
+- Interface, login e página inicial identificados como ERP NOVA IMAGEM V12.5.7.
+- Configuração interna de versão consolidada em V12.5.7.
+- Hotfix do PDF do pedido incorporado à entrega V12.5.7.
+
+VALIDAÇÕES TÉCNICAS EXECUTADAS NESTA ENTREGA
+--------------------------------------------
+- Verificação de sintaxe JavaScript do app principal.
+- Verificação de sintaxe do hotfix do PDF.
+- Verificação de sintaxe das Functions/API.
+- Conferência das referências do arquivo de hotfix no index.html.
+- Conferência dos IDs e acionamento do botão de correção em massa.
+- Conferência da ligação do estoque oficial com tecidos de acabamento/forro.
+- Conferência da versão exibida na interface.
+
+OBSERVAÇÃO IMPORTANTE
+---------------------
+A validação local cobre estrutura, sintaxe, integração entre funções e consistência do código recebido. Operações que dependem do ambiente Cloudflare/D1 real (login, gravação definitiva, permissões, bindings e dados existentes no banco de produção) devem ser confirmadas após o deploy da V12.5.7 no ambiente real, porque esse banco e seus bindings não estão disponíveis dentro do pacote local.

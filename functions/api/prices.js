@@ -267,6 +267,42 @@ export async function onRequestPost(context){
       const stm=[];for(const x of prepared){stm.push(context.env.DB.prepare(`UPDATE price_products SET stock_quantity=?,cost=?,multiplier=?,price_4x=?,price_cash=?,price_18x=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(x.newQty,x.newCost,x.mult,x.p4,x.pc,x.p18,Number(x.product.id)));stm.push(context.env.DB.prepare(`INSERT INTO price_product_history (product_id,internal_code,action,field_name,old_value,new_value,reason,changed_by) VALUES (?,?,?,?,?,?,?,?)`).bind(Number(x.product.id),text(x.product.internal_code),'ENTRADA POR COMPRA','stock_quantity',String(x.oldQty),String(x.newQty),`${orderNumber}${invoice?' • NF '+invoice:''} • +${x.qty} ${x.product.unit||''} • custo entrada ${x.inCost}`,text(user.username)))}await context.env.DB.batch(stm);return json({ok:true,movements:prepared.map(x=>({product_id:x.product.id,internal_code:x.product.internal_code,before:x.oldQty,after:x.newQty,cost_before:x.oldCost,cost_after:x.newCost}))});
     }
 
+
+    if(action==='EDITAR_LOTE'){
+      if(!gestorOnly(user))return json({error:'Apenas usuários GESTOR podem corrigir o estoque em massa.'},403);
+      const reason=text(body.reason);
+      const items=Array.isArray(body.items)?body.items:[];
+      if(!reason)return json({error:'Informe o motivo geral da alteração.'},400);
+      if(!items.length)return json({error:'Nenhum produto informado.'},400);
+      if(items.length>500)return json({error:'O lote excede 500 produtos.'},400);
+
+      const ids=[...new Set(items.map(x=>Number(x.id)).filter(Boolean))];
+      if(ids.length!==items.length)return json({error:'Há produtos inválidos ou duplicados no lote.'},400);
+      const placeholders=ids.map(()=>'?').join(',');
+      const current=await context.env.DB.prepare(`SELECT * FROM price_products WHERE id IN (${placeholders})`).bind(...ids).all();
+      const byId=new Map((current.results||[]).map(x=>[Number(x.id),x]));
+      if(byId.size!==ids.length)return json({error:'Um ou mais produtos não foram encontrados.'},404);
+
+      const statements=[];
+      for(const row of items){
+        const id=Number(row.id),product=byId.get(id);
+        const stockQuantity=num(row.stock_quantity,NaN),cost=num(row.cost,NaN),markupPercent=num(row.markup_percent,NaN);
+        if(!Number.isFinite(stockQuantity)||stockQuantity<0)return json({error:`Quantidade inválida em ${product.internal_code}.`},400);
+        if(!Number.isFinite(cost)||cost<0)return json({error:`Custo inválido em ${product.internal_code}.`},400);
+        if(!Number.isFinite(markupPercent)||markupPercent<0)return json({error:`Markup inválido em ${product.internal_code}.`},400);
+        const multiplier=1+(markupPercent/100),pr=calculatedPrices(cost,markupPercent,product.product_name);
+        statements.push(context.env.DB.prepare(`UPDATE price_products SET stock_quantity=?,cost=?,markup_percent=?,multiplier=?,price_4x=?,price_cash=?,price_18x=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(stockQuantity,cost,markupPercent,multiplier,pr.p4,pr.cash,pr.p18,id));
+        const changes=[['stock_quantity',product.stock_quantity,stockQuantity],['cost',product.cost,cost],['markup_percent',product.markup_percent,markupPercent],['multiplier',product.multiplier,multiplier],['price_4x',product.price_4x,pr.p4],['price_cash',product.price_cash,pr.cash],['price_18x',product.price_18x,pr.p18]];
+        for(const [fieldName,oldValue,newValue] of changes){
+          if(Math.abs(num(oldValue,0)-num(newValue,0))>1e-9){
+            statements.push(context.env.DB.prepare(`INSERT INTO price_product_history (product_id,internal_code,action,field_name,old_value,new_value,reason,changed_by) VALUES (?,?,?,?,?,?,?,?)`).bind(id,text(product.internal_code),'EDITAR_LOTE',fieldName,text(oldValue),text(newValue),reason,text(user.username)));
+          }
+        }
+      }
+      await context.env.DB.batch(statements);
+      return json({ok:true,updated:items.length,message:'Alterações em massa aplicadas com sucesso.'});
+    }
+
     if(action==='EDITAR'){
       const id=Number(body.id);
       const reason=text(body.reason);
