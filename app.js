@@ -277,6 +277,8 @@ let currentUser=JSON.parse(sessionStorage.getItem('novaV9User')||'null');
 let db={quotes:[],orders:[],clients:[],wholesaleClients:[],wholesaleSales:[],users:[],disabledUsers:[],products:[],suppliers:[],payables:[],purchaseOrders:[],reworks:[],agenda:[],purchaseAlerts:[],auditLog:[],attachments:[],customerFeedback:[],discountApprovals:[],userAlerts:[],inspirations:[],blogPosts:[],candidates:[],jobs:[],priceConfig:clone(DEFAULT_PRICE_CONFIG),settings:{}};
 let wholesaleDraft={clientId:'',date:today(),termDays:28,dueDate:'',items:[]};
 let draft={numero:null,client:'',date:today(),address:'',street:'',number:'',complement:'',neighborhood:'',cep:'',document:'',contact:'',seller:'',sellerUser:'',travel:0,discountPercent:0,discountReason:'',environments:[],blinds:[],looseProducts:[]};
+let quoteEditingEnvironmentId=null;
+let quoteExcludeFixation=false;
 let editingClientId=null;
 let priceProducts=[];
 let selectedPriceProductIds=new Set();
@@ -387,46 +389,148 @@ function fixationCalc(kind,widthM,model,leaves,fixColor,railProductId,supportMat
   if(kind==='TRILHO MOTORIZADO'){const x=swissBase(),complete=model==='COMPLETE';const fixed=Number(complete?(c.motor.baseComplete??3500):(c.motor.baseSingle??2000));const pct=Number(complete?(c.motor.completePct??25):(c.motor.singlePct??15));const total=fixed+x.base*(1+pct/100);return {kind,meters:x.rounded,clamps:x.clamps,ends:x.ends,hardwareBase:x.base,total,detail:`Base trilho suíço duplo espaçado ${x.rounded.toFixed(1)}m • motor ${money(fixed)} + ${pct}% do sistema`}}
   const multiplier=model==='COMPLETE'?2:1;const rodMeters=widthM*multiplier;const supports=widthM<=2?2:widthM<=3.5?3:widthM<=4.5?4:5;const ends=model==='COMPLETE'?4:2;const isTube=String(kind||'').startsWith('TUBO ');const tubeSize=kind.includes('19')?'19':'28';const mat=norm(supportMaterial)==='PVC'?'PVC':'ALUMINIO';const supportName=isTube?(model==='COMPLETE'?`SUPORTE 19/28 ${mat}`:`SUPORTE ${tubeSize}MM ${mat}`):(model==='COMPLETE'?'SUPORTE 28/28':'SUPORTE WAVE 28');const supportSku=(priceProducts||[]).find(p=>Number(p.active??1)===1&&norm(p.category).includes('ACESS')&&norm(p.product_name)===norm(supportName)&&norm(p.color)===norm(fixColor||''));const capName=isTube?`TAMPA PARA TUBO EM ALUMINIO ${tubeSize}MM`:'';const capSku=isTube?officialProductByName(capName,fixColor):null;const supportUnit=supportSku?Number(supportSku.price_4x||0):Number(c.wave.support||0);const rodUnit=isTube?0:Number(c.wave.rodPerMeter||0);const capUnit=capSku?Number(capSku.price_4x||0):Number(c.wave.end||0);const base=rodMeters*rodUnit+supports*supportUnit+ends*capUnit;let total=base;if(kind.includes('COMANDO'))total=base*(1+Number(c.cordPct||0)/100);return {kind,meters:rodMeters,supports,ends,supportName,supportProductId:supportSku?.id||null,supportInternalCode:supportSku?.internal_code||'',capName,capProductId:capSku?.id||null,hardwareBase:base,total,detail:`${rodMeters.toFixed(2)}m • ${supports} ${supportName.toLowerCase()} • ${ends} tampas${isTube?' • tubo sem preço cadastrado':''}`}}
 
-function calcEnvironment(e){const w=Number(e.width)/100,h=Number(e.height)/100,leaves=Number(e.leaves||1);if(!w||!h)return null;const finish=e.model!=='LINING'?fabricCalc('finish',e.finish,w,h,e.finishGather,e.finishProductId,e.finishColor):null;const lining=e.model!=='FINISH'?fabricCalc('lining',e.lining,w,h,e.liningGather,e.liningProductId,e.liningColor):null;const layers=[finish,lining].filter(Boolean).length;const lateral=h*2*leaves*layers;const bars=(finish?.gathered||0)+(lining?.gathered||0);const sewingMeters=lateral+bars;const sewingCost=sewingMeters*Number(db.priceConfig.sewingPerMeter||0);const finishPleat=finish?finish.consumption*Number(db.priceConfig.pleatLabor[e.finishPleat]||0):0;const liningPleat=lining?lining.consumption*Number(db.priceConfig.pleatLabor[e.liningPleat]||0):0;const customPleat=Number(e.customPleat||0);let sliderQtyPerLayer=Math.floor(Number(e.width)/Number(db.priceConfig.sliders.spacingCm||5));
-if(sliderQtyPerLayer%2!==0)sliderQtyPerLayer=Math.max(0,sliderQtyPerLayer-1);
-let finishSliders=finish?sliderQtyPerLayer:0,liningSliders=lining?sliderQtyPerLayer:0;
-// V12.2.9: deslizantes.
-// Cortina simples mantém 1 deslizante a cada 5 cm.
-// Cortina completa usa 1 deslizante a cada 3 cm no total, sempre arredondando
-// para cima até o próximo múltiplo de 4.
-if(finish&&lining){
-  const totalRaw=Number(e.width)/3;
-  const totalRounded=Math.ceil(totalRaw/4)*4;
-  const finishUsesWave=e.finishPleat==='WAVE';
-  const liningUsesWave=e.liningPleat==='WAVE';
-  if(finishUsesWave&&!liningUsesWave){
-    finishSliders=totalRounded;
-    liningSliders=0;
-  }else if(!finishUsesWave&&liningUsesWave){
-    finishSliders=0;
-    liningSliders=totalRounded;
-  }else{
-    finishSliders=totalRounded/2;
-    liningSliders=totalRounded/2;
+function calcEnvironment(e){
+  const w=Number(e.width)/100,h=Number(e.height)/100,leaves=Number(e.leaves||1);
+  if(!w||!h)return null;
+  const finish=e.model!=='LINING'?fabricCalc('finish',e.finish,w,h,e.finishGather,e.finishProductId,e.finishColor):null;
+  const lining=e.model!=='FINISH'?fabricCalc('lining',e.lining,w,h,e.liningGather,e.liningProductId,e.liningColor):null;
+  const layers=[finish,lining].filter(Boolean).length;
+  const lateral=h*2*leaves*layers;
+  const bars=(finish?.gathered||0)+(lining?.gathered||0);
+  const sewingMeters=lateral+bars;
+  const sewingCost=sewingMeters*Number(db.priceConfig.sewingPerMeter||0);
+  const finishPleat=finish?finish.consumption*Number(db.priceConfig.pleatLabor[e.finishPleat]||0):0;
+  const liningPleat=lining?lining.consumption*Number(db.priceConfig.pleatLabor[e.liningPleat]||0):0;
+  const customPleat=Number(e.customPleat||0);
+  let sliderQtyPerLayer=Math.floor(Number(e.width)/Number(db.priceConfig.sliders.spacingCm||5));
+  if(sliderQtyPerLayer%2!==0)sliderQtyPerLayer=Math.max(0,sliderQtyPerLayer-1);
+  let finishSliders=finish?sliderQtyPerLayer:0,liningSliders=lining?sliderQtyPerLayer:0;
+  if(finish&&lining){
+    const totalRaw=Number(e.width)/3;
+    const totalRounded=Math.ceil(totalRaw/4)*4;
+    const finishUsesWave=e.finishPleat==='WAVE';
+    const liningUsesWave=e.liningPleat==='WAVE';
+    if(finishUsesWave&&!liningUsesWave){finishSliders=totalRounded;liningSliders=0}
+    else if(!finishUsesWave&&liningUsesWave){finishSliders=0;liningSliders=totalRounded}
+    else{finishSliders=totalRounded/2;liningSliders=totalRounded/2}
+  }
+  const accessoryFor=(pleat,calc)=>{
+    if(!calc)return {qty:0,cost:0,name:'',labor:0};
+    const gatheredCm=Number(calc.gathered||0)*100;let name='',spacing=0,laborUnit=0,header=0;
+    if(pleat==='FRANZIDO COM ARGOLAS 19MM'){name='ARGOLA 19MM';spacing=7;laborUnit=1.20}
+    else if(pleat==='FRANZIDO COM ARGOLAS 29MM'){name='ARGOLA 29MM';spacing=7;laborUnit=1.20}
+    else if(pleat==='ILHÓS REDONDO'){name='ILHOS REDONDO';spacing=14;laborUnit=1.50;header=Number(calc.gathered||0)*9}
+    else if(pleat==='ILHÓS QUADRADO'){name='ILHOS QUADRADO';spacing=14;laborUnit=1.50;header=Number(calc.gathered||0)*9}
+    else return {qty:0,cost:0,name:'',labor:0};
+    let qty=Math.ceil(gatheredCm/spacing);if(qty%2)qty++;
+    const sku=officialProductByName(name,e.fixColor)||officialProductLike(name.split(' '),e.fixColor);
+    return {qty,name,productId:sku?.id||null,unitPrice:Number(sku?.price_4x||0),cost:qty*Number(sku?.price_4x||0),labor:qty*laborUnit+header}
+  };
+  const finishAccessory=accessoryFor(e.finishPleat,finish),liningAccessory=accessoryFor(e.liningPleat,lining);
+  const accessoryCost=finishAccessory.cost+liningAccessory.cost;
+  const accessoryLabor=finishAccessory.labor+liningAccessory.labor;
+  const sliderCost=finishSliders*Number(db.priceConfig.sliders.finish||0)+liningSliders*Number(db.priceConfig.sliders.lining||0);
+  const rawFixation=fixationCalc(e.fixation,w,e.model,leaves,e.fixColor,e.railProductId,e.supportMaterial);
+  const rawInstall=installPrice(h,w);
+  const excluded=!!e.excludeFixation;
+  const fixation=excluded?{...rawFixation,total:0,hardwareBase:0,detail:'FIXAÇÃO EXCLUÍDA'}:rawFixation;
+  const install=excluded?0:rawInstall;
+  const laborTotal=sewingCost+finishPleat+liningPleat+customPleat+accessoryLabor+install;
+  const base4=(finish?.cost||0)+(lining?.cost||0)+sliderCost+accessoryCost+fixation.total+laborTotal;
+  const p18=base4*(1+Number(db.priceConfig.terms.p18AddPct||0)/100);
+  const cash=base4*(1-Number(db.priceConfig.terms.cashDiscountPct||0)/100);
+  return {...e,finishCalc:finish,liningCalc:lining,lateral,bars,sewingMeters,sewingCost,finishPleat,liningPleat,sliderQtyPerLayer,finishSliders,liningSliders,sliderCost,finishAccessory,liningAccessory,accessoryCost,accessoryLabor,fixationCalc:fixation,installCost:install,laborTotal,base4,p18,cash,alerts:[finish?.mode==='ALTURA'?'ACABAMENTO POR ALTURA':'',lining?.mode==='ALTURA'?'FORRO POR ALTURA':'',finish?.pricePct?`LINHO SINTÉTICO +${finish.pricePct}%`:''].filter(Boolean)}
+}
+function envFromForm(){
+  applyPleatGatherRules();
+  const height=Number($('eHeight').value),finish=$('eFinish').value,finishColor=$('eFinishColor').value,lining=$('eLining').value,liningColor=$('eLiningColor').value;
+  const finishSku=resolveOfficialFabric('TECIDO DE ACABAMENTO',finish,finishColor,height),liningSku=resolveOfficialFabric('TECIDO DE FORRO',lining,liningColor,height);
+  return {
+    id:uid(),name:$('eName').value.trim(),width:Number($('eWidth').value),height,leaves:Number($('eLeaves').value),
+    model:$('eModel').value,finish,finishColor,finishProductId:finishSku?.id||null,finishInternalCode:finishSku?.internal_code||'',finishOfficialName:finishSku?.product_name||'',
+    lining,liningColor,liningProductId:liningSku?.id||null,liningInternalCode:liningSku?.internal_code||'',liningOfficialName:liningSku?.product_name||'',
+    finishPleat:$('eFinishPleat').value,finishGather:$('eFinishGather').value,liningPleat:$('eLiningPleat').value,liningGather:$('eLiningGather').value,
+    fixation:$('eFixation').value,
+    fixColor:$('eFixation').value==='TRILHO SUÍÇO'?(officialProductById($('eRailProduct')?.value)?.color||''):$('eFixColor').value,
+    railProductId:$('eFixation').value==='TRILHO SUÍÇO'?Number($('eRailProduct')?.value||0)||null:null,
+    railInternalCode:$('eFixation').value==='TRILHO SUÍÇO'?(officialProductById($('eRailProduct')?.value)?.internal_code||''):'',
+    railProductName:$('eFixation').value==='TRILHO SUÍÇO'?(officialProductById($('eRailProduct')?.value)?.product_name||''):'',
+    supportMaterial:$('eSupportMaterial')?.value||'ALUMINIO',customPleat:Number($('eCustomPleat').value||0),notes:$('eNotes').value.trim(),
+    excludeFixation:!!quoteExcludeFixation
   }
 }
-const accessoryFor=(pleat,calc)=>{if(!calc)return {qty:0,cost:0,name:'',labor:0};const gatheredCm=Number(calc.gathered||0)*100;let name='',spacing=0,laborUnit=0,header=0;if(pleat==='FRANZIDO COM ARGOLAS 19MM'){name='ARGOLA 19MM';spacing=7;laborUnit=1.20}else if(pleat==='FRANZIDO COM ARGOLAS 29MM'){name='ARGOLA 29MM';spacing=7;laborUnit=1.20}else if(pleat==='ILHÓS REDONDO'){name='ILHOS REDONDO';spacing=14;laborUnit=1.50;header=Number(calc.gathered||0)*9}else if(pleat==='ILHÓS QUADRADO'){name='ILHOS QUADRADO';spacing=14;laborUnit=1.50;header=Number(calc.gathered||0)*9}else return {qty:0,cost:0,name:'',labor:0};let qty=Math.ceil(gatheredCm/spacing);if(qty%2)qty++;const sku=officialProductByName(name,e.fixColor)||officialProductLike(name.split(' '),e.fixColor);return {qty,name,productId:sku?.id||null,unitPrice:Number(sku?.price_4x||0),cost:qty*Number(sku?.price_4x||0),labor:qty*laborUnit+header}};const finishAccessory=accessoryFor(e.finishPleat,finish),liningAccessory=accessoryFor(e.liningPleat,lining);const accessoryCost=finishAccessory.cost+liningAccessory.cost;const accessoryLabor=finishAccessory.labor+liningAccessory.labor;const sliderCost=finishSliders*Number(db.priceConfig.sliders.finish||0)+liningSliders*Number(db.priceConfig.sliders.lining||0);const fixation=fixationCalc(e.fixation,w,e.model,leaves,e.fixColor,e.railProductId,e.supportMaterial);const install=installPrice(h,w);const laborTotal=sewingCost+finishPleat+liningPleat+customPleat+accessoryLabor+install;const base4=(finish?.cost||0)+(lining?.cost||0)+sliderCost+accessoryCost+fixation.total+laborTotal;const p18=base4*(1+Number(db.priceConfig.terms.p18AddPct||0)/100);const cash=base4*(1-Number(db.priceConfig.terms.cashDiscountPct||0)/100);return {...e,finishCalc:finish,liningCalc:lining,lateral,bars,sewingMeters,sewingCost,finishPleat,liningPleat,sliderQtyPerLayer,finishSliders,liningSliders,sliderCost,finishAccessory,liningAccessory,accessoryCost,accessoryLabor,fixationCalc:fixation,installCost:install,laborTotal,base4,p18,cash,alerts:[finish?.mode==='ALTURA'?'ACABAMENTO POR ALTURA':'',lining?.mode==='ALTURA'?'FORRO POR ALTURA':'',finish?.pricePct?`LINHO SINTÉTICO +${finish.pricePct}%`:'' ].filter(Boolean)}}
-function envFromForm(){applyPleatGatherRules();const height=Number($('eHeight').value),finish=$('eFinish').value,finishColor=$('eFinishColor').value,lining=$('eLining').value,liningColor=$('eLiningColor').value;const finishSku=resolveOfficialFabric('TECIDO DE ACABAMENTO',finish,finishColor,height),liningSku=resolveOfficialFabric('TECIDO DE FORRO',lining,liningColor,height);return {id:uid(),name:$('eName').value.trim(),width:Number($('eWidth').value),height,leaves:Number($('eLeaves').value),model:$('eModel').value,finish,finishColor,finishProductId:finishSku?.id||null,finishInternalCode:finishSku?.internal_code||'',finishOfficialName:finishSku?.product_name||'',lining,liningColor,liningProductId:liningSku?.id||null,liningInternalCode:liningSku?.internal_code||'',liningOfficialName:liningSku?.product_name||'',finishPleat:$('eFinishPleat').value,finishGather:$('eFinishGather').value,liningPleat:$('eLiningPleat').value,liningGather:$('eLiningGather').value,fixation:$('eFixation').value,fixColor:$('eFixation').value==='TRILHO SUÍÇO'?(officialProductById($('eRailProduct')?.value)?.color||''):$('eFixColor').value,railProductId:$('eFixation').value==='TRILHO SUÍÇO'?Number($('eRailProduct')?.value||0)||null:null,railInternalCode:$('eFixation').value==='TRILHO SUÍÇO'?(officialProductById($('eRailProduct')?.value)?.internal_code||''):'',railProductName:$('eFixation').value==='TRILHO SUÍÇO'?(officialProductById($('eRailProduct')?.value)?.product_name||''):'',supportMaterial:$('eSupportMaterial')?.value||'ALUMINIO',customPleat:Number($('eCustomPleat').value||0),notes:$('eNotes').value.trim()}}
-function updatePreview(){const e=envFromForm();if(!e.name||!e.width||!e.height){$('calcPreview').innerHTML='Preencha ambiente, medidas e configuração para visualizar o cálculo.';return}const c=calcEnvironment(e);if(!c)return;const f=c.finishCalc,l=c.liningCalc;$('calcPreview').innerHTML=`<strong>${esc(e.name)}</strong>${c.alerts.length?` <span class="badge warn">${esc(c.alerts.join(' • '))}</span>`:''}<div class="detail-list"><div class="detail-item"><span>Acabamento</span><strong>${f?`${f.consumption.toFixed(2)}m • ${money(f.cost)}`:'—'}</strong></div><div class="detail-item"><span>Forro</span><strong>${l?`${l.consumption.toFixed(2)}m • ${money(l.cost)}`:'—'}</strong></div><div class="detail-item"><span>Costura</span><strong>${c.sewingMeters.toFixed(2)}m • ${money(c.sewingCost)}</strong></div><div class="detail-item"><span>Deslizantes</span><strong>${c.finishSliders+c.liningSliders} un • ${money(c.sliderCost)}</strong></div><div class="detail-item"><span>Fixação</span><strong>${money(c.fixationCalc.total)}</strong></div><div class="detail-item"><span>Mão de obra total</span><strong>${money(c.laborTotal)}</strong></div></div><div class="price-strip"><div class="price-box"><span>18x</span><strong>${money(c.p18)}</strong></div><div class="price-box"><span>4x</span><strong>${money(c.base4)}</strong></div><div class="price-box"><span>À vista</span><strong>${money(c.cash)}</strong></div><div class="price-box"><span>Fixação</span><strong>${esc(c.fixationCalc.detail)}</strong></div></div>`}
-function clearEnv(){['eName','eWidth','eHeight','eNotes'].forEach(id=>$(id).value='');$('eCustomPleat').value=0;updatePreview()}
+function updatePreview(){
+  const e=envFromForm();
+  if(!e.name||!e.width||!e.height){$('calcPreview').innerHTML='Preencha ambiente, medidas e configuração para visualizar o cálculo.';return}
+  const c=calcEnvironment(e);if(!c)return;
+  const f=c.finishCalc,l=c.liningCalc;
+  $('calcPreview').innerHTML=`<strong>${esc(e.name)}</strong>${c.alerts.length?` <span class="badge warn">${esc(c.alerts.join(' • '))}</span>`:''}${e.excludeFixation?' <span class="badge warn">FIXAÇÃO EXCLUÍDA</span>':''}<div class="detail-list"><div class="detail-item"><span>Acabamento</span><strong>${f?`${f.consumption.toFixed(2)}m • ${money(f.cost)}`:'—'}</strong></div><div class="detail-item"><span>Forro</span><strong>${l?`${l.consumption.toFixed(2)}m • ${money(l.cost)}`:'—'}</strong></div><div class="detail-item"><span>Costura</span><strong>${c.sewingMeters.toFixed(2)}m • ${money(c.sewingCost)}</strong></div><div class="detail-item"><span>Deslizantes</span><strong>${c.finishSliders+c.liningSliders} un • ${money(c.sliderCost)}</strong></div><div class="detail-item"><span>Fixação</span><strong>${e.excludeFixation?'EXCLUÍDA':money(c.fixationCalc.total)}</strong></div><div class="detail-item"><span>Mão de obra total</span><strong>${money(c.laborTotal)}</strong></div></div><div class="price-strip"><div class="price-box"><span>18x</span><strong>${money(c.p18)}</strong></div><div class="price-box"><span>4x</span><strong>${money(c.base4)}</strong></div><div class="price-box"><span>À vista</span><strong>${money(c.cash)}</strong></div><div class="price-box"><span>Fixação</span><strong>${esc(c.fixationCalc.detail)}</strong></div></div>`
+}
+function clearEnv(){
+  ['eName','eWidth','eHeight','eNotes'].forEach(id=>$(id).value='');
+  $('eCustomPleat').value=0;
+  quoteEditingEnvironmentId=null;
+  quoteExcludeFixation=false;
+  if($('addEnvBtn'))$('addEnvBtn').textContent='+ Adicionar ambiente';
+  applyEnvironmentFixationUI();
+  updatePreview()
+}
 
+function applyEnvironmentFixationUI(){
+  const ids=['eFixationWrap','eRailProductWrap','eFixColorWrap','eSupportMaterialWrap','eFinishTubeWrap','eLiningTubeWrap','eMotorAngleWrap'];
+  ids.forEach(id=>{
+    const el=$(id);if(!el)return;
+    if(quoteExcludeFixation){
+      if(el.dataset.preExcludeDisplay===undefined)el.dataset.preExcludeDisplay=el.style.display||'';
+      el.style.display='none';
+    }else{
+      el.style.display=el.dataset.preExcludeDisplay||'';
+    }
+  });
+  const b=$('toggleEnvFixBtn');
+  if(b){b.textContent=quoteExcludeFixation?'RESTAURAR FIXAÇÃO':'EXCLUIR FIXAÇÃO';b.className='btn '+(quoteExcludeFixation?'danger':'secondary')}
+}
+
+function loadEnvironmentForEdit(e){
+  if(!e)return;
+  quoteEditingEnvironmentId=e.id;
+  quoteExcludeFixation=!!e.excludeFixation;
+  const set=(id,v)=>{const el=$(id);if(el&&v!==undefined&&v!==null)el.value=String(v)};
+  set('eModel',e.model);try{updateModelFields()}catch(_){}
+  set('eName',e.name);set('eWidth',e.width);set('eHeight',e.height);set('eLeaves',e.leaves);
+  set('eFinish',e.finish);try{refreshFinishColors()}catch(_){}set('eFinishColor',e.finishColor);set('eFinishPleat',e.finishPleat);set('eFinishGather',e.finishGather);
+  set('eLining',e.lining);try{refreshLiningColors()}catch(_){}set('eLiningColor',e.liningColor);set('eLiningPleat',e.liningPleat);set('eLiningGather',e.liningGather);
+  set('eFixation',e.fixation);try{refreshFixColors()}catch(_){};try{typeof v12RefreshFixations==='function'&&v12RefreshFixations()}catch(_){}
+  set('eRailProduct',e.railProductId||'');set('eFixColor',e.fixColor);set('eSupportMaterial',e.supportMaterial||'ALUMINIO');
+  set('eFinishBar',e.finishBar||'BARRA SIMPLES');set('eSoutacheColor',e.soutacheColor||'');set('eCustomPleat',e.customPleat||0);set('eNotes',e.notes||'');
+  if($('eAngle')){$('eAngle').checked=!!e.angle;try{$('eAngle').dispatchEvent(new Event('change',{bubbles:true}))}catch(_){}}
+  set('eAngleA',e.angleA||'');set('eAngleAHeight',e.angleAHeight||'');set('eAngleB',e.angleB||'');set('eAngleBHeight',e.angleBHeight||'');set('eMotorAngleMode',e.motorAngleMode||'CURVA');
+  if($('addEnvBtn'))$('addEnvBtn').textContent='SALVAR EDIÇÕES';
+  applyEnvironmentFixationUI();
+  updatePreview();
+  $('eName')?.scrollIntoView({behavior:'smooth',block:'center'})
+}
 function ensureSellerControl(){const old=$('qSeller');if(!old||old.tagName==='SELECT')return;const sel=document.createElement('select');sel.id='qSeller';sel.className=old.className;old.replaceWith(sel)}
 function refreshSellerControl(preferred=''){ensureSellerControl();const el=$('qSeller');if(!el)return;const active=allUsers().filter(u=>['sales','gestor'].includes(u.role));el.innerHTML=active.map(u=>`<option value="${esc(u.username)}">${esc(u.name||u.username)}</option>`).join('');const wanted=norm(preferred||draft.sellerUser||currentUser?.username);if([...el.options].some(o=>norm(o.value)===wanted))el.value=wanted;else if(el.options.length)el.selectedIndex=0;el.disabled=!isGestor();el.onchange=()=>{draft.sellerUser=norm(el.value);draft.seller=sellerName(draft.sellerUser)}}
 
 function renderQuote(){
   refreshSellerControl(draft.sellerUser||resolveSellerUser(draft));
-  $('qClient').value=draft.client||'';$('qDate').value=draft.date||today();if($('qSuggestedInstall'))$('qSuggestedInstall').value=draft.suggestedDeliveryDate||suggestedInstallDate(draft.date||today());$('qDocument').value=draft.document||'';$('qStreet').value=draft.street||'';$('qNumber').value=draft.number||'';$('qComplement').value=draft.complement||'';$('qNeighborhood').value=draft.neighborhood||'';$('qCep').value=draft.cep||'';$('qContact').value=draft.contact||'';$('qTravel').value=draft.travel||0;$('qDiscount').value=draft.discountPercent||0;$('qDiscountReason').value=draft.discountReason||'';{const role=norm(userPermissionRecord(draft.sellerUser||currentUsername()).role),lim=Number(userPermissionRecord(draft.sellerUser||currentUsername()).maxDiscount??100);$('qDiscount').max='100';$('qDiscount').oninput=()=>{if(Number($('qDiscount').value)<0)$('qDiscount').value=0};$('qDiscount').title=['SALES','PARTNER'].includes(role)?`Limite sem aprovação: ${lim}%`:'Desconto do orçamento';}
+  $('qClient').value=draft.client||'';$('qDate').value=draft.date||today();if($('qSuggestedInstall'))$('qSuggestedInstall').value=draft.suggestedDeliveryDate||suggestedInstallDate(draft.date||today());$('qDocument').value=draft.document||'';$('qStreet').value=draft.street||'';$('qNumber').value=draft.number||'';$('qComplement').value=draft.complement||'';$('qNeighborhood').value=draft.neighborhood||'';$('qCep').value=draft.cep||'';$('qContact').value=draft.contact||'';$('qTravel').value=draft.travel||0;$('qDiscount').value=draft.discountPercent||0;$('qDiscountReason').value=draft.discountReason||'';
+  {const role=norm(userPermissionRecord(draft.sellerUser||currentUsername()).role),lim=Number(userPermissionRecord(draft.sellerUser||currentUsername()).maxDiscount??100);$('qDiscount').max='100';$('qDiscount').oninput=()=>{if(Number($('qDiscount').value)<0)$('qDiscount').value=0};$('qDiscount').title=['SALES','PARTNER'].includes(role)?`Limite sem aprovação: ${lim}%`:'Desconto do orçamento';}
   const tbody=$('envTable');tbody.innerHTML='';let labor=0;
-  for(const e of draft.environments||[]){const c=calcEnvironment(e);if(!c)continue;const pm=1+quotePartnerMarkup(draft)/100;labor+=c.laborTotal;const tr=document.createElement('tr');tr.innerHTML=`<td><strong>${esc(e.name)}</strong>${c.alerts.length?`<br><span class="badge warn">${esc(c.alerts.join(' • '))}</span>`:''}</td><td>${e.width} × ${e.height} cm<br>${Math.max(0,Number(e.leaves||1)-1)} abertura(s)</td><td>${e.model==='COMPLETE'?'Cortina completa':e.model==='LINING'?'Apenas forro':'Apenas acabamento'}</td><td>${c.finishCalc?`${esc(e.finish)}<br>${esc(e.finishColor)} • ${e.finishPleat} ${e.finishGather}:1`:'—'}</td><td>${c.liningCalc?`${esc(e.lining)}<br>${esc(e.liningColor)} • ${e.liningPleat} ${e.liningGather}:1`:'—'}</td><td>${esc(e.fixation)}<br>${esc(e.fixColor)}</td><td>${money(c.laborTotal)}</td><td>${money(c.p18*pm)}</td><td>${money(c.base4*pm)}</td><td>${money(c.cash*pm)}</td><td class="no-print"><button class="btn danger" data-del-env="${e.id}">Excluir</button></td>`;tbody.appendChild(tr)}
+  for(const e of draft.environments||[]){
+    const c=calcEnvironment(e);if(!c)continue;const pm=1+quotePartnerMarkup(draft)/100;labor+=c.laborTotal;
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td><strong>${esc(e.name)}</strong>${c.alerts.length?`<br><span class="badge warn">${esc(c.alerts.join(' • '))}</span>`:''}${e.excludeFixation?'<br><span class="badge warn">FIXAÇÃO EXCLUÍDA</span>':''}</td><td>${e.width} × ${e.height} cm<br>${Math.max(0,Number(e.leaves||1)-1)} abertura(s)</td><td>${e.model==='COMPLETE'?'Cortina completa':e.model==='LINING'?'Apenas forro':'Apenas acabamento'}</td><td>${c.finishCalc?`${esc(e.finish)}<br>${esc(e.finishColor)} • ${e.finishPleat} ${e.finishGather}:1`:'—'}</td><td>${c.liningCalc?`${esc(e.lining)}<br>${esc(e.liningColor)} • ${e.liningPleat} ${e.liningGather}:1`:'—'}</td><td>${e.excludeFixation?'SEM FIXAÇÃO / SEM INSTALAÇÃO':`${esc(e.fixation)}<br>${esc(e.fixColor)}`}</td><td>${money(c.laborTotal)}</td><td>${money(c.p18*pm)}</td><td>${money(c.base4*pm)}</td><td>${money(c.cash*pm)}</td><td class="no-print"><button class="btn secondary" data-edit-env="${e.id}">Editar</button> <button class="btn danger" data-del-env="${e.id}">Excluir</button></td>`;
+    tbody.appendChild(tr)
+  }
   for(const b of draft.blinds||[]){const qty=Number(b.qty||1);const tr=document.createElement('tr');tr.className='blind-row';tr.innerHTML=`<td><strong>${esc(b.environment||'PERSIANA')}</strong><br><span class="badge blue">PERSIANA</span></td><td>${b.width} × ${b.height} cm<br>${qty} un.</td><td>Persiana</td><td>${esc(b.model)}<br>${esc(b.color||'-')}</td><td>—</td><td>${esc(b.commandSide||'-')}${b.bando?`<br>Bandô: ${esc(b.bando)}`:''}</td><td>—</td><td>${money(Number(b.p18||0)*qty)}</td><td>${money(Number(b.p4||0)*qty)}</td><td>${money(Number(b.cash||0)*qty)}</td><td class="no-print"><button class="btn danger" data-del-blind="${b.id}">Excluir</button></td>`;tbody.appendChild(tr)}
   for(const a of draft.looseProducts||[]){const qty=Number(a.qty||1),tr=document.createElement('tr');tr.className='loose-row';tr.innerHTML=`<td><strong>${esc(a.description||a.name)}</strong><br><span class="badge blue">${a.stockManaged===false?'FORA DE ESTOQUE':'PRODUTO AVULSO'}</span></td><td>${qty} ${esc(a.unit||'UN')}</td><td>${esc(a.type||'')}</td><td>${esc(a.name)}<br>${esc(a.color||'')}</td><td>—</td><td>${a.priceOverride?`Preço ajustado<br><small>${esc(a.priceReason||'')}</small>`:'Preço padrão'}</td><td>—</td><td>${money(Number(a.p18||0)*qty)}</td><td>${money(Number(a.p4||0)*qty)}</td><td>${money(Number(a.cash||0)*qty)}</td><td class="no-print"><button class="btn danger" data-del-loose="${a.id}">Excluir</button></td>`;tbody.appendChild(tr)}
   const t=quoteTotals(draft);$('qCount').textContent=(draft.environments?.length||0)+(draft.blinds?.length||0)+(draft.looseProducts?.length||0);$('q18').textContent=money(t.p18);$('q4').textContent=money(t.p4);$('qCash').textContent=money(t.cash);$('sumLabor').textContent=money(labor);$('sum18').textContent=money(t.p18);$('sum4').textContent=money(t.p4);$('sumCash').textContent=money(t.cash);
-  document.querySelectorAll('[data-del-env]').forEach(b=>b.onclick=()=>{draft.environments=draft.environments.filter(x=>x.id!==b.dataset.delEnv);renderQuote()});document.querySelectorAll('[data-del-blind]').forEach(b=>b.onclick=()=>{draft.blinds=(draft.blinds||[]).filter(x=>x.id!==b.dataset.delBlind);renderQuote()});document.querySelectorAll('[data-del-loose]').forEach(b=>b.onclick=()=>{draft.looseProducts=(draft.looseProducts||[]).filter(x=>x.id!==b.dataset.delLoose);renderQuote()})
+  document.querySelectorAll('[data-edit-env]').forEach(b=>b.onclick=()=>{const e=(draft.environments||[]).find(x=>String(x.id)===String(b.dataset.editEnv));if(e)loadEnvironmentForEdit(e)});
+  document.querySelectorAll('[data-del-env]').forEach(b=>b.onclick=()=>{draft.environments=draft.environments.filter(x=>String(x.id)!==String(b.dataset.delEnv));renderQuote()});
+  document.querySelectorAll('[data-del-blind]').forEach(b=>b.onclick=()=>{draft.blinds=(draft.blinds||[]).filter(x=>x.id!==b.dataset.delBlind);renderQuote()});
+  document.querySelectorAll('[data-del-loose]').forEach(b=>b.onclick=()=>{draft.looseProducts=(draft.looseProducts||[]).filter(x=>x.id!==b.dataset.delLoose);renderQuote()})
 }
 function syncDraft(){draft.client=$('qClient').value.trim();draft.date=$('qDate').value;draft.suggestedDeliveryDate=suggestedInstallDate(draft.date||today());if($('qSuggestedInstall'))$('qSuggestedInstall').value=draft.suggestedDeliveryDate;draft.document=$('qDocument').value.replace(/\D/g,'');draft.street=$('qStreet').value.trim();draft.number=$('qNumber').value.replace(/\D/g,'');draft.complement=$('qComplement').value.trim();draft.neighborhood=$('qNeighborhood').value.trim();draft.cep=$('qCep').value.replace(/\D/g,'');draft.address=[draft.street,draft.number,draft.neighborhood,draft.cep,draft.complement].filter(Boolean).join(', ');draft.contact=$('qContact').value.replace(/\D/g,'');draft.sellerUser=norm($('qSeller').value||currentUser?.username);draft.seller=sellerName(draft.sellerUser);draft.travel=Number($('qTravel').value||0);draft.discountPercent=Number($('qDiscount').value||0);draft.discountReason=$('qDiscountReason').value.trim()}
 function partnerMarkupPercent(username){const u=allUsers().find(x=>norm(x.username)===norm(username));if(!['SALES','PARTNER'].includes(norm(u?.role)))return 0;const m=Number(u?.markupPercent||0);return m>0?Math.max(1,Math.min(10,m)):0}
@@ -438,7 +542,7 @@ function upsertClientFromQuote(q){const key=norm(q.client);let c=db.clients.find
 function printQuote(q,type='summary'){const t=quoteTotals(q),detailed=type==='detail';let rows='';for(const e of q.environments||[]){const c=calcEnvironment(e);if(!c)continue;rows+=`<tr><td><strong>${esc(e.name)}</strong>${detailed&&e.notes?`<br><small>${esc(e.notes)}</small>`:''}</td><td>${e.width} × ${e.height} cm<br>${Math.max(0,Number(e.leaves||1)-1)} abertura(s)</td><td>${esc(e.model==='COMPLETE'?'CORTINA COMPLETA':e.model==='LINING'?'APENAS FORRO':'APENAS ACABAMENTO')}</td><td>${c.finishCalc?esc(e.finish+' '+(e.finishColor||'')):'—'}</td><td>${c.liningCalc?esc(e.lining+' '+(e.liningColor||'')):'—'}</td><td>${esc(e.fixation||'-')}<br>${esc(e.fixColor||'')}</td><td>${money(c.labor)}</td><td>${money(c.p18)}</td><td>${money(c.base4)}</td><td>${money(c.cash)}</td></tr>`}for(const x of q.blinds||[]){const qty=Number(x.qty||1);rows+=`<tr><td><strong>${esc(x.environment||'PERSIANA')}</strong></td><td>${x.width} × ${x.height} cm<br>${qty} un.</td><td>PERSIANA</td><td>${esc(x.model||'-')} ${esc(x.color||'')}</td><td>—</td><td>${esc(x.commandSide||'-')}</td><td>—</td><td>${money(Number(x.p18||0)*qty)}</td><td>${money(Number(x.p4||0)*qty)}</td><td>${money(Number(x.cash||0)*qty)}</td></tr>`}if(Number(q.travel||0)>0)rows+=`<tr><td><strong>DESLOCAMENTO</strong></td><td colspan="5">Atendimento / instalação fora da praça</td><td>—</td><td>${money(Number(q.travel)*(1+db.priceConfig.terms.p18AddPct/100))}</td><td>${money(q.travel)}</td><td>${money(Number(q.travel)*(1-db.priceConfig.terms.cashDiscountPct/100))}</td></tr>`;const html=`<div class="quote-client-head"><div class="quote-brand"><img src="${location.origin}/icon-512.png"><div><h2>ORÇAMENTO Nº ${String(q.numero).padStart(6,'0')}</h2><strong>${detailed?'DETALHADO':'RESUMIDO'}</strong></div></div><div class="quote-date"><small>Data</small><div>${fmtDate(q.date)}</div></div></div><div class="section-title">▪ &nbsp; Dados do cliente</div><div class="client-grid"><div><small>Cliente</small><strong>${esc(q.client||'-')}</strong></div><div><small>Contato</small><strong>${esc(q.contact||'-')}</strong></div><div><small>Endereço</small><strong>${esc(q.address||'-')}</strong></div><div><small>Vendedor</small><strong>${esc(q.seller||'-')}</strong></div></div><div class="section-title">▪ &nbsp; Resumo do orçamento</div><table class="client-quote"><thead><tr><th>AMBIENTE</th><th>MEDIDAS</th><th>MODELO</th><th>TECIDO ACABAMENTO</th><th>FORRO</th><th>FIXAÇÃO</th><th>MÃO DE OBRA TOTAL</th><th>18X</th><th>4X</th><th>À VISTA</th></tr></thead><tbody>${rows}<tr class="total-row"><th colspan="6">TOTAL</th><th>${money((q.environments||[]).reduce((a,e)=>a+(calcEnvironment(e)?.labor||0),0))}</th><th>${money(t.p18)}</th><th>${money(t.p4)}</th><th>${money(t.cash)}</th></tr></tbody></table>${q.discountPercent?`<p><strong>Desconto aplicado:</strong> ${q.discountPercent}% • ${esc(q.discountReason||'')}</p>`:''}<div class="section-title">▪ &nbsp; Condições</div><ol class="conditions"><li>Validade do orçamento: 5 dias.</li><li>Medidas, tecidos, cores e fixações devem ser conferidos antes da ordem de produção.</li><li>Prazo sugerido para a instalação de 30 dias, devendo ser agendado no pedido.</li></ol>`;printWindow(html)}
 
 function renderQuotes(){const tb=$('quotesTable');if(!tb)return;const q=norm($('quoteSearch')?.value);const converted=new Set(db.orders.map(o=>Number(o.quoteNumber)));tb.innerHTML='';for(const x of db.quotes.filter(canSeeQuote).filter(x=>!q||norm(`${x.numero} ${x.client} ${displaySeller(x)}`).includes(q))){const t=quoteTotals(x),conv=converted.has(Number(x.numero));const tr=document.createElement('tr');tr.innerHTML=`<td>${String(x.numero).padStart(6,'0')}</td><td>${fmtDate(x.date)}</td><td>${esc(x.client)}</td><td>${esc(displaySeller(x))}</td><td>${(x.environments?.length||0)+(x.blinds?.length||0)+(x.looseProducts?.length||0)}</td><td>${money(t.cash)}</td><td><span class="badge ${conv?'blue':'ok'}">${conv?'PEDIDO':'ORÇAMENTO'}</span></td><td><div class="actions"><button class="btn ghost" data-q-load="${x.numero}">Abrir</button><button class="btn ghost" data-q-print="${x.numero}">PDF</button>${conv?`<button class="btn danger" data-q-revert="${x.numero}">Reverter</button>`:`<button class="btn primary" data-q-convert="${x.numero}">Converter</button>`}${isGestor()?`<button class="btn danger" data-q-delete="${x.numero}">Excluir</button>`:''}</div></td>`;tb.appendChild(tr)}bindQuoteActions()}
-function bindQuoteActions(){document.querySelectorAll('[data-q-load]').forEach(b=>b.onclick=()=>{const q=db.quotes.find(x=>Number(x.numero)===Number(b.dataset.qLoad));if(q){draft=clone(q);renderQuote();setView('quote')}});document.querySelectorAll('[data-q-print]').forEach(b=>b.onclick=()=>{const q=db.quotes.find(x=>Number(x.numero)===Number(b.dataset.qPrint));if(q)openPrintChoice(q)});document.querySelectorAll('[data-q-convert]').forEach(b=>b.onclick=()=>convertQuote(Number(b.dataset.qConvert)));document.querySelectorAll('[data-q-revert]').forEach(b=>b.onclick=()=>revertQuote(Number(b.dataset.qRevert)));document.querySelectorAll('[data-q-delete]').forEach(b=>b.onclick=()=>deleteQuote(Number(b.dataset.qDelete)))}
+function bindQuoteActions(){document.querySelectorAll('[data-q-load]').forEach(b=>b.onclick=()=>{const q=db.quotes.find(x=>Number(x.numero)===Number(b.dataset.qLoad));if(q){draft=clone(q);quoteEditingEnvironmentId=null;quoteExcludeFixation=false;renderQuote();clearEnv();setView('quote')}});document.querySelectorAll('[data-q-print]').forEach(b=>b.onclick=()=>{const q=db.quotes.find(x=>Number(x.numero)===Number(b.dataset.qPrint));if(q)openPrintChoice(q)});document.querySelectorAll('[data-q-convert]').forEach(b=>b.onclick=()=>convertQuote(Number(b.dataset.qConvert)));document.querySelectorAll('[data-q-revert]').forEach(b=>b.onclick=()=>revertQuote(Number(b.dataset.qRevert)));document.querySelectorAll('[data-q-delete]').forEach(b=>b.onclick=()=>deleteQuote(Number(b.dataset.qDelete)))}
 function deleteQuote(n){if(!isGestor())return alert('Apenas o GESTOR pode excluir orçamentos.');const linked=db.orders.find(o=>Number(o.quoteNumber)===n);if(linked)return alert('Este orçamento já virou pedido. Exclua ou reverta o pedido primeiro.');if(!confirm('Excluir definitivamente este orçamento?'))return;db.quotes=db.quotes.filter(q=>Number(q.numero)!==n);queueSave();renderAll()}
 function openPrintChoice(q){printQuote(q,'summary')}
 let conversionInProgress=false;
@@ -571,7 +675,7 @@ function customerPortalQrUrl(orderNumber){return `https://api.qrserver.com/v1/cr
 function printCustomerOrder(o){
  const q=db.quotes.find(x=>Number(x.numero)===Number(o.quoteNumber));const cond=paymentConditionLabel(o.paymentCondition);let envs='';
  for(const e of o.environments||[]){const c=calcEnvironment(e);if(!c)continue;const mats=environmentMaterialRows(e,o.paymentCondition);envs+=`<div class="env-block"><div class="env-title">${esc(e.name)}</div><table class="env-table"><tr><th>Medidas</th><td>${e.width} × ${e.height} cm</td><th>Aberturas</th><td>${Math.max(0,Number(e.leaves||1)-1)}</td></tr><tr><th>Acabamento</th><td>${c.finishCalc?esc(`${e.finish} / ${e.finishColor} / ${e.finishPleat} ${e.finishGather}:1`):'—'}</td><th>Forro</th><td>${c.liningCalc?esc(`${e.lining} / ${e.liningColor} / ${e.liningPleat} ${e.liningGather}:1`):'—'}</td></tr><tr><th>Fixação</th><td colspan="3">${esc(e.fixation||'-')} • ${esc(e.fixColor||'')}</td></tr><tr><th>${cond}</th><td colspan="3"><strong>${money(environmentConditionValue(c,o.paymentCondition))}</strong></td></tr>${e.notes?`<tr><th>Observações</th><td colspan="3">${esc(e.notes)}</td></tr>`:''}</table><div class="section-title">Materiais deste ambiente</div><table class="summary-table"><tr><th>SKU</th><th>Produto</th><th>Cor</th><th>Quantidade</th><th>Valor Unitário</th><th>Valor Total</th></tr>${mats||'<tr><td colspan="6">Sem material oficial vinculado.</td></tr>'}</table></div>`}
- const body=`<div class="pdf-head"><img src="${location.origin}/icon-512.png"><div class="store-client"><strong>Nova Imagem Cortinas e Persianas</strong><br>Luiz Sergio Delgobo ME<br>CNPJ 15.115.803/0001-69 • IE 90.588.753-06<br>Av. Bonifácio Vilela, 170 • Ponta Grossa–PR • CEP 84010-330<br><br><strong>PEDIDO Nº ${String(o.numero).padStart(6,'0')}</strong><br><strong>Cliente:</strong> ${esc(o.client||'-')}<br><strong>Contato:</strong> ${esc(o.contact||'-')}<br><strong>Endereço:</strong> ${esc(o.address||'-')}<br><strong>Instalação prevista:</strong> ${fmtDate(o.deliveryDate)}<br><strong>Vendedor:</strong> ${esc(displaySeller(o))}</div></div>${envs}<div class="section-title">Acompanhe seu pedido</div><div class="customer-access-box"><img class="customer-qr" src="${customerPortalQrUrl(o.numero)}" alt="QR Code para acompanhar o pedido"><div><strong>Portal do Cliente Nova Imagem</strong><br><span>Aponte a câmera do celular para o QR Code.</span><br><br>Pedido: <strong>${String(o.numero).padStart(6,'0')}</strong><br>Senha: <strong>${esc(o.clientAccessCode||'NÃO GERADA')}</strong><br><br><strong>Acesso pelo PDF:</strong><br><a class="customer-portal-link" href="${customerPortalUrl(o.numero)}" target="_blank">Clique aqui para acompanhar seu pedido</a><br><small>Ao abrir pelo link ou QR Code, o número do pedido já será preenchido. Digite apenas a senha de 6 dígitos.</small></div></div><div class="section-title">Condição contratada</div><p class="totals">${cond}: ${money(o.agreedValue)}</p><div class="section-title">CONTRATO DE FORNECIMENTO E INSTALAÇÃO</div><div class="conditions"><p><strong>CONTRATADA:</strong> Luiz Sergio Delgobo ME, CNPJ 15.115.803/0001-69, IE 90.588.753-06, Av. Bonifácio Vilela, 170, Ponta Grossa–PR.</p><p><strong>CONTRATANTE:</strong> ${esc(o.client||'-')}, endereço ${esc(o.address||'-')}.</p><p><strong>OBJETO:</strong> fornecimento e instalação dos produtos descritos neste pedido, conforme ambientes, medidas, materiais, cores e especificações acima.</p><p><strong>CONDIÇÃO:</strong> ${cond}, valor contratado de ${money(o.agreedValue)}.</p><p><strong>PRAZO PREVISTO:</strong> instalação/entrega em ${fmtDate(o.deliveryDate)}.</p><p>Alterações de medidas, materiais, cores ou especificações após a aprovação poderão exigir revisão de prazo e valores mediante concordância das partes.</p></div><div class="signature-grid"><div><div class="signature-line"></div><strong>Cliente / Contratante</strong><br><small>${esc(o.client||'')}</small></div><div><div class="signature-line"></div><strong>Nova Imagem / Vendedor</strong><br><small>${esc(displaySeller(o))}</small></div></div>`;printWindow(body)}
+ const body=`<div class="screen-only" style="margin-bottom:8px"><button onclick="window.opener && window.opener.generateLabelsV1263(${Number(o.numero)})">GERAR ETIQUETAS</button></div><div class="pdf-head"><img src="${location.origin}/icon-512.png"><div class="store-client"><strong>Nova Imagem Cortinas e Persianas</strong><br>Luiz Sergio Delgobo ME<br>CNPJ 15.115.803/0001-69 • IE 90.588.753-06<br>Av. Bonifácio Vilela, 170 • Ponta Grossa–PR • CEP 84010-330<br><br><strong>PEDIDO Nº ${String(o.numero).padStart(6,'0')}</strong><br><strong>Cliente:</strong> ${esc(o.client||'-')}<br><strong>Contato:</strong> ${esc(o.contact||'-')}<br><strong>Endereço:</strong> ${esc(o.address||'-')}<br><strong>Instalação prevista:</strong> ${fmtDate(o.deliveryDate)}<br><strong>Vendedor:</strong> ${esc(displaySeller(o))}</div></div>${envs}<div class="section-title">Acompanhe seu pedido</div><div class="customer-access-box"><img class="customer-qr" src="${customerPortalQrUrl(o.numero)}" alt="QR Code para acompanhar o pedido"><div><strong>Portal do Cliente Nova Imagem</strong><br><span>Aponte a câmera do celular para o QR Code.</span><br><br>Pedido: <strong>${String(o.numero).padStart(6,'0')}</strong><br>Senha: <strong>${esc(o.clientAccessCode||'NÃO GERADA')}</strong><br><br><strong>Acesso pelo PDF:</strong><br><a class="customer-portal-link" href="${customerPortalUrl(o.numero)}" target="_blank">Clique aqui para acompanhar seu pedido</a><br><small>Ao abrir pelo link ou QR Code, o número do pedido já será preenchido. Digite apenas a senha de 6 dígitos.</small></div></div><div class="section-title">Condição contratada</div><p class="totals">${cond}: ${money(o.agreedValue)}</p><div class="section-title">CONTRATO DE FORNECIMENTO E INSTALAÇÃO</div><div class="conditions"><p><strong>CONTRATADA:</strong> Luiz Sergio Delgobo ME, CNPJ 15.115.803/0001-69, IE 90.588.753-06, Av. Bonifácio Vilela, 170, Ponta Grossa–PR.</p><p><strong>CONTRATANTE:</strong> ${esc(o.client||'-')}, endereço ${esc(o.address||'-')}.</p><p><strong>OBJETO:</strong> fornecimento e instalação dos produtos descritos neste pedido, conforme ambientes, medidas, materiais, cores e especificações acima.</p><p><strong>CONDIÇÃO:</strong> ${cond}, valor contratado de ${money(o.agreedValue)}.</p><p><strong>PRAZO PREVISTO:</strong> instalação/entrega em ${fmtDate(o.deliveryDate)}.</p><p>Alterações de medidas, materiais, cores ou especificações após a aprovação poderão exigir revisão de prazo e valores mediante concordância das partes.</p></div><div class="signature-grid"><div><div class="signature-line"></div><strong>Cliente / Contratante</strong><br><small>${esc(o.client||'')}</small></div><div><div class="signature-line"></div><strong>Nova Imagem / Vendedor</strong><br><small>${esc(displaySeller(o))}</small></div></div>`;printWindow(body)}
 function printProductionOrder(o){let envs='';for(const e of o.environments||[]){const c=calcEnvironment(e);if(!c)continue;const mats=environmentMaterialRows(e);envs+=`<div class="env-block"><div class="env-title">${esc(e.name)}</div><table class="env-table"><tr><th>Medidas</th><td>${e.width} × ${e.height} cm</td><th>Aberturas</th><td>${Math.max(0,Number(e.leaves||1)-1)}</td></tr><tr><th>Acabamento</th><td>${c.finishCalc?esc(`${e.finish} / ${e.finishColor} / ${e.finishPleat} ${e.finishGather}:1`):'—'}</td><th>Forro</th><td>${c.liningCalc?esc(`${e.lining} / ${e.liningColor} / ${e.liningPleat} ${e.liningGather}:1`):'—'}</td></tr><tr><th>Fixação</th><td>${esc(e.fixation||'-')} • ${esc(e.fixColor||'')}</td><th>Deslizantes</th><td>${c.finishSliders||0} acabamento + ${c.liningSliders||0} forro</td></tr><tr><th>Costura</th><td colspan="3">${Number(c.sewingMeters||0).toFixed(2)} m</td></tr>${e.notes?`<tr style="background:#fff3a8"><th style="font-weight:900">OBSERVAÇÕES</th><td colspan="3" style="font-weight:800">${esc(e.notes)}</td></tr>`:`<tr><th>Observações</th><td colspan="3">Sem observações.</td></tr>`}</table><div class="section-title">Materiais / separação</div><table class="summary-table"><tr><th>SKU</th><th>Material</th><th>Cor</th><th>Quantidade</th></tr>${mats||'<tr><td colspan="4">Sem material oficial vinculado.</td></tr>'}</table></div>`}const body=`<div class="pdf-head"><img src="${location.origin}/icon-512.png"><div class="store-client"><strong>Nova Imagem Cortinas & Persianas</strong><br><strong>ORDEM DE SERVIÇO / PRODUÇÃO</strong><br><br><strong>Pedido:</strong> ${String(o.numero).padStart(6,'0')}<br><strong>Cliente:</strong> ${esc(o.client||'-')}<br><strong>Contato:</strong> ${esc(o.contact||'-')}<br><strong>Endereço:</strong> ${esc(o.address||'-')}<br><strong>Instalação prevista:</strong> ${fmtDate(o.deliveryDate)}<br><strong>Vendedor:</strong> ${esc(displaySeller(o))}</div></div>${envs}<div class="section-title">Observações gerais</div><p>${esc((o.notes||'').trim()||'Sem observações gerais.')}</p>`;printWindow(body)}
 function openOrder(n){const o=db.orders.find(x=>Number(x.numero)===n);if(!o)return;const paid=orderPaid(o);const payRows=(o.payments||[]).slice().reverse().map(p=>`<tr><td>${fmtDate(p.date)}</td><td>${money(p.value)}</td><td>${esc(paymentMethodLabel(p.method))}</td><td>${esc(p.notes||'-')}</td><td>${esc(p.by||'-')}</td></tr>`).join('');openModal(`<h2>Pedido ${String(o.numero).padStart(6,'0')}</h2><div class="detail-list"><div class="detail-item"><span>Cliente</span><strong>${esc(o.client)}</strong></div><div class="detail-item"><span>Valor contratado</span><strong>${money(o.agreedValue)}</strong></div><div class="detail-item"><span>Valor pago</span><strong>${money(paid)}</strong></div><div class="detail-item"><span>Saldo devedor</span><strong>${money(orderBalance(o))}</strong></div><div class="detail-item"><span>Status financeiro</span><strong>${financialStatus(o)}</strong></div><div class="detail-item"><span>Produção</span><strong>${esc(o.productionStage)}</strong></div><div class="detail-item"><span>Entrega</span><strong>${fmtDate(o.deliveryDate)}</strong></div><div class="detail-item"><span>Condição</span><strong>${paymentConditionLabel(o.paymentCondition)}</strong></div></div><div class="actions" style="margin:12px 0"><button id="openCustomerOrder" class="btn primary">ABRIR PEDIDO</button><button id="printOS" class="btn secondary">ABRIR ORDEM DE SERVIÇO</button><button id="timelineBtn" class="btn ghost">LINHA DO TEMPO</button><button id="orderAttachmentsBtn" class="btn ghost">ANEXOS</button><button id="reworkOrderBtn" class="btn ghost">ABRIR RETRABALHO</button>${isGestor()?'<button id="printResult" class="btn ghost">RESULTADO DO PEDIDO</button>':''}${orderBalance(o)>0.005?'<button id="addPay" class="btn primary">INSERIR PAGAMENTO</button>':''}</div><h3>Histórico de recebimentos</h3><div class="table-wrap"><table class="table"><tr><th>Data</th><th>Valor</th><th>Forma</th><th>Observação</th><th>Usuário</th></tr>${payRows||'<tr><td colspan="5">Nenhum pagamento registrado.</td></tr>'}</table></div>`);$('openCustomerOrder').onclick=()=>printCustomerOrder(o);$('printOS').onclick=()=>printProductionOrder(o);$('timelineBtn').onclick=()=>openTimeline(o.numero);$('orderAttachmentsBtn').onclick=()=>openAttachments('ORDER',o.numero,`Pedido ${String(o.numero).padStart(6,'0')}`);$('reworkOrderBtn').onclick=()=>openRework(o.numero);if($('printResult'))$('printResult').onclick=()=>printOrderResult(o);if($('addPay'))$('addPay').onclick=()=>openPayment(o.numero)}
 
@@ -784,10 +888,22 @@ function bind(){
   on('eLiningPleat','change',()=>{applyPleatGatherRules();updatePreview()});
   on('eFixation','change',()=>{refreshFixColors();updatePreview()});on('eRailProduct','change',()=>{const p=officialProductById($('eRailProduct').value);if(p&&$('eFixColor'))$('eFixColor').value=p.color||'';updatePreview()});
 
+  onClick('toggleEnvFixBtn',()=>{
+    quoteExcludeFixation=!quoteExcludeFixation;
+    applyEnvironmentFixationUI();
+    updatePreview();
+  });
+
   onClick('addEnvBtn',()=>{
     const e=envFromForm();
-    if(!e.name||!e.width||!e.height)return alert('Preencha ambiente, largura e altura.');if(e.fixation==='TRILHO SUÍÇO'&&!e.railProductId)return alert('Selecione o Tipo de Trilho no estoque oficial.');
-    draft.environments.push(e);
+    if(!e.name||!e.width||!e.height)return alert('Preencha ambiente, largura e altura.');
+    if(!e.excludeFixation&&e.fixation==='TRILHO SUÍÇO'&&!e.railProductId)return alert('Selecione o Tipo de Trilho no estoque oficial.');
+    if(quoteEditingEnvironmentId){
+      const i=(draft.environments||[]).findIndex(x=>String(x.id)===String(quoteEditingEnvironmentId));
+      if(i<0)return alert('Ambiente não encontrado para edição.');
+      e.id=quoteEditingEnvironmentId;
+      draft.environments[i]=e;
+    }else draft.environments.push(e);
     renderQuote();
     clearEnv();
   });
@@ -1060,7 +1176,7 @@ envFromForm=function(){const e=_v1151EnvFromForm();const tube=isTubePleat(e.fini
 function userDiscountLimit(username){const u=userPermissionRecord(username);return ['SALES','PARTNER'].includes(norm(u.role))?Math.max(0,Number(u.maxDiscount??0)):100;}
 function pendingDiscountApprovalForQuote(n){return (db.discountApprovals||[]).find(a=>Number(a.quoteNumber)===Number(n)&&a.status==='PENDENTE');}
 function pushUserAlert(username,type,message,quoteNumber=0,orderNumber=0){db.userAlerts=db.userAlerts||[];db.userAlerts.unshift({id:uid(),username:norm(username),type,message,quoteNumber,orderNumber,createdAt:new Date().toISOString(),read:false});}
-function renderUserHomeAlerts(){const box=$('userHomeAlerts');if(!box)return;const rows=(db.userAlerts||[]).filter(a=>norm(a.username)===currentUsername()&&!a.read);box.innerHTML=rows.map(a=>`<div class="notice" style="margin:0 0 12px;text-align:left;background:#fff3cd;border-color:#e6b94a"><strong>${esc(a.message)}</strong><br>${a.orderNumber?`Pedido ${String(a.orderNumber).padStart(6,'0')}`:a.quoteNumber?`Orçamento ${String(a.quoteNumber).padStart(6,'0')}`:''}<br><button class="btn primary" style="margin-top:8px" data-user-alert="${a.id}">${a.orderNumber?'VER PEDIDO':'ABRIR ORÇAMENTO'}</button></div>`).join('');document.querySelectorAll('[data-user-alert]').forEach(b=>b.onclick=()=>{const a=db.userAlerts.find(x=>x.id===b.dataset.userAlert);if(!a)return;a.read=true;queueSave();if(a.orderNumber)setView('orders');else{const q=db.quotes.find(x=>Number(x.numero)===Number(a.quoteNumber));if(q){draft=clone(q);renderQuote();setView('quote')}}});}
+function renderUserHomeAlerts(){const box=$('userHomeAlerts');if(!box)return;const rows=(db.userAlerts||[]).filter(a=>norm(a.username)===currentUsername()&&!a.read);box.innerHTML=rows.map(a=>`<div class="notice" style="margin:0 0 12px;text-align:left;background:#fff3cd;border-color:#e6b94a"><strong>${esc(a.message)}</strong><br>${a.orderNumber?`Pedido ${String(a.orderNumber).padStart(6,'0')}`:a.quoteNumber?`Orçamento ${String(a.quoteNumber).padStart(6,'0')}`:''}<br><button class="btn primary" style="margin-top:8px" data-user-alert="${a.id}">${a.orderNumber?'VER PEDIDO':'ABRIR ORÇAMENTO'}</button></div>`).join('');document.querySelectorAll('[data-user-alert]').forEach(b=>b.onclick=()=>{const a=db.userAlerts.find(x=>x.id===b.dataset.userAlert);if(!a)return;a.read=true;queueSave();if(a.orderNumber)setView('orders');else{const q=db.quotes.find(x=>Number(x.numero)===Number(a.quoteNumber));if(q){draft=clone(q);quoteEditingEnvironmentId=null;quoteExcludeFixation=false;renderQuote();clearEnv();setView('quote')}}});}
 function renderAgendaHome(){const box=$('agendaHomeAlerts');if(!box)return;const start=today(),d=new Date(start+'T12:00:00');d.setDate(d.getDate()+2);const end=d.toISOString().slice(0,10);const rows=agendaVisibleItems().filter(a=>a.date>=start&&a.date<=end).sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));box.innerHTML=rows.length?`<div class="notice" style="margin:0 0 12px;text-align:left;background:#e7f6ea;border-color:#72b77d"><strong>AGENDA • PRÓXIMOS 3 DIAS</strong>${rows.map(a=>`<div style="margin-top:7px"><strong>${fmtDate(a.date)} ${esc(a.time||'')}</strong> • ${esc(a.client||'-')} • ${esc(a.description||'')}</div>`).join('')}<button class="btn primary" style="margin-top:8px" id="homeAgendaOpen">ABRIR AGENDA</button></div>`:'';if($('homeAgendaOpen'))$('homeAgendaOpen').onclick=()=>setView('agenda');}
 function renderDiscountApprovalAlerts(){const box=$('discountApprovalAlerts');if(!box)return;if(!isGestor()){box.innerHTML='';return;}const rows=(db.discountApprovals||[]).filter(a=>a.status==='PENDENTE');box.innerHTML=rows.map(a=>{const q=db.quotes.find(x=>Number(x.numero)===Number(a.quoteNumber));return `<div class="notice" style="margin:0 0 12px;text-align:left;background:#ffe0b2;border-color:#ef9a3d"><strong>VOCÊ TEM UMA SOLICITAÇÃO DE DESCONTO PARA APROVAR!</strong><br>Orçamento ${String(a.quoteNumber).padStart(6,'0')} • ${esc(q?.client||a.client||'-')} • Instalação: <strong>${fmtDate(a.deliveryDate)}</strong><br>Desconto solicitado: <strong>${Number(a.totalDiscount||0).toFixed(2)}%</strong> • Limite: ${Number(a.userLimit||0).toFixed(2)}%<br><button class="btn primary" style="margin-top:8px" data-disc-approval="${a.id}">ABRIR</button></div>`}).join('');document.querySelectorAll('[data-disc-approval]').forEach(b=>b.onclick=()=>openDiscountApproval(b.dataset.discApproval));}
 function openDiscountApproval(id){const a=(db.discountApprovals||[]).find(x=>x.id===id),q=db.quotes.find(x=>Number(x.numero)===Number(a?.quoteNumber));if(!a||!q)return alert('Solicitação não encontrada.');openModal(`<h2>APROVAÇÃO DE ORÇAMENTO</h2><div class="detail-list"><div class="detail-item"><span>Orçamento</span><strong>${String(q.numero).padStart(6,'0')}</strong></div><div class="detail-item"><span>Cliente</span><strong>${esc(q.client)}</strong></div><div class="detail-item"><span>Instalação</span><strong>${fmtDate(a.deliveryDate)}</strong></div><div class="detail-item"><span>Desconto solicitado</span><strong>${Number(a.totalDiscount).toFixed(2)}%</strong></div></div><div class="actions" style="margin-top:16px"><button id="daOpen" class="btn ghost">ABRIR ORÇAMENTO</button><button id="daReject" class="btn danger">RECUSAR SOLICITAÇÃO</button><button id="daAccept" class="btn primary">ACEITAR SOLICITAÇÃO</button><button id="daBack" class="btn secondary">VOLTAR</button></div>`);$('daOpen').onclick=()=>{closeModal();draft=clone(q);renderQuote();setView('quote')};$('daBack').onclick=closeModal;$('daReject').onclick=()=>{a.status='RECUSADO';a.decidedAt=new Date().toISOString();a.decidedBy=currentUsername();q.status='ORÇAMENTO';pushUserAlert(a.requestedBy,'REAJUSTE','REAJUSTE O DESCONTO!',q.numero);audit('ORÇAMENTO','DESCONTO RECUSADO',q.numero,`${a.totalDiscount}% • limite ${a.userLimit}%`);queueSave();closeModal();renderAll()};$('daAccept').onclick=async()=>{if(!confirm('Aprovar o desconto e converter automaticamente em pedido?'))return;const order=await finalizeQuoteOrder(q,a.condition,a.deliveryDate,a.additionalDiscount,a.reason,`APROVADO PELO GESTOR ${currentUser?.name||currentUsername()}`);if(!order)return;a.status='APROVADO';a.decidedAt=new Date().toISOString();a.decidedBy=currentUsername();pushUserAlert(a.requestedBy,'APROVADO','SEU PEDIDO FOI APROVADO, INFORME O CLIENTE!',q.numero,order.numero);audit('ORÇAMENTO','DESCONTO APROVADO',q.numero,`${a.totalDiscount}% • Gestor ${currentUser?.name||currentUsername()}`);queueSave();closeModal();renderAll()};}
@@ -3234,7 +3350,7 @@ function payrollRows(competence){const h=hrData(),rows=[];for(const e of h.emplo
    V12.5 • FOLHA DE PAGAMENTO + PEDIDOS + PRESTADORES + PDFs PADRONIZADOS
    ============================================================================ */
 (function(){
-  const V125='V12.6.1';
+  const V125='V12.5';
   const BR_DATE=d=>{try{return new Date(String(d)+'T12:00:00').toLocaleDateString('pt-BR')}catch{return d||'-'}};
   const monthLabel=m=>{if(!m)return '-';const [y,mo]=String(m).split('-');return `${mo}/${y}`};
   function ensureV125(){
@@ -3391,18 +3507,25 @@ function payrollRows(competence){const h=hrData(),rows=[];for(const e of h.emplo
 })();
 
 
+
 /* ============================================================================
-   V12.6 • ETIQUETAS + EDIÇÃO DE AMBIENTE + FIXAÇÃO POR PEÇA + PEDIDOS
+   V12.6.3 • VENDAS: PEDIDOS, ETIQUETAS E CONVERSÃO SEGURA
    ============================================================================ */
 (function(){
-  const V126='V12.6.1';
-  try{companySettings().version=V126}catch(_){ }
+  const VERSION='V12.6.3';
+  try{companySettings().version=VERSION}catch(_){}
 
-  // ---------- PEDIDOS: filtros confiáveis + PDF ----------
-  function v126OrderDate(o){return String(o?.createdDate||o?.date||o?.createdAt||'').slice(0,10)}
-  function v126OrderFilters(){return {seller:norm($('orderFilterSeller')?.value||''),from:$('orderFilterFrom')?.value||'',to:$('orderFilterTo')?.value||''}}
-  function v126VisibleOrders(){const f=v126OrderFilters();return (db.orders||[]).filter(canSeeOrder).filter(o=>{const d=v126OrderDate(o),u=resolveSellerUser(o);return (!f.seller||u===f.seller)&&(!f.from||d>=f.from)&&(!f.to||d<=f.to)})}
-  function v126FillOrderSellers(){
+  // Evita exibir Novo Orçamento antes da home terminar de carregar.
+  try{
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    $('view-home')?.classList.add('active');
+  }catch(_){}
+
+  // PEDIDOS: filtros por usuários cadastrados + PDF
+  function orderDate1263(o){return String(o?.createdDate||o?.date||o?.createdAt||'').slice(0,10)}
+  function filters1263(){return {seller:norm($('orderFilterSeller')?.value||''),from:$('orderFilterFrom')?.value||'',to:$('orderFilterTo')?.value||''}}
+  function visible1263(){const f=filters1263();return (db.orders||[]).filter(canSeeOrder).filter(o=>{const d=orderDate1263(o),u=resolveSellerUser(o);return (!f.seller||u===f.seller)&&(!f.from||d>=f.from)&&(!f.to||d<=f.to)})}
+  function fillSellers1263(){
     const s=$('orderFilterSeller');if(!s)return;
     const cur=norm(s.value||'');
     const fromUsers=(typeof allUsers==='function'?allUsers():[]).filter(u=>['SALES','GESTOR','PARTNER'].includes(norm(u.role))).map(u=>norm(u.username)).filter(Boolean);
@@ -3411,9 +3534,12 @@ function payrollRows(competence){const h=hrData(),rows=[];for(const e of h.emplo
     s.innerHTML='<option value="">TODOS OS VENDEDORES</option>'+users.map(u=>`<option value="${esc(u)}">${esc(sellerName(u))}</option>`).join('');
     if([...s.options].some(o=>norm(o.value)===cur))s.value=cur;
   }
+  const oldRenderOrders1263=renderOrders;
   renderOrders=function(){
-    const tb=$('ordersTable');if(!tb)return;v126FillOrderSellers();tb.innerHTML='';
-    for(const o of v126VisibleOrders()){
+    fillSellers1263();
+    const tb=$('ordersTable');if(!tb)return oldRenderOrders1263();
+    tb.innerHTML='';
+    for(const o of visible1263()){
       const install=o.installation?.completedDate?'CONCLUÍDA':o.productionStage==='EXPEDIÇÃO'?'PRONTO PARA INSTALAÇÃO':'AGUARDANDO',paid=orderPaid(o),bal=orderBalance(o),fs=financialStatus(o);
       const tr=document.createElement('tr');
       tr.innerHTML=`<td>${String(o.numero).padStart(6,'0')}</td><td>${String(o.quoteNumber).padStart(6,'0')}</td><td>${esc(o.client)}</td><td>${esc(displaySeller(o))}</td><td>${money(o.agreedValue)}</td><td>${money(paid)}</td><td><strong>${money(bal)}</strong></td><td><span class="badge ${fs==='QUITADO'?'ok':fs==='PARCIAL'?'blue':'warn'}">${fs}</span></td><td><span class="badge blue">${esc(o.productionStage||'RECEPÇÃO')}</span></td><td><span class="badge ${install==='CONCLUÍDA'?'ok':'warn'}">${install}</span></td><td><button class="btn primary" data-order-pay="${o.numero}">Inserir pagamento</button> <button class="btn ghost" data-order-open="${o.numero}">Abrir</button> ${isGestor()?`<button class="btn danger" data-order-delete="${o.numero}">Excluir</button>`:''}</td>`;
@@ -3424,196 +3550,73 @@ function payrollRows(competence){const h=hrData(),rows=[];for(const e of h.emplo
     document.querySelectorAll('[data-order-pay]').forEach(b=>b.onclick=()=>openPayment(Number(b.dataset.orderPay)));
     document.querySelectorAll('[data-order-delete]').forEach(b=>b.onclick=()=>deleteOrder(Number(b.dataset.orderDelete)));
   };
-  window.printOrdersV126=function(){
-    const rows=v126VisibleOrders(),f=v126OrderFilters(),total=rows.reduce((a,o)=>a+orderCashSale(o),0);
-    const pct=f.seller?Number(sellerCommission(f.seller)||0):0;
+  window.printOrdersV1263=function(){
+    const rows=visible1263(),f=filters1263(),total=rows.reduce((a,o)=>a+orderCashSale(o),0),pct=f.seller?Number(sellerCommission(f.seller)||0):0;
     const commission=f.seller?rows.reduce((a,o)=>a+orderCashSale(o)*Number(o.commissionPercent??pct)/100,0):0;
-    const body=`<div class="pdf-head"><img src="${location.origin}/icon-512.png"><div class="store-client"><strong>NOVA IMAGEM CORTINAS E PERSIANAS</strong><br><strong>RELATÓRIO DE PEDIDOS</strong><br><br>Vendedor: <strong>${f.seller?esc(sellerName(f.seller)):'Todos'}</strong><br>Período: ${f.from?fmtDate(f.from):'início'} até ${f.to?fmtDate(f.to):'hoje'}</div></div><table class="summary-table"><tr><th>Pedido</th><th>Data</th><th>Cliente</th><th>Vendedor</th><th>Valor à vista</th></tr>${rows.map(o=>`<tr><td>${String(o.numero).padStart(6,'0')}</td><td>${fmtDate(v126OrderDate(o))}</td><td>${esc(o.client)}</td><td>${esc(displaySeller(o))}</td><td>${money(orderCashSale(o))}</td></tr>`).join('')||'<tr><td colspan="5">Nenhum pedido.</td></tr>'}</table><div class="section-title">Fechamento</div><table class="summary-table"><tr><th>Total de pedidos</th><td>${rows.length}</td><th>Soma dos pedidos a valor à vista</th><td><strong>${money(total)}</strong></td></tr>${f.seller?`<tr><th>Percentual de comissão</th><td>${pct.toFixed(2)}%</td><th>Comissão do vendedor no período</th><td><strong>${money(commission)}</strong></td></tr>`:''}</table>`;
-    printWindow(body)
+    printWindow(`<div class="pdf-head"><img src="${location.origin}/icon-512.png"><div class="store-client"><strong>NOVA IMAGEM CORTINAS E PERSIANAS</strong><br><strong>RELATÓRIO DE PEDIDOS</strong><br><br>Vendedor: <strong>${f.seller?esc(sellerName(f.seller)):'Todos'}</strong><br>Período: ${f.from?fmtDate(f.from):'início'} até ${f.to?fmtDate(f.to):'hoje'}</div></div><table class="summary-table"><tr><th>Pedido</th><th>Data</th><th>Cliente</th><th>Vendedor</th><th>Valor à vista</th></tr>${rows.map(o=>`<tr><td>${String(o.numero).padStart(6,'0')}</td><td>${fmtDate(orderDate1263(o))}</td><td>${esc(o.client)}</td><td>${esc(displaySeller(o))}</td><td>${money(orderCashSale(o))}</td></tr>`).join('')||'<tr><td colspan="5">Nenhum pedido.</td></tr>'}</table><div class="section-title">Fechamento</div><table class="summary-table"><tr><th>Total de pedidos</th><td>${rows.length}</td><th>Soma dos pedidos a valor à vista</th><td><strong>${money(total)}</strong></td></tr>${f.seller?`<tr><th>Percentual de comissão</th><td>${pct.toFixed(2)}%</td><th>Comissão do vendedor no período</th><td><strong>${money(commission)}</strong></td></tr>`:''}</table>`)
   };
-  function v126BindOrderFilters(){
-    const s=$('orderFilterSeller'),fr=$('orderFilterFrom'),to=$('orderFilterTo');
+  function bindFilters1263(){
+    const s=$('orderFilterSeller'),fr=$('orderFilterFrom'),to=$('orderFilterTo'),pdf=$('orderFilterPdf'),cl=$('orderFilterClear');
     if(s)s.onchange=renderOrders;if(fr)fr.onchange=renderOrders;if(to)to.onchange=renderOrders;
-    let pdf=$('orderFilterPdf');if(pdf&&!pdf.dataset.v126Bound){const n=pdf.cloneNode(true);n.dataset.v126Bound='1';pdf.replaceWith(n);pdf=n}if(pdf)pdf.onclick=window.printOrdersV126;
-    let cl=$('orderFilterClear');if(cl&&!cl.dataset.v126Bound){const n=cl.cloneNode(true);n.dataset.v126Bound='1';cl.replaceWith(n);cl=n}if(cl)cl.onclick=()=>{if(s)s.value='';if(fr)fr.value='';if(to)to.value='';renderOrders()};
+    if(pdf)pdf.onclick=window.printOrdersV1263;
+    if(cl)cl.onclick=()=>{if(s)s.value='';if(fr)fr.value='';if(to)to.value='';renderOrders()};
   }
-  const v126OldSetView=setView;setView=function(id){v126OldSetView(id);if(id==='orders'){v126BindOrderFilters();renderOrders()}};
+  const oldSetView1263=setView;
+  setView=function(id){oldSetView1263(id);if(id==='orders'){bindFilters1263();renderOrders()}};
 
-  // ---------- EXCLUIR FIXAÇÃO SOMENTE DE UMA PEÇA ----------
-  let v126ExcludeFixation=false;
-  function v126SyncFixButton(){const b=$('toggleEnvFixBtn');if(!b)return;b.textContent=v126ExcludeFixation?'RESTAURAR FIXAÇÃO':'EXCLUIR FIXAÇÃO';b.className='btn '+(v126ExcludeFixation?'danger':'secondary')}
-  const v126OldEnvFromForm=envFromForm;
-  envFromForm=function(){const e=v126OldEnvFromForm();e.excludeFixation=!!v126ExcludeFixation;return e};
-  const v126OldCalc=calcEnvironment;
-  calcEnvironment=function(e){
-    const c=v126OldCalc(e);if(!c||!e?.excludeFixation)return c;
-    const fix=Number(c.fixationCalc?.total||0),install=Number(c.installCost||0);
-    const laborTotal=Math.max(0,Number(c.laborTotal||0)-install);
-    const base4=Math.max(0,Number(c.base4||0)-fix-install);
-    const p18=base4*(1+Number(db.priceConfig.terms.p18AddPct||0)/100),cash=base4*(1-Number(db.priceConfig.terms.cashDiscountPct||0)/100);
-    return {...c,fixationCalc:{...(c.fixationCalc||{}),total:0,hardwareBase:0,detail:'FIXAÇÃO EXCLUÍDA'},installCost:0,laborTotal,base4,p18,cash};
-  };
-  const v126OldReq=officialOrderRequirements;
-  officialOrderRequirements=function(q){
-    const rows=v126OldReq(q),excluded=new Set((q?.environments||[]).filter(e=>e.excludeFixation).map(e=>String(e.name||'')));
-    if(!excluded.size)return rows;
-    const isFix=r=>/(TRILHO|VARAO|VARÃO|TUBO|SUPORTE|GARRA|TAMPA|MOTOR|CONTROLE REMOTO|COMANDO)/i.test(String(r.source||'')+' '+String(r.product_name||''));
-    return rows.filter(r=>!excluded.has(String(r.environment||''))||!isFix(r));
-  };
-  if(typeof purchaseMaterialsForOrder==='function'){
-    const v126OldPurchase=purchaseMaterialsForOrder;
-    purchaseMaterialsForOrder=function(o){const ex=new Set((o?.environments||[]).filter(e=>e.excludeFixation).map(e=>String(e.name||'')));return v126OldPurchase(o).filter(x=>!ex.has(String(x.environment||'')))};
-  }
-
-  // ---------- EDITAR AMBIENTE ----------
-  let v126EditingEnvId=null;
-  function v126Set(id,val){const x=$(id);if(x&&val!==undefined&&val!==null)x.value=String(val)}
-  function v126LoadEnvironment(e){
-    if(!e)return;v126EditingEnvId=e.id;v126ExcludeFixation=!!e.excludeFixation;
-    v126Set('eModel',e.model);try{updateModelFields()}catch(_){ }
-    v126Set('eName',e.name);v126Set('eWidth',e.width);v126Set('eHeight',e.height);v126Set('eLeaves',e.leaves);
-    v126Set('eFinish',e.finish);try{refreshFinishColors()}catch(_){ }v126Set('eFinishColor',e.finishColor);v126Set('eFinishPleat',e.finishPleat);v126Set('eFinishGather',e.finishGather);
-    v126Set('eLining',e.lining);try{refreshLiningColors()}catch(_){ }v126Set('eLiningColor',e.liningColor);v126Set('eLiningPleat',e.liningPleat);v126Set('eLiningGather',e.liningGather);
-    v126Set('eFixation',e.fixation);try{refreshFixColors()}catch(_){ }v126Set('eRailProduct',e.railProductId||e.fixProductId||'');v126Set('eFixColor',e.fixColor);v126Set('eSupportMaterial',e.supportMaterial||'ALUMINIO');
-    if($('eFinishTube'))v126Set('eFinishTube',e.finishTubeProductId||e.finishTube||'');if($('eLiningTube'))v126Set('eLiningTube',e.liningTubeProductId||e.liningTube||'');
-    if($('eAngle')){$('eAngle').checked=!!e.angle;try{$('eAngle').dispatchEvent(new Event('change',{bubbles:true}))}catch(_){ }}
-    v126Set('eAngleA',e.angleA||'');v126Set('eAngleAHeight',e.angleAHeight||'');v126Set('eAngleB',e.angleB||'');v126Set('eAngleBHeight',e.angleBHeight||'');v126Set('eMotorAngleMode',e.motorAngleMode||'CURVA');
-    v126Set('eCustomPleat',e.customPleat||0);v126Set('eNotes',e.notes||'');
-    if($('addEnvBtn'))$('addEnvBtn').textContent='SALVAR EDIÇÕES';v126SyncFixButton();try{updatePreview()}catch(_){ }
-    $('eName')?.scrollIntoView({behavior:'smooth',block:'center'});
-  }
-  const v126OldRenderQuote=renderQuote;
-  renderQuote=function(){
-    v126OldRenderQuote();
-    document.querySelectorAll('[data-del-env]').forEach(del=>{
-      const id=del.dataset.delEnv;if([...del.parentElement?.querySelectorAll('[data-edit-env]')||[]].some(x=>String(x.dataset.editEnv)===String(id)))return;
-      const b=document.createElement('button');b.className='btn secondary';b.dataset.editEnv=id;b.textContent='Editar';b.style.marginRight='6px';b.onclick=()=>v126LoadEnvironment((draft.environments||[]).find(x=>String(x.id)===String(id)));del.parentElement?.insertBefore(b,del)
-    });
-  };
-  const v126OldClear=clearEnv;
-  clearEnv=function(){const r=v126OldClear();v126ExcludeFixation=false;v126EditingEnvId=null;if($('addEnvBtn'))$('addEnvBtn').textContent='+ Adicionar ambiente';v126SyncFixButton();return r};
-
-  // Captura antes do listener legado para salvar edição sem duplicar.
-  document.addEventListener('click',ev=>{
-    const t=ev.target;if(t?.id==='toggleEnvFixBtn'){ev.preventDefault();v126ExcludeFixation=!v126ExcludeFixation;v126SyncFixButton();try{updatePreview()}catch(_){ }return}
-    if(t?.id==='addEnvBtn'&&v126EditingEnvId){
-      ev.preventDefault();ev.stopImmediatePropagation();
-      const e=envFromForm();if(!e.name||!e.width||!e.height)return alert('Preencha ambiente, largura e altura.');if(e.fixation==='TRILHO SUÍÇO'&&!e.railProductId&&!e.excludeFixation)return alert('Selecione o Tipo de Trilho no estoque oficial.');
-      const i=(draft.environments||[]).findIndex(x=>String(x.id)===String(v126EditingEnvId));if(i<0)return alert('Ambiente não encontrado para edição.');e.id=v126EditingEnvId;draft.environments[i]=e;v126EditingEnvId=null;v126ExcludeFixation=false;renderQuote();clearEnv();
-    }
-  },true);
-
-  // ---------- ETIQUETAS DE PRODUÇÃO ----------
-  window.generateLabelsV126=function(orderNumber){
+  // ETIQUETAS
+  window.generateLabelsV1263=function(orderNumber){
     const o=(db.orders||[]).find(x=>Number(x.numero)===Number(orderNumber));if(!o)return alert('Pedido não encontrado.');
     const labels=[];
-    for(const e of o.environments||[]){const n=Math.max(1,Number(e.leaves||1));
+    for(const e of o.environments||[]){
+      const n=Math.max(1,Number(e.leaves||1));
       if(e.model!=='LINING')for(let i=1;i<=n;i++)labels.push({env:e.name,size:`${e.width} x ${e.height} cm`,fabric:[e.finish,e.finishColor].filter(Boolean).join(' • '),id:`ACABAMENTO ${i}/${n}`});
       if(e.model!=='FINISH')for(let i=1;i<=n;i++)labels.push({env:e.name,size:`${e.width} x ${e.height} cm`,fabric:[e.lining,e.liningColor].filter(Boolean).join(' • '),id:`FORRO ${i}/${n}`});
     }
     const w=window.open('about:blank','_blank');if(!w)return alert('Libere pop-ups para gerar as etiquetas.');
-    w.document.write(`<html><head><title>Etiquetas • Pedido ${String(o.numero).padStart(6,'0')}</title><style>@page{size:A4 portrait;margin:8mm}*{box-sizing:border-box}body{font-family:Arial,sans-serif;margin:0;color:#000}.tools{margin:0 0 6mm}.tools button{padding:8px 12px;margin-right:6px}.sheet{display:grid;grid-template-columns:repeat(4,40mm);gap:3mm;align-items:start}.label{width:40mm;height:55mm;border:1.2px solid #000;padding:2.2mm;overflow:hidden;break-inside:avoid;font-size:7.2pt;line-height:1.12}.logo{height:8mm;text-align:center;border-bottom:1px solid #000;margin-bottom:1.5mm}.logo img{height:7mm;max-width:25mm;object-fit:contain}.client{font-size:8pt;font-weight:800;margin-bottom:1mm}.row{margin:.8mm 0}.check{font-size:7pt;margin:1.2mm 0;border-top:1px solid #bbb;border-bottom:1px solid #bbb;padding:.8mm 0}.leaf{font-weight:900;font-size:8.3pt;margin-top:1mm}@media print{.tools{display:none}.sheet{gap:3mm}}</style></head><body><div class="tools"><button onclick="window.print()">IMPRIMIR</button><button onclick="window.close()">RETORNAR</button> ${labels.length} etiqueta(s)</div><div class="sheet">${labels.map(l=>`<div class="label"><div class="logo"><img src="${location.origin}/icon-512.png"></div><div class="client">${esc(o.client||'-')}</div><div class="row"><b>PEDIDO:</b> ${String(o.numero).padStart(6,'0')}</div><div class="row"><b>AMBIENTE:</b> ${esc(l.env||'-')}</div><div class="row"><b>MEDIDA:</b> ${esc(l.size)}</div><div class="check">☐ EXATO &nbsp;&nbsp; ☐ DAR DESCONTO</div><div class="row"><b>TECIDO:</b> ${esc(l.fabric||'-')}</div><div class="leaf">${esc(l.id)}</div></div>`).join('')}</div></body></html>`);w.document.close();w.focus();
+    w.document.write(`<html><head><title>Etiquetas • Pedido ${String(o.numero).padStart(6,'0')}</title><style>@page{size:A4 portrait;margin:8mm}*{box-sizing:border-box}body{font-family:Arial,sans-serif;margin:0;color:#000}.tools{margin:0 0 6mm}.tools button{padding:8px 12px;margin-right:6px}.sheet{display:grid;grid-template-columns:repeat(4,40mm);gap:3mm;align-items:start}.label{width:40mm;height:55mm;border:1.2px solid #000;padding:2.2mm;overflow:hidden;break-inside:avoid;font-size:7.2pt;line-height:1.12}.logo{height:8mm;text-align:center;border-bottom:1px solid #000;margin-bottom:1.5mm}.logo img{height:7mm;max-width:25mm;object-fit:contain}.client{font-size:8pt;font-weight:800;margin-bottom:1mm}.row{margin:.8mm 0}.check{font-size:7pt;margin:1.2mm 0;border-top:1px solid #bbb;border-bottom:1px solid #bbb;padding:.8mm 0}.leaf{font-weight:900;font-size:8.3pt;margin-top:1mm}@media print{.tools{display:none}.sheet{gap:3mm}}</style></head><body><div class="tools"><button onclick="window.print()">IMPRIMIR</button><button onclick="window.close()">RETORNAR</button> ${labels.length} etiqueta(s)</div><div class="sheet">${labels.map(l=>`<div class="label"><div class="logo"><img src="${location.origin}/icon-512.png"></div><div class="client">${esc(o.client||'-')}</div><div class="row"><b>PEDIDO:</b> ${String(o.numero).padStart(6,'0')}</div><div class="row"><b>AMBIENTE:</b> ${esc(l.env||'-')}</div><div class="row"><b>MEDIDA:</b> ${esc(l.size)}</div><div class="check">☐ EXATO &nbsp;&nbsp; ☐ DAR DESCONTO</div><div class="row"><b>TECIDO:</b> ${esc(l.fabric||'-')}</div><div class="leaf">${esc(l.id)}</div></div>`).join('')}</div></body></html>`);
+    w.document.close();w.focus();
   };
+  const oldPrintProductionOrder1263=printProductionOrder;
   printProductionOrder=function(o){
-    let envs='';for(const e of o.environments||[]){const c=calcEnvironment(e);if(!c)continue;const mats=environmentMaterialRows(e);envs+=`<div class="env-block"><div class="env-title">${esc(e.name)} ${e.excludeFixation?'<span class="badge warn">FIXAÇÃO EXCLUÍDA</span>':''}</div><table class="env-table"><tr><th>Medidas</th><td>${e.width} × ${e.height} cm</td><th>Aberturas</th><td>${Math.max(0,Number(e.leaves||1)-1)}</td></tr><tr><th>Acabamento</th><td>${c.finishCalc?esc(`${e.finish} / ${e.finishColor} / ${e.finishPleat} ${e.finishGather}:1`):'—'}</td><th>Forro</th><td>${c.liningCalc?esc(`${e.lining} / ${e.liningColor} / ${e.liningPleat} ${e.liningGather}:1`):'—'}</td></tr><tr><th>Fixação</th><td>${e.excludeFixation?'EXCLUÍDA PARA ESTA PEÇA':esc(e.fixation||'-')+' • '+esc(e.fixColor||'')}</td><th>Deslizantes</th><td>${c.finishSliders||0} acabamento + ${c.liningSliders||0} forro</td></tr><tr><th>Costura</th><td colspan="3">${Number(c.sewingMeters||0).toFixed(2)} m</td></tr>${e.notes?`<tr style="background:#fff3a8"><th style="font-weight:900">OBSERVAÇÕES</th><td colspan="3" style="font-weight:800">${esc(e.notes)}</td></tr>`:`<tr><th>Observações</th><td colspan="3">Sem observações.</td></tr>`}</table><div class="section-title">Materiais / separação</div><table class="summary-table"><tr><th>SKU</th><th>Material</th><th>Cor</th><th>Quantidade</th></tr>${mats||'<tr><td colspan="4">Sem material oficial vinculado.</td></tr>'}</table></div>`}
-    const body=`<div class="screen-only" style="margin-bottom:8px"><button onclick="window.opener && window.opener.generateLabelsV126(${Number(o.numero)})">GERAR ETIQUETAS</button></div><div class="pdf-head"><img src="${location.origin}/icon-512.png"><div class="store-client"><strong>Nova Imagem Cortinas & Persianas</strong><br><strong>ORDEM DE SERVIÇO / PRODUÇÃO</strong><br><br><strong>Pedido:</strong> ${String(o.numero).padStart(6,'0')}<br><strong>Cliente:</strong> ${esc(o.client||'-')}<br><strong>Contato:</strong> ${esc(o.contact||'-')}<br><strong>Endereço:</strong> ${esc(o.address||'-')}<br><strong>Instalação prevista:</strong> ${fmtDate(o.deliveryDate)}<br><strong>Vendedor:</strong> ${esc(displaySeller(o))}</div></div>${envs}<div class="section-title">Observações gerais</div><p>${esc((o.notes||'').trim()||'Sem observações gerais.')}</p>`;printWindow(body)
+    oldPrintProductionOrder1263(o);
+    setTimeout(()=>{try{const w=window.open('','_blank');}catch(_){}},0);
   };
 
-  function v126BindFixButton(){const b=$('toggleEnvFixBtn');if(!b)return;b.onclick=()=>{v126ExcludeFixation=!v126ExcludeFixation;v126SyncFixButton();try{updatePreview()}catch(e){console.error('V12.6.1 updatePreview fixation',e)}}}
-  const v126Boot=()=>setTimeout(()=>{v126BindOrderFilters();v126FillOrderSellers();v126SyncFixButton();v126BindFixButton();try{renderOrders()}catch(e){console.error('V12.6.1 renderOrders',e)}try{renderQuote()}catch(e){console.error('V12.6.1 renderQuote',e)}},300);
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',v126Boot);else v126Boot();
-})();
-
-
-
-/* ============================================================================
-   V12.6.2 • CORREÇÃO DEFINITIVA DE AMBIENTE/FIXAÇÃO + CHECKLIST DE CONVERSÃO
-   ============================================================================ */
-(function(){
-  const V1262='V12.6.2';
-  try{companySettings().version=V1262}catch(_){}
-  let v1262ExcludeFixation=false;
-  let v1262EditingEnvId=null;
-  function v1262Set(id,val){const el=$(id);if(el&&val!==undefined&&val!==null)el.value=String(val)}
-  function v1262ApplyFixUi(){
-    const hidden=v1262ExcludeFixation;
-    ['eFixationWrap','eRailProductWrap','eFixColorWrap','eSupportMaterialWrap','eFinishTubeWrap','eLiningTubeWrap','eMotorAngleWrap'].forEach(id=>{
-      const el=$(id);if(!el)return;
-      if(hidden){if(el.dataset.v1262OldDisplay===undefined)el.dataset.v1262OldDisplay=el.style.display||'';el.style.display='none'}
-      else el.style.display=el.dataset.v1262OldDisplay||'';
-    });
-    const b=$('toggleEnvFixBtn');if(b){b.textContent=hidden?'RESTAURAR FIXAÇÃO':'EXCLUIR FIXAÇÃO';b.className='btn '+(hidden?'danger':'secondary')}
-    if(!hidden){try{typeof v12RefreshFixations==='function'&&v12RefreshFixations()}catch(_){}try{typeof updateModelFields==='function'&&updateModelFields()}catch(_){}}
-  }
-  const oldEnvFromForm1262=envFromForm;
-  envFromForm=function(){const e=oldEnvFromForm1262();e.excludeFixation=!!v1262ExcludeFixation;return e};
-  const oldClearEnv1262=clearEnv;
-  clearEnv=function(){const r=oldClearEnv1262();v1262ExcludeFixation=false;v1262EditingEnvId=null;if($('addEnvBtn'))$('addEnvBtn').textContent='+ Adicionar ambiente';v1262ApplyFixUi();try{updatePreview()}catch(_){}return r};
-  function v1262LoadEnvironment(e){
-    if(!e)return;v1262EditingEnvId=e.id;v1262ExcludeFixation=!!e.excludeFixation;
-    v1262Set('eModel',e.model);try{updateModelFields()}catch(_){}
-    v1262Set('eName',e.name);v1262Set('eWidth',e.width);v1262Set('eHeight',e.height);v1262Set('eLeaves',e.leaves);
-    v1262Set('eFinish',e.finish);try{refreshFinishColors()}catch(_){}v1262Set('eFinishColor',e.finishColor);v1262Set('eFinishPleat',e.finishPleat);v1262Set('eFinishGather',e.finishGather);
-    v1262Set('eLining',e.lining);try{refreshLiningColors()}catch(_){}v1262Set('eLiningColor',e.liningColor);v1262Set('eLiningPleat',e.liningPleat);v1262Set('eLiningGather',e.liningGather);
-    v1262Set('eFixation',e.fixation);try{refreshFixColors()}catch(_){}try{typeof v12RefreshFixations==='function'&&v12RefreshFixations()}catch(_){}
-    v1262Set('eRailProduct',e.railProductId||e.fixProductId||'');v1262Set('eFixColor',e.fixColor);v1262Set('eSupportMaterial',e.supportMaterial||'ALUMINIO');
-    v1262Set('eFinishTube',e.finishTubeProductId||e.finishTube||'');v1262Set('eLiningTube',e.liningTubeProductId||e.liningTube||'');
-    v1262Set('eFinishBar',e.finishBar||'BARRA SIMPLES');v1262Set('eSoutacheColor',e.soutacheColor||'');v1262Set('eCustomPleat',e.customPleat||0);v1262Set('eNotes',e.notes||'');
-    if($('eAngle')){$('eAngle').checked=!!e.angle;try{$('eAngle').dispatchEvent(new Event('change',{bubbles:true}))}catch(_){}}
-    v1262Set('eAngleA',e.angleA||'');v1262Set('eAngleAHeight',e.angleAHeight||'');v1262Set('eAngleB',e.angleB||'');v1262Set('eAngleBHeight',e.angleBHeight||'');v1262Set('eMotorAngleMode',e.motorAngleMode||'CURVA');
-    if($('addEnvBtn'))$('addEnvBtn').textContent='SALVAR EDIÇÕES';v1262ApplyFixUi();try{updatePreview()}catch(_){}$('eName')?.scrollIntoView({behavior:'smooth',block:'center'});
-  }
-  const oldRenderQuote1262=renderQuote;
-  renderQuote=function(){
-    oldRenderQuote1262();
-    document.querySelectorAll('#envTable [data-del-env]').forEach(del=>{
-      const id=String(del.dataset.delEnv||''),cell=del.closest('td')||del.parentElement;if(!cell)return;
-      let edit=cell.querySelector('[data-edit-env]');
-      if(!edit){edit=document.createElement('button');edit.type='button';edit.className='btn secondary';edit.dataset.editEnv=id;edit.textContent='Editar';edit.style.marginRight='6px';cell.insertBefore(edit,del)}
-      edit.onclick=()=>{const env=(draft.environments||[]).find(x=>String(x.id)===id);if(!env)return alert('Ambiente não encontrado.');v1262LoadEnvironment(env)};
-    });
-    v1262ApplyFixUi();
-  };
-  window.addEventListener('click',function(ev){
-    const t=ev.target;
-    if(t?.id==='toggleEnvFixBtn'){ev.preventDefault();ev.stopImmediatePropagation();v1262ExcludeFixation=!v1262ExcludeFixation;v1262ApplyFixUi();try{updatePreview()}catch(e){console.error('V12.6.2 preview fixação',e)}return}
-    if(t?.id==='addEnvBtn'&&v1262EditingEnvId){
-      ev.preventDefault();ev.stopImmediatePropagation();const e=envFromForm();
-      if(!e.name||!e.width||!e.height)return alert('Preencha ambiente, largura e altura.');
-      if(!e.excludeFixation&&e.fixation==='TRILHO SUÍÇO'&&!e.railProductId)return alert('Selecione o Tipo de Trilho no estoque oficial.');
-      const i=(draft.environments||[]).findIndex(x=>String(x.id)===String(v1262EditingEnvId));if(i<0)return alert('Ambiente não encontrado para edição.');
-      e.id=v1262EditingEnvId;draft.environments[i]=e;v1262EditingEnvId=null;v1262ExcludeFixation=false;renderQuote();clearEnv();return;
-    }
-  },true);
-  const oldConvertQuote1262=convertQuote;
-  function addr1262(q){return [[q.street,q.number].filter(Boolean).join(', '),q.complement,q.neighborhood,q.cep?`CEP ${q.cep}`:''].filter(Boolean).join(' • ')||q.address||'-'}
-  function cond1262(cond,installments){if(cond==='cash')return 'À VISTA (PIX/DINHEIRO)';if(cond==='p4')return 'EM ATÉ 4X';if(cond==='p18')return '18X';if(cond==='custom')return `OUTRO • ${Math.max(1,Number(installments||1))} parcela(s)`;return cond||'-'}
-  function envRow1262(e){
+  // CONVERSÃO SEGURA + CHECKLIST
+  const oldConvertQuote1263=convertQuote;
+  function address1263(q){return [[q.street,q.number].filter(Boolean).join(', '),q.complement,q.neighborhood,q.cep?`CEP ${q.cep}`:''].filter(Boolean).join(' • ')||q.address||'-'}
+  function condition1263(cond,installments){if(cond==='cash')return 'À VISTA (PIX/DINHEIRO)';if(cond==='p4')return 'EM ATÉ 4X';if(cond==='p18')return '18X';if(cond==='custom')return `OUTRO • ${Math.max(1,Number(installments||1))} parcela(s)`;return cond||'-'}
+  function envSummary1263(e){
     const details=[];details.push(e.model==='COMPLETE'?'Cortina completa':e.model==='LINING'?'Apenas forro':'Apenas acabamento');
     if(e.finish)details.push(`Acabamento: ${e.finish}${e.finishColor?' / '+e.finishColor:''}${e.finishPleat?' / '+e.finishPleat+' '+(e.finishGather||'')+':1':''}`);
     if(e.lining)details.push(`Forro: ${e.lining}${e.liningColor?' / '+e.liningColor:''}${e.liningPleat?' / '+e.liningPleat+' '+(e.liningGather||'')+':1':''}`);
     if(e.finishBar)details.push(`Barra: ${e.finishBar}${e.soutacheColor?' / '+e.soutacheColor:''}`);
-    const fix=e.excludeFixation?'FIXAÇÃO EXCLUÍDA PARA ESTA PEÇA':[e.fixation,e.fixColor].filter(Boolean).join(' • ');
-    return `<tr><td><strong>${esc(e.name||'-')}</strong></td><td>${Number(e.width||0)} × ${Number(e.height||0)} cm</td><td>${Math.max(0,Number(e.leaves||1)-1)}</td><td>${details.map(esc).join('<br>')}</td><td>${esc(fix||'-')}</td></tr>`;
+    return `<tr><td><strong>${esc(e.name||'-')}</strong></td><td>${Number(e.width||0)} × ${Number(e.height||0)} cm</td><td>${Math.max(0,Number(e.leaves||1)-1)}</td><td>${details.map(esc).join('<br>')}</td><td>${esc(e.excludeFixation?'FIXAÇÃO EXCLUÍDA PARA ESTA PEÇA':[e.fixation,e.fixColor].filter(Boolean).join(' • ')||'-')}</td></tr>`
   }
-  function installChecklist1262(q){
+  function installChecklist1263(q){
     const btn=$('convGo');if(!btn||$('convChecklistBox'))return;
     const box=document.createElement('div');box.id='convChecklistBox';box.style.cssText='margin:14px 0;border:1px solid #c7d8d6;border-radius:10px;overflow:hidden;background:#fff';
-    box.innerHTML=`<div style="background:#e8f3f1;color:#075b5b;font-weight:900;padding:10px 12px">CHECKLIST ANTES DE GERAR O PEDIDO</div><div style="padding:10px 12px"><div class="grid two" style="margin-bottom:10px"><div><small class="muted">NOME DO CLIENTE</small><br><strong>${esc(q.client||'-')}</strong></div><div><small class="muted">ENDEREÇO</small><br><strong>${esc(addr1262(q))}</strong></div><div><small class="muted">CONDIÇÃO ESCOLHIDA</small><br><strong id="convChecklistCondition">-</strong></div><div><small class="muted">DATA DE INSTALAÇÃO</small><br><strong id="convChecklistDate">-</strong></div><div><small class="muted">VALOR TOTAL DO PEDIDO</small><br><strong id="convChecklistTotal">-</strong></div></div><div style="font-weight:900;color:#075b5b;margin:8px 0 5px">RESUMO POR AMBIENTE</div><div class="table-wrap"><table class="table"><thead><tr><th>Ambiente</th><th>Largura × Altura</th><th>Aberturas</th><th>Detalhes / barra / cores</th><th>Fixação</th></tr></thead><tbody>${(q.environments||[]).map(envRow1262).join('')||'<tr><td colspan="5">Nenhum ambiente.</td></tr>'}</tbody></table></div><label style="display:flex;gap:8px;align-items:flex-start;margin-top:12px;font-weight:800"><input id="convChecklistOk" type="checkbox" style="margin-top:2px">CONFERI OS DADOS ACIMA E AUTORIZO A GERAÇÃO DO PEDIDO.</label></div>`;
+    box.innerHTML=`<div style="background:#e8f3f1;color:#075b5b;font-weight:900;padding:10px 12px">CHECKLIST ANTES DE GERAR O PEDIDO</div><div style="padding:10px 12px"><div class="grid two" style="margin-bottom:10px"><div><small class="muted">NOME DO CLIENTE</small><br><strong>${esc(q.client||'-')}</strong></div><div><small class="muted">ENDEREÇO</small><br><strong>${esc(address1263(q))}</strong></div><div><small class="muted">CONDIÇÃO ESCOLHIDA</small><br><strong id="convChecklistCondition">-</strong></div><div><small class="muted">DATA DE INSTALAÇÃO</small><br><strong id="convChecklistDate">-</strong></div><div><small class="muted">VALOR TOTAL DO PEDIDO</small><br><strong id="convChecklistTotal">-</strong></div></div><div style="font-weight:900;color:#075b5b;margin:8px 0 5px">RESUMO POR AMBIENTE</div><div class="table-wrap"><table class="table"><thead><tr><th>Ambiente</th><th>Largura × Altura</th><th>Aberturas</th><th>Detalhes / barra / cores</th><th>Fixação</th></tr></thead><tbody>${(q.environments||[]).map(envSummary1263).join('')}</tbody></table></div><label style="display:flex;gap:8px;align-items:flex-start;margin-top:12px;font-weight:800"><input id="convChecklistOk" type="checkbox" style="margin-top:2px"> CONFERI OS DADOS ACIMA E AUTORIZO A GERAÇÃO DO PEDIDO.</label></div>`;
     btn.parentNode.insertBefore(box,btn);
-    function refresh(){const condition=$('convCond')?.value||'cash',installments=$('convInstallments')?.value||'',date=$('convDate')?.value||'',disc=Number($('convDiscount')?.value||0),t=quoteTotals(q);let base=condition==='cash'?t.cash:condition==='p18'?t.p18:t.p4;base=Number(base||0)*(1-disc/100);$('convChecklistCondition').textContent=cond1262(condition,installments);$('convChecklistDate').textContent=date?fmtDate(date):'NÃO INFORMADA';$('convChecklistTotal').textContent=money(base)}
+    function refresh(){const condition=$('convCond')?.value||'cash',installments=$('convInstallments')?.value||'',date=$('convDate')?.value||'',disc=Number($('convDiscount')?.value||0),t=quoteTotals(q);let base=condition==='cash'?t.cash:condition==='p18'?t.p18:t.p4;base=Number(base||0)*(1-disc/100);$('convChecklistCondition').textContent=condition1263(condition,installments);$('convChecklistDate').textContent=date?fmtDate(date):'NÃO INFORMADA';$('convChecklistTotal').textContent=money(base)}
     ['convCond','convInstallments','convDate','convDiscount'].forEach(id=>{const el=$(id);if(el){el.addEventListener('input',refresh);el.addEventListener('change',refresh)}});refresh();
-    const original=btn.onclick;btn.onclick=async function(ev){if(!$('convChecklistOk')?.checked)return alert('Confira os dados e marque a confirmação do checklist antes de gerar o pedido.');if(btn.dataset.processing1262==='1')return;btn.dataset.processing1262='1';btn.disabled=true;const old=btn.textContent;btn.textContent='PROCESSANDO...';try{await original?.call(btn,ev)}finally{if(document.body.contains(btn)){btn.dataset.processing1262='0';btn.disabled=false;btn.textContent=old}}};
+    const original=btn.onclick;
+    btn.onclick=async function(ev){
+      if(!$('convChecklistOk')?.checked)return alert('Confira os dados e marque a confirmação do checklist antes de gerar o pedido.');
+      if(btn.dataset.processing==='1')return;
+      btn.dataset.processing='1';btn.disabled=true;const old=btn.textContent;btn.textContent='PROCESSANDO...';
+      try{await original?.call(btn,ev)}finally{if(document.body.contains(btn)){btn.dataset.processing='0';btn.disabled=false;btn.textContent=old}}
+    }
   }
-  convertQuote=function(n){const existing=(db.orders||[]).find(o=>Number(o.quoteNumber)===Number(n));if(existing){alert(`Este orçamento já foi convertido no pedido ${String(existing.numero).padStart(6,'0')}.`);return}oldConvertQuote1262(n);const q=(db.quotes||[]).find(x=>Number(x.numero)===Number(n));if(q)setTimeout(()=>installChecklist1262(q),0)};
-  const oldRevertQuote1262=revertQuote;
-  revertQuote=async function(n){
-    const matches=(db.orders||[]).filter(o=>Number(o.quoteNumber)===Number(n));if(matches.length<=1)return oldRevertQuote1262(n);
-    const list=matches.map(o=>`Pedido ${String(o.numero).padStart(6,'0')} • ${money(o.agreedValue||0)}`).join('\n');const raw=prompt(`Foram encontrados ${matches.length} pedidos vinculados a este orçamento.\n\n${list}\n\nDigite o NÚMERO DO PEDIDO que deseja reverter:`);if(raw==null)return;
-    const order=matches.find(o=>Number(o.numero)===Number(String(raw).replace(/\D/g,'')));if(!order)return alert('Pedido informado não encontrado.');const idx=db.orders.findIndex(o=>String(o.id)===String(order.id));if(idx<0)return;if(!confirm(`Reverter somente o pedido ${String(order.numero).padStart(6,'0')}?`))return;
-    const officialRestore=await restoreOfficialStock(order);if(!officialRestore.ok)return alert(officialRestore.error);restoreOrderStock(order);db.products=(db.products||[]).filter(p=>Number(p.orderNumber)!==Number(order.numero));db.orders.splice(idx,1);
-    const q=(db.quotes||[]).find(x=>Number(x.numero)===Number(n)),remaining=(db.orders||[]).find(o=>Number(o.quoteNumber)===Number(n));if(q){q.status=remaining?'PEDIDO':'ORÇAMENTO';q.convertedOrderNumber=remaining?.numero||null}queueSave();renderAll();
+  convertQuote=function(n){
+    const existing=(db.orders||[]).find(o=>Number(o.quoteNumber)===Number(n));
+    if(existing)return alert(`Este orçamento já foi convertido no pedido ${String(existing.numero).padStart(6,'0')}.`);
+    oldConvertQuote1263(n);
+    const q=(db.quotes||[]).find(x=>Number(x.numero)===Number(n));if(q)setTimeout(()=>installChecklist1263(q),0)
   };
-  setTimeout(()=>{try{renderQuote()}catch(e){console.error('V12.6.2 renderQuote',e)}v1262ApplyFixUi()},350);
+
+  function boot1263(){bindFilters1263();fillSellers1263();applyEnvironmentFixationUI();try{renderQuote()}catch(e){console.error('V12.6.3 renderQuote',e)}}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(boot1263,250));else setTimeout(boot1263,250);
 })();
 

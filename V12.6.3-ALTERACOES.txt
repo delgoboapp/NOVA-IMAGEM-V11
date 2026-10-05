@@ -1,0 +1,16 @@
+NOVA IMAGEM ERP — V12.6.3
+
+CORREÇÃO E CONSOLIDAÇÃO DA V12.6
+
+- EDITAR ambiente agora é parte nativa do Resumo do Orçamento, antes de EXCLUIR.
+- EDITAR carrega o mesmo ambiente na seção B e troca o botão para SALVAR EDIÇÕES.
+- EXCLUIR FIXAÇÃO agora é parte nativa do formulário e do cálculo.
+- Ao excluir fixação, os campos de fixação somem e o cálculo retira fixação + instalação daquela peça.
+- DESLIZANTES e CORDÃO WAVE permanecem quando aplicáveis.
+- Depois de adicionar/salvar ambiente, a próxima inclusão volta ao modo normal com fixação.
+- Filtros e PDF da tela Pedidos.
+- Vendedores carregados dos usuários do sistema.
+- GERAR ETIQUETAS na Ordem de Produção.
+- Checklist antes da conversão do orçamento.
+- Bloqueio de duplo clique e de conversão duplicada.
+- Correção visual de abertura após login.
