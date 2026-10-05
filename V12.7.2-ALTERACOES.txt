@@ -1,0 +1,22 @@
+NOVA IMAGEM ERP — V12.7.2
+
+1. TELA DE CARREGAMENTO / SINCRONIZAÇÃO
+- Após o login, nenhuma tela interna do ERP fica visível enquanto os dados são sincronizados.
+- Exibe tela neutra com logo, "Carregando sistema..." e "Sincronizando dados".
+- Ao terminar, abre diretamente o BEM-VINDO.
+- Também funciona ao restaurar uma sessão já autenticada.
+
+2. AMBIENTE COM EXCLUIR FIXAÇÃO — EXIBIÇÃO
+- Não altera o cálculo comercial já validado.
+- No Pedido, o campo Fixação mostra apenas: SEM FIXAÇÃO.
+- Na Ordem de Produção: SEM FIXAÇÃO / SEM INSTALAÇÃO.
+- Não exibe na tabela de materiais daquele ambiente:
+  trilhos, garras, tampas, varões, suportes, tubos, motores,
+  controles remotos, Square e comandos por corda.
+- Permanecem:
+  tecidos, fita Wave, DESLIZANTES, CORDÃO WAVE,
+  argolas, ilhós e demais aviamentos de confecção.
+- A mão de obra continua usando o cálculo atual: somente confecção/costura
+  quando a instalação daquele ambiente foi excluída.
+
+Versão: V12.7.2

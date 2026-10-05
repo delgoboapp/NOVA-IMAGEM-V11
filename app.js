@@ -827,11 +827,44 @@ function closeModal(force=false){if(!force&&!modalClosingByAction&&modalDirty){i
 document.addEventListener('click',e=>{if(e.target.closest('#modalBody button')&&!e.target.matches('#modalClose')) modalClosingByAction=true;});
 document.addEventListener('input',e=>{if($('modal')?.classList.contains('open')&&e.target.closest('#modalBody')) modalDirty=true;});
 
-async function doLogin(){const user=norm($('loginUser').value),pass=$('loginPass').value;if(!user||!pass)return $('loginError').textContent='Informe usuário e senha.';try{$('loginBtn').disabled=true;$('loginError').textContent='';const j=await api('auth',{method:'POST',body:JSON.stringify({username:user,passwordHash:await sha256(pass)})});token=j.token;currentUser={username:j.username,role:j.role,name:j.name||j.username};sessionStorage.setItem('novaV9Token',token);sessionStorage.setItem('novaV9User',JSON.stringify(currentUser));document.body.classList.remove('auth-locked');$('loginScreen').classList.add('hidden');$('sessionUser').textContent=`${j.name||j.username} • ${String(j.role).toUpperCase()}`;draft.sellerUser=norm(j.username);draft.seller=sellerName(j.username);await loadCloud();refreshSellerControl(draft.sellerUser);setupSelectors();renderQuote();goHome()}catch(e){$('loginError').textContent=e.message}finally{$('loginBtn').disabled=false}}
+async function doLogin(){
+  const user=norm($('loginUser').value),pass=$('loginPass').value;
+  if(!user||!pass)return $('loginError').textContent='Informe usuário e senha.';
+  try{
+    $('loginBtn').disabled=true;$('loginError').textContent='';
+    const j=await api('auth',{method:'POST',body:JSON.stringify({username:user,passwordHash:await sha256(pass)})});
+    token=j.token;currentUser={username:j.username,role:j.role,name:j.name||j.username};
+    sessionStorage.setItem('novaV9Token',token);sessionStorage.setItem('novaV9User',JSON.stringify(currentUser));
+    $('systemLoadingScreen')?.classList.remove('hidden');
+    document.body.classList.remove('auth-locked');
+    $('loginScreen').classList.add('hidden');
+    $('sessionUser').textContent=`${j.name||j.username} • ${String(j.role).toUpperCase()}`;
+    draft.sellerUser=norm(j.username);draft.seller=sellerName(j.username);
+    await loadCloud();
+    refreshSellerControl(draft.sellerUser);setupSelectors();renderQuote();goHome();
+    $('systemLoadingScreen')?.classList.add('hidden');
+  }catch(e){
+    $('systemLoadingScreen')?.classList.add('hidden');
+    $('loginError').textContent=e.message
+  }finally{$('loginBtn').disabled=false}
+}
 function logout(){sessionStorage.removeItem('novaV9Token');sessionStorage.removeItem('novaV9User');location.reload()}
-async function restore(){if(!token||!currentUser)return false;try{await api('data');document.body.classList.remove('auth-locked');$('loginScreen').classList.add('hidden');$('sessionUser').textContent=`${currentUser.name||currentUser.username} • ${String(currentUser.role).toUpperCase()}`;await loadCloud();setupSelectors();goHome();return true}catch{token='';currentUser=null;sessionStorage.clear();return false}}
-
-
+async function restore(){
+  if(!token||!currentUser)return false;
+  try{
+    $('systemLoadingScreen')?.classList.remove('hidden');
+    await api('data');
+    document.body.classList.remove('auth-locked');
+    $('loginScreen').classList.add('hidden');
+    $('sessionUser').textContent=`${currentUser.name||currentUser.username} • ${String(currentUser.role).toUpperCase()}`;
+    await loadCloud();setupSelectors();goHome();
+    $('systemLoadingScreen')?.classList.add('hidden');
+    return true
+  }catch{
+    $('systemLoadingScreen')?.classList.add('hidden');
+    token='';currentUser=null;sessionStorage.clear();return false
+  }
+}
 function openLooseProduct(){
   const available=(db.products||[]).filter(p=>p.stockManaged&&Number(p.qty||0)>0).sort((a,b)=>String(a.name).localeCompare(String(b.name),'pt-BR'));
   if(!available.length)return alert('Não há produtos disponíveis no estoque.');
@@ -3766,6 +3799,101 @@ function payrollRows(competence){const h=hrData(),rows=[];for(const e of h.emplo
       }
     }
     return oldPrintProductionOrder1271(copy);
+  };
+})();
+
+
+
+
+/* ============================================================================
+   V12.7.2 • EXIBIÇÃO LIMPA DE AMBIENTES SEM FIXAÇÃO
+   Não altera preço. Apenas impede que ferragens antigas apareçam nos documentos.
+   ============================================================================ */
+(function(){
+  const VERSION='V12.7.2';
+  try{companySettings().version=VERSION}catch(_){}
+
+  function noFix1272(e){
+    const f=norm(e?.fixation||'');
+    return !!e?.excludeFixation ||
+      f==='SEM TRILHO E SEM INSTALACAO' ||
+      f==='SEM FIXACAO' ||
+      f==='SEM FIXACAO / SEM INSTALACAO';
+  }
+
+  function fixationHardware1272(row){
+    const txt=norm([row?.product_name,row?.name,row?.source,row?.category].filter(Boolean).join(' '));
+
+    // Permanecem na peça, mesmo sem fixação.
+    if(txt.includes('DESLIZANTE'))return false;
+    if(txt.includes('CORDAO WAVE'))return false;
+    if(txt.includes('FITA WAVE'))return false;
+    if(txt.includes('TECIDO'))return false;
+    if(txt.includes('ARGOLA'))return false;
+    if(txt.includes('ILHOS'))return false;
+
+    return (
+      txt.includes('TRILHO') ||
+      txt.includes('GARRA') ||
+      txt.includes('TAMPA') ||
+      txt.includes('VARAO') ||
+      txt.includes('SUPORTE') ||
+      txt.includes('TUBO ') ||
+      txt.includes('MOTOR') ||
+      txt.includes('MOTORIZADO') ||
+      txt.includes('CONTROLE REMOTO') ||
+      txt.includes('SQUARE') ||
+      txt.includes('COMANDO POR CORDA')
+    );
+  }
+
+  // Regenera apenas a tabela visual de materiais do ambiente.
+  environmentMaterialRows=function(e,cond=''){
+    let rows=officialOrderRequirements({environments:[e]})||[];
+    if(noFix1272(e))rows=rows.filter(x=>!fixationHardware1272(x));
+    return rows.map(x=>{
+      const unit=cond==='cash'?Number(x.price_cash||0):cond==='p18'?Number(x.price_18x||0):Number(x.price_4x||0);
+      return `<tr><td>${esc(x.internal_code||'-')}</td><td>${esc(x.product_name||'-')}</td><td>${esc(x.color||'-')}</td><td>${Number(x.qty||0).toFixed(norm(x.unit)==='M'?2:0)} ${esc(norm(x.unit||'UN'))}</td>${cond?`<td>${money(unit)}</td><td>${money(unit*Number(x.qty||0))}</td>`:''}</tr>`;
+    }).join('');
+  };
+
+  function displayCopy1272(o){
+    const copy=clone(o);
+    for(const e of copy?.environments||[]){
+      if(noFix1272(e)){
+        e.excludeFixation=true;
+        e.fixation='SEM FIXAÇÃO';
+        e.fixColor='';
+        e.railProductId=null;
+        e.railProductName='';
+        e.railInternalCode='';
+        e.fixProductId=null;
+        e.fixProductName='';
+      }
+    }
+    return copy;
+  }
+
+  // O pedido do cliente deve mostrar apenas "SEM FIXAÇÃO".
+  const oldCustomerOrder1272=printCustomerOrder;
+  printCustomerOrder=function(o){
+    return oldCustomerOrder1272(displayCopy1272(o));
+  };
+
+  // A ordem de produção pode ser mais explícita: sem fixação e sem instalação.
+  const oldProductionOrder1272=printProductionOrder;
+  printProductionOrder=function(o){
+    const copy=displayCopy1272(o);
+    for(const e of copy?.environments||[]){
+      if(noFix1272(e))e.fixation='SEM FIXAÇÃO / SEM INSTALAÇÃO';
+    }
+    return oldProductionOrder1272(copy);
+  };
+
+  // Checklist da conversão e demais visualizações baseadas em ambiente.
+  const oldPrintQuote1272=printQuote;
+  printQuote=function(q,type='summary'){
+    return oldPrintQuote1272(displayCopy1272(q),type);
   };
 })();
 

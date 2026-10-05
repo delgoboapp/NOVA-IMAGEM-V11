@@ -110,3 +110,26 @@
 .october-ribbon{display:inline-block;width:15px;height:25px;margin-left:8px;vertical-align:middle;transform:translateY(2px);background:center/contain no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 40'%3E%3Cpath fill='%23f3a2be' d='M12.2 5.1c2.6-4 8.5-5.7 11-.5 1.8 3.5-.2 7.4-3.1 10.4l-4.3 4.6 6.7 15.5-5.6 1.7-6.1-14.4-2.3 2.5c-4.4 4.8-9.7 5.7-12.3 1.4-2.6-4.3.8-8.7 5.5-11.9l3.7-2.5L1.5 4.7 6.9 3l5.1 12.2 3.4-3.7c2.8-3 4-5.1 2.8-7.2-1.3-2.2-4.5-1.8-6 .8z'/%3E%3C/svg%3E");filter:drop-shadow(0 1px 1px rgba(0,0,0,.08))}
 .site-brand .october-ribbon{width:13px;height:22px;margin-left:6px}
 .login-wordmark .october-ribbon{width:16px;height:27px;margin-left:10px}
+
+
+/* V12.7.2 • tela neutra durante autenticação/sincronização */
+.system-loading-screen{
+  position:fixed;inset:0;z-index:999999;
+  display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,#f7faf9 0%,#eaf4f2 100%);
+}
+.system-loading-screen.hidden{display:none!important}
+.system-loading-card{
+  width:min(420px,88vw);padding:38px 34px 34px;
+  border:1px solid #c8d9d6;border-radius:18px;background:#fff;
+  box-shadow:0 22px 60px rgba(4,72,68,.16);text-align:center;
+}
+.system-loading-logo{width:82px;height:82px;object-fit:contain;margin-bottom:18px}
+.system-loading-title{font-size:22px;font-weight:900;color:#075b5b;letter-spacing:.01em}
+.system-loading-subtitle{margin-top:8px;font-size:13px;color:#627775}
+.system-loading-bar{height:5px;margin-top:24px;border-radius:20px;background:#e6efed;overflow:hidden}
+.system-loading-bar span{
+  display:block;height:100%;width:42%;border-radius:20px;background:#075b5b;
+  animation:niLoading 1.05s ease-in-out infinite alternate;
+}
+@keyframes niLoading{from{transform:translateX(-45%)}to{transform:translateX(185%)}}
