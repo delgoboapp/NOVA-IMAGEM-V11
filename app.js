@@ -3523,3 +3523,97 @@ function payrollRows(competence){const h=hrData(),rows=[];for(const e of h.emplo
   const v126Boot=()=>setTimeout(()=>{v126BindOrderFilters();v126FillOrderSellers();v126SyncFixButton();v126BindFixButton();try{renderOrders()}catch(e){console.error('V12.6.1 renderOrders',e)}try{renderQuote()}catch(e){console.error('V12.6.1 renderQuote',e)}},300);
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',v126Boot);else v126Boot();
 })();
+
+
+
+/* ============================================================================
+   V12.6.2 • CORREÇÃO DEFINITIVA DE AMBIENTE/FIXAÇÃO + CHECKLIST DE CONVERSÃO
+   ============================================================================ */
+(function(){
+  const V1262='V12.6.2';
+  try{companySettings().version=V1262}catch(_){}
+  let v1262ExcludeFixation=false;
+  let v1262EditingEnvId=null;
+  function v1262Set(id,val){const el=$(id);if(el&&val!==undefined&&val!==null)el.value=String(val)}
+  function v1262ApplyFixUi(){
+    const hidden=v1262ExcludeFixation;
+    ['eFixationWrap','eRailProductWrap','eFixColorWrap','eSupportMaterialWrap','eFinishTubeWrap','eLiningTubeWrap','eMotorAngleWrap'].forEach(id=>{
+      const el=$(id);if(!el)return;
+      if(hidden){if(el.dataset.v1262OldDisplay===undefined)el.dataset.v1262OldDisplay=el.style.display||'';el.style.display='none'}
+      else el.style.display=el.dataset.v1262OldDisplay||'';
+    });
+    const b=$('toggleEnvFixBtn');if(b){b.textContent=hidden?'RESTAURAR FIXAÇÃO':'EXCLUIR FIXAÇÃO';b.className='btn '+(hidden?'danger':'secondary')}
+    if(!hidden){try{typeof v12RefreshFixations==='function'&&v12RefreshFixations()}catch(_){}try{typeof updateModelFields==='function'&&updateModelFields()}catch(_){}}
+  }
+  const oldEnvFromForm1262=envFromForm;
+  envFromForm=function(){const e=oldEnvFromForm1262();e.excludeFixation=!!v1262ExcludeFixation;return e};
+  const oldClearEnv1262=clearEnv;
+  clearEnv=function(){const r=oldClearEnv1262();v1262ExcludeFixation=false;v1262EditingEnvId=null;if($('addEnvBtn'))$('addEnvBtn').textContent='+ Adicionar ambiente';v1262ApplyFixUi();try{updatePreview()}catch(_){}return r};
+  function v1262LoadEnvironment(e){
+    if(!e)return;v1262EditingEnvId=e.id;v1262ExcludeFixation=!!e.excludeFixation;
+    v1262Set('eModel',e.model);try{updateModelFields()}catch(_){}
+    v1262Set('eName',e.name);v1262Set('eWidth',e.width);v1262Set('eHeight',e.height);v1262Set('eLeaves',e.leaves);
+    v1262Set('eFinish',e.finish);try{refreshFinishColors()}catch(_){}v1262Set('eFinishColor',e.finishColor);v1262Set('eFinishPleat',e.finishPleat);v1262Set('eFinishGather',e.finishGather);
+    v1262Set('eLining',e.lining);try{refreshLiningColors()}catch(_){}v1262Set('eLiningColor',e.liningColor);v1262Set('eLiningPleat',e.liningPleat);v1262Set('eLiningGather',e.liningGather);
+    v1262Set('eFixation',e.fixation);try{refreshFixColors()}catch(_){}try{typeof v12RefreshFixations==='function'&&v12RefreshFixations()}catch(_){}
+    v1262Set('eRailProduct',e.railProductId||e.fixProductId||'');v1262Set('eFixColor',e.fixColor);v1262Set('eSupportMaterial',e.supportMaterial||'ALUMINIO');
+    v1262Set('eFinishTube',e.finishTubeProductId||e.finishTube||'');v1262Set('eLiningTube',e.liningTubeProductId||e.liningTube||'');
+    v1262Set('eFinishBar',e.finishBar||'BARRA SIMPLES');v1262Set('eSoutacheColor',e.soutacheColor||'');v1262Set('eCustomPleat',e.customPleat||0);v1262Set('eNotes',e.notes||'');
+    if($('eAngle')){$('eAngle').checked=!!e.angle;try{$('eAngle').dispatchEvent(new Event('change',{bubbles:true}))}catch(_){}}
+    v1262Set('eAngleA',e.angleA||'');v1262Set('eAngleAHeight',e.angleAHeight||'');v1262Set('eAngleB',e.angleB||'');v1262Set('eAngleBHeight',e.angleBHeight||'');v1262Set('eMotorAngleMode',e.motorAngleMode||'CURVA');
+    if($('addEnvBtn'))$('addEnvBtn').textContent='SALVAR EDIÇÕES';v1262ApplyFixUi();try{updatePreview()}catch(_){}$('eName')?.scrollIntoView({behavior:'smooth',block:'center'});
+  }
+  const oldRenderQuote1262=renderQuote;
+  renderQuote=function(){
+    oldRenderQuote1262();
+    document.querySelectorAll('#envTable [data-del-env]').forEach(del=>{
+      const id=String(del.dataset.delEnv||''),cell=del.closest('td')||del.parentElement;if(!cell)return;
+      let edit=cell.querySelector('[data-edit-env]');
+      if(!edit){edit=document.createElement('button');edit.type='button';edit.className='btn secondary';edit.dataset.editEnv=id;edit.textContent='Editar';edit.style.marginRight='6px';cell.insertBefore(edit,del)}
+      edit.onclick=()=>{const env=(draft.environments||[]).find(x=>String(x.id)===id);if(!env)return alert('Ambiente não encontrado.');v1262LoadEnvironment(env)};
+    });
+    v1262ApplyFixUi();
+  };
+  window.addEventListener('click',function(ev){
+    const t=ev.target;
+    if(t?.id==='toggleEnvFixBtn'){ev.preventDefault();ev.stopImmediatePropagation();v1262ExcludeFixation=!v1262ExcludeFixation;v1262ApplyFixUi();try{updatePreview()}catch(e){console.error('V12.6.2 preview fixação',e)}return}
+    if(t?.id==='addEnvBtn'&&v1262EditingEnvId){
+      ev.preventDefault();ev.stopImmediatePropagation();const e=envFromForm();
+      if(!e.name||!e.width||!e.height)return alert('Preencha ambiente, largura e altura.');
+      if(!e.excludeFixation&&e.fixation==='TRILHO SUÍÇO'&&!e.railProductId)return alert('Selecione o Tipo de Trilho no estoque oficial.');
+      const i=(draft.environments||[]).findIndex(x=>String(x.id)===String(v1262EditingEnvId));if(i<0)return alert('Ambiente não encontrado para edição.');
+      e.id=v1262EditingEnvId;draft.environments[i]=e;v1262EditingEnvId=null;v1262ExcludeFixation=false;renderQuote();clearEnv();return;
+    }
+  },true);
+  const oldConvertQuote1262=convertQuote;
+  function addr1262(q){return [[q.street,q.number].filter(Boolean).join(', '),q.complement,q.neighborhood,q.cep?`CEP ${q.cep}`:''].filter(Boolean).join(' • ')||q.address||'-'}
+  function cond1262(cond,installments){if(cond==='cash')return 'À VISTA (PIX/DINHEIRO)';if(cond==='p4')return 'EM ATÉ 4X';if(cond==='p18')return '18X';if(cond==='custom')return `OUTRO • ${Math.max(1,Number(installments||1))} parcela(s)`;return cond||'-'}
+  function envRow1262(e){
+    const details=[];details.push(e.model==='COMPLETE'?'Cortina completa':e.model==='LINING'?'Apenas forro':'Apenas acabamento');
+    if(e.finish)details.push(`Acabamento: ${e.finish}${e.finishColor?' / '+e.finishColor:''}${e.finishPleat?' / '+e.finishPleat+' '+(e.finishGather||'')+':1':''}`);
+    if(e.lining)details.push(`Forro: ${e.lining}${e.liningColor?' / '+e.liningColor:''}${e.liningPleat?' / '+e.liningPleat+' '+(e.liningGather||'')+':1':''}`);
+    if(e.finishBar)details.push(`Barra: ${e.finishBar}${e.soutacheColor?' / '+e.soutacheColor:''}`);
+    const fix=e.excludeFixation?'FIXAÇÃO EXCLUÍDA PARA ESTA PEÇA':[e.fixation,e.fixColor].filter(Boolean).join(' • ');
+    return `<tr><td><strong>${esc(e.name||'-')}</strong></td><td>${Number(e.width||0)} × ${Number(e.height||0)} cm</td><td>${Math.max(0,Number(e.leaves||1)-1)}</td><td>${details.map(esc).join('<br>')}</td><td>${esc(fix||'-')}</td></tr>`;
+  }
+  function installChecklist1262(q){
+    const btn=$('convGo');if(!btn||$('convChecklistBox'))return;
+    const box=document.createElement('div');box.id='convChecklistBox';box.style.cssText='margin:14px 0;border:1px solid #c7d8d6;border-radius:10px;overflow:hidden;background:#fff';
+    box.innerHTML=`<div style="background:#e8f3f1;color:#075b5b;font-weight:900;padding:10px 12px">CHECKLIST ANTES DE GERAR O PEDIDO</div><div style="padding:10px 12px"><div class="grid two" style="margin-bottom:10px"><div><small class="muted">NOME DO CLIENTE</small><br><strong>${esc(q.client||'-')}</strong></div><div><small class="muted">ENDEREÇO</small><br><strong>${esc(addr1262(q))}</strong></div><div><small class="muted">CONDIÇÃO ESCOLHIDA</small><br><strong id="convChecklistCondition">-</strong></div><div><small class="muted">DATA DE INSTALAÇÃO</small><br><strong id="convChecklistDate">-</strong></div><div><small class="muted">VALOR TOTAL DO PEDIDO</small><br><strong id="convChecklistTotal">-</strong></div></div><div style="font-weight:900;color:#075b5b;margin:8px 0 5px">RESUMO POR AMBIENTE</div><div class="table-wrap"><table class="table"><thead><tr><th>Ambiente</th><th>Largura × Altura</th><th>Aberturas</th><th>Detalhes / barra / cores</th><th>Fixação</th></tr></thead><tbody>${(q.environments||[]).map(envRow1262).join('')||'<tr><td colspan="5">Nenhum ambiente.</td></tr>'}</tbody></table></div><label style="display:flex;gap:8px;align-items:flex-start;margin-top:12px;font-weight:800"><input id="convChecklistOk" type="checkbox" style="margin-top:2px">CONFERI OS DADOS ACIMA E AUTORIZO A GERAÇÃO DO PEDIDO.</label></div>`;
+    btn.parentNode.insertBefore(box,btn);
+    function refresh(){const condition=$('convCond')?.value||'cash',installments=$('convInstallments')?.value||'',date=$('convDate')?.value||'',disc=Number($('convDiscount')?.value||0),t=quoteTotals(q);let base=condition==='cash'?t.cash:condition==='p18'?t.p18:t.p4;base=Number(base||0)*(1-disc/100);$('convChecklistCondition').textContent=cond1262(condition,installments);$('convChecklistDate').textContent=date?fmtDate(date):'NÃO INFORMADA';$('convChecklistTotal').textContent=money(base)}
+    ['convCond','convInstallments','convDate','convDiscount'].forEach(id=>{const el=$(id);if(el){el.addEventListener('input',refresh);el.addEventListener('change',refresh)}});refresh();
+    const original=btn.onclick;btn.onclick=async function(ev){if(!$('convChecklistOk')?.checked)return alert('Confira os dados e marque a confirmação do checklist antes de gerar o pedido.');if(btn.dataset.processing1262==='1')return;btn.dataset.processing1262='1';btn.disabled=true;const old=btn.textContent;btn.textContent='PROCESSANDO...';try{await original?.call(btn,ev)}finally{if(document.body.contains(btn)){btn.dataset.processing1262='0';btn.disabled=false;btn.textContent=old}}};
+  }
+  convertQuote=function(n){const existing=(db.orders||[]).find(o=>Number(o.quoteNumber)===Number(n));if(existing){alert(`Este orçamento já foi convertido no pedido ${String(existing.numero).padStart(6,'0')}.`);return}oldConvertQuote1262(n);const q=(db.quotes||[]).find(x=>Number(x.numero)===Number(n));if(q)setTimeout(()=>installChecklist1262(q),0)};
+  const oldRevertQuote1262=revertQuote;
+  revertQuote=async function(n){
+    const matches=(db.orders||[]).filter(o=>Number(o.quoteNumber)===Number(n));if(matches.length<=1)return oldRevertQuote1262(n);
+    const list=matches.map(o=>`Pedido ${String(o.numero).padStart(6,'0')} • ${money(o.agreedValue||0)}`).join('\n');const raw=prompt(`Foram encontrados ${matches.length} pedidos vinculados a este orçamento.\n\n${list}\n\nDigite o NÚMERO DO PEDIDO que deseja reverter:`);if(raw==null)return;
+    const order=matches.find(o=>Number(o.numero)===Number(String(raw).replace(/\D/g,'')));if(!order)return alert('Pedido informado não encontrado.');const idx=db.orders.findIndex(o=>String(o.id)===String(order.id));if(idx<0)return;if(!confirm(`Reverter somente o pedido ${String(order.numero).padStart(6,'0')}?`))return;
+    const officialRestore=await restoreOfficialStock(order);if(!officialRestore.ok)return alert(officialRestore.error);restoreOrderStock(order);db.products=(db.products||[]).filter(p=>Number(p.orderNumber)!==Number(order.numero));db.orders.splice(idx,1);
+    const q=(db.quotes||[]).find(x=>Number(x.numero)===Number(n)),remaining=(db.orders||[]).find(o=>Number(o.quoteNumber)===Number(n));if(q){q.status=remaining?'PEDIDO':'ORÇAMENTO';q.convertedOrderNumber=remaining?.numero||null}queueSave();renderAll();
+  };
+  setTimeout(()=>{try{renderQuote()}catch(e){console.error('V12.6.2 renderQuote',e)}v1262ApplyFixUi()},350);
+})();
+

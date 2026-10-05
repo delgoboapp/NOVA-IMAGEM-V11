@@ -1,0 +1,13 @@
+NOVA IMAGEM ERP — V12.6.2
+
+1. EDITAR ambiente aparece antes de EXCLUIR no resumo.
+2. EDITAR carrega o ambiente no campo B e ativa SALVAR EDIÇÕES.
+3. EXCLUIR FIXAÇÃO corrigido (sem duplo-toggle).
+4. Ao excluir fixação, os campos de fixação somem e o cálculo retira fixação + instalação.
+5. DESLIZANTES e CORDÃO WAVE permanecem.
+6. Ao adicionar/salvar o ambiente, a próxima inclusão volta com fixação normal.
+7. CONVERTER exibe checklist com cliente, endereço, condição, ambientes, medidas, detalhes, barra, cores, aberturas, fixação, data e valor total.
+8. Conversão exige confirmação do checklist.
+9. PROCESSANDO... bloqueia duplo clique.
+10. Orçamento já convertido não gera novo pedido.
+11. Duplicidades antigas podem ser revertidas por pedido específico.
