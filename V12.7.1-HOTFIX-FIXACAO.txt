@@ -1,0 +1,11 @@
+NOVA IMAGEM ERP — V12.7.1
+
+HOTFIX
+- Quando um ambiente está com EXCLUIR FIXAÇÃO, não podem constar nos materiais:
+  trilhos, garras, tampas, varões, suportes, tubos, motores/comandos e demais ferragens de fixação.
+- DESLIZANTES WAVE e CORDÃO WAVE permanecem.
+- Tecidos, fitas Wave e aviamentos de confecção permanecem.
+- Correção aplicada na lista oficial de materiais, estoque local, compras especiais e Ordem de Produção.
+- A Ordem de Produção passa a mostrar "SEM FIXAÇÃO / SEM INSTALAÇÃO" para a peça excluída.
+
+Versão: V12.7.1

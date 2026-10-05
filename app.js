@@ -3648,3 +3648,124 @@ function payrollRows(competence){const h=hrData(),rows=[];for(const e of h.emplo
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(boot1263,250));else setTimeout(boot1263,250);
 })();
 
+
+
+
+/* ============================================================================
+   V12.7.1 • HOTFIX FIXAÇÃO EXCLUÍDA NÃO PODE IR PARA MATERIAIS
+   ============================================================================ */
+(function(){
+  const VERSION='V12.7.1';
+  try{companySettings().version=VERSION}catch(_){}
+
+  function noFixEnv(e){
+    return !!e?.excludeFixation || norm(e?.fixation||'')==='SEM TRILHO E SEM INSTALACAO';
+  }
+
+  function isFixationHardwareRow(r){
+    const txt=norm([
+      r?.product_name,
+      r?.source,
+      r?.name,
+      r?.category
+    ].filter(Boolean).join(' '));
+
+    // Itens que SEMPRE permanecem, mesmo sem fixação.
+    if(txt.includes('DESLIZANTE WAVE')) return false;
+    if(txt.includes('CORDAO WAVE') || txt.includes('CORDÃO WAVE')) return false;
+    if(txt.includes('FITA WAVE')) return false;
+    if(txt.includes('TECIDO')) return false;
+    if(txt.includes('ARGOLA') || txt.includes('ILHOS') || txt.includes('ILHÓS')) return false;
+
+    // Ferragens / conjuntos que devem sair.
+    return (
+      txt.includes('TRILHO') ||
+      txt.includes('GARRA') ||
+      txt.includes('TAMPA') ||
+      txt.includes('VARAO') ||
+      txt.includes('VARÃO') ||
+      txt.includes('SUPORTE') ||
+      txt.includes('TUBO ') ||
+      txt.includes('MOTOR') ||
+      txt.includes('MOTORIZADO') ||
+      txt.includes('CONTROLE REMOTO') ||
+      txt.includes('SQUARE') ||
+      txt.includes('COMANDO POR CORDA')
+    );
+  }
+
+  // Corrige a fonte central usada por PDF, separação, estoque oficial e snapshots.
+  const oldOfficialReq1271=officialOrderRequirements;
+  officialOrderRequirements=function(q){
+    const rows=oldOfficialReq1271(q)||[];
+    const excluded=new Set(
+      (q?.environments||[])
+        .filter(noFixEnv)
+        .map(e=>norm(e.name||''))
+        .filter(Boolean)
+    );
+    if(!excluded.size)return rows;
+
+    return rows.filter(r=>{
+      const envs=[
+        norm(r?.environment||''),
+        ...((r?.environments||[]).map(norm))
+      ].filter(Boolean);
+      const belongs=envs.some(e=>excluded.has(e));
+      if(!belongs)return true;
+      return !isFixationHardwareRow(r);
+    });
+  };
+
+  // Corrige também a lista usada para compras especiais de trilhos motorizados/
+  // square/varão com comando.
+  const oldPurchaseMaterials1271=purchaseMaterialsForOrder;
+  purchaseMaterialsForOrder=function(o){
+    const rows=oldPurchaseMaterials1271(o)||[];
+    const excluded=new Set(
+      (o?.environments||[])
+        .filter(noFixEnv)
+        .map(e=>norm(e.name||''))
+        .filter(Boolean)
+    );
+    if(!excluded.size)return rows;
+    return rows.filter(r=>{
+      const env=norm(r?.environment||'');
+      if(!excluded.has(env))return true;
+      return !isFixationHardwareRow(r);
+    });
+  };
+
+  // Corrige também a lista antiga de estoque local, caso seja usada em algum fluxo.
+  const oldStockReq1271=stockRequirements;
+  stockRequirements=function(q){
+    const rows=oldStockReq1271(q)||[];
+    const excluded=new Set(
+      (q?.environments||[])
+        .filter(noFixEnv)
+        .map(e=>norm(e.name||''))
+        .filter(Boolean)
+    );
+    if(!excluded.size)return rows;
+    return rows.filter(r=>{
+      const env=norm(r?.environment||'');
+      if(!excluded.has(env))return true;
+      return !isFixationHardwareRow(r);
+    });
+  };
+
+  // Exibição da Ordem de Produção: mostra claramente SEM FIXAÇÃO / SEM INSTALAÇÃO.
+  const oldPrintProductionOrder1271=printProductionOrder;
+  printProductionOrder=function(o){
+    if(!o)return oldPrintProductionOrder1271(o);
+    const copy=clone(o);
+    for(const e of copy.environments||[]){
+      if(noFixEnv(e)){
+        e.fixation='SEM FIXAÇÃO / SEM INSTALAÇÃO';
+        e.fixColor='';
+      }
+    }
+    return oldPrintProductionOrder1271(copy);
+  };
+})();
+
