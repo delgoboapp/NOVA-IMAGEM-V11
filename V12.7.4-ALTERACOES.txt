@@ -1,0 +1,36 @@
+NOVA IMAGEM ERP — V12.7.4 CONSOLIDADA
+
+Base: V12.7.2 + correções consolidadas da V12.7.3.
+
+1. AMBIENTE SEM FIXAÇÃO
+- Correção definitiva da exclusão de ferragens e instalação.
+- PDF do pedido exibe VALOR DO AMBIENTE, VALOR DOS MATERIAIS e VALOR DA MÃO DE OBRA.
+
+2. PEDIDOS
+- Nova coluna DATA DO PEDIDO.
+- Filtros por vendedor e período mantidos.
+- Botão GERAR PDF corrigido e ligado diretamente ao relatório filtrado.
+- PDF inclui data, totais e comissão quando houver vendedor selecionado.
+
+3. CONTAS A PAGAR
+- Se houver data de pagamento ou valor integralmente quitado, o status é PAGO.
+- Vencimento/atraso só vale para títulos ainda não pagos.
+
+4. DEPARTAMENTO PESSOAL
+- Colaborador CLT e Prestador passam a ter botão ABRIR.
+- Tela individual com:
+  ADICIONAR PAGAMENTO
+  ADICIONAR GRATIFICAÇÃO
+  ADICIONAR DESCONTO
+  EDITAR CADASTRO
+- Gratificação e desconto recebem competência, valor e descrição.
+- No CLT, gratificação pode ser marcada como tributável ou não tributável.
+- Gratificações e descontos aparecem no holerite/demonstrativo.
+- Prestador recebe demonstrativo de pagamento com os mesmos ajustes.
+
+5. DIAS TRABALHADOS
+- Holerite exibe DIAS ÚTEIS DO PERÍODO e DIAS TRABALHADOS.
+- Cálculo exclui sábados, domingos, feriados nacionais e feriados locais usados pelo ERP para Ponta Grossa.
+- Ausências cadastradas, quando existentes, reduzem os dias trabalhados.
+
+Versão: V12.7.4

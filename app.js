@@ -500,8 +500,9 @@ function loadEnvironmentForEdit(e){
   set('eName',e.name);set('eWidth',e.width);set('eHeight',e.height);set('eLeaves',e.leaves);
   set('eFinish',e.finish);try{refreshFinishColors()}catch(_){}set('eFinishColor',e.finishColor);set('eFinishPleat',e.finishPleat);set('eFinishGather',e.finishGather);
   set('eLining',e.lining);try{refreshLiningColors()}catch(_){}set('eLiningColor',e.liningColor);set('eLiningPleat',e.liningPleat);set('eLiningGather',e.liningGather);
-  set('eFixation',e.fixation);try{refreshFixColors()}catch(_){};try{typeof v12RefreshFixations==='function'&&v12RefreshFixations()}catch(_){}
-  set('eRailProduct',e.railProductId||'');set('eFixColor',e.fixColor);set('eSupportMaterial',e.supportMaterial||'ALUMINIO');
+  const fx=(e.excludeFixation&&e.excludedFixationSnapshot)?e.excludedFixationSnapshot:e;
+  set('eFixation',fx.fixation||'TRILHO SUÍÇO');try{refreshFixColors()}catch(_){};try{typeof v12RefreshFixations==='function'&&v12RefreshFixations()}catch(_){}
+  set('eRailProduct',fx.railProductId||'');set('eFixColor',fx.fixColor||'');set('eSupportMaterial',fx.supportMaterial||'ALUMINIO');
   set('eFinishBar',e.finishBar||'BARRA SIMPLES');set('eSoutacheColor',e.soutacheColor||'');set('eCustomPleat',e.customPleat||0);set('eNotes',e.notes||'');
   if($('eAngle')){$('eAngle').checked=!!e.angle;try{$('eAngle').dispatchEvent(new Event('change',{bubbles:true}))}catch(_){}}
   set('eAngleA',e.angleA||'');set('eAngleAHeight',e.angleAHeight||'');set('eAngleB',e.angleB||'');set('eAngleBHeight',e.angleBHeight||'');set('eMotorAngleMode',e.motorAngleMode||'CURVA');
@@ -959,6 +960,27 @@ function bind(){
     const e=envFromForm();
     if(!e.name||!e.width||!e.height)return alert('Preencha ambiente, largura e altura.');
     if(!e.excludeFixation&&e.fixation==='TRILHO SUÍÇO'&&!e.railProductId)return alert('Selecione o Tipo de Trilho no estoque oficial.');
+
+    if(e.excludeFixation){
+      e.excludedFixationSnapshot={
+        fixation:e.fixation||'',
+        fixColor:e.fixColor||'',
+        railProductId:e.railProductId||null,
+        railInternalCode:e.railInternalCode||'',
+        railProductName:e.railProductName||'',
+        supportMaterial:e.supportMaterial||'ALUMINIO'
+      };
+      // A peça fica salva de fato como SEM FIXAÇÃO.
+      // Assim nenhuma rotina antiga pode voltar a incluir trilho/garra/tampa.
+      e.fixation='SEM FIXAÇÃO';
+      e.fixColor='';
+      e.railProductId=null;
+      e.railInternalCode='';
+      e.railProductName='';
+      e.fixProductId=null;
+      e.fixProductName='';
+    }
+
     if(quoteEditingEnvironmentId){
       const i=(draft.environments||[]).findIndex(x=>String(x.id)===String(quoteEditingEnvironmentId));
       if(i<0)return alert('Ambiente não encontrado para edição.');
@@ -3895,5 +3917,582 @@ function payrollRows(competence){const h=hrData(),rows=[];for(const e of h.emplo
   printQuote=function(q,type='summary'){
     return oldPrintQuote1272(displayCopy1272(q),type);
   };
+})();
+
+
+
+
+/* ============================================================================
+   V12.7.3 • FIXAÇÃO EXCLUÍDA DEFINITIVA + RESUMO FINANCEIRO POR AMBIENTE
+   ============================================================================ */
+(function(){
+  const VERSION='V12.7.3';
+  try{companySettings().version=VERSION}catch(_){}
+
+  function noFix1273(e,o=null){
+    if(!e)return false;
+    const f=norm(e.fixation||'');
+    if(e.excludeFixation || f==='SEM FIXACAO' || f==='SEM FIXACAO / SEM INSTALACAO' || f==='SEM TRILHO E SEM INSTALACAO')return true;
+
+    // Compatibilidade com pedidos antigos: consulta o orçamento vinculado.
+    if(o?.quoteNumber){
+      const q=(db.quotes||[]).find(x=>Number(x.numero)===Number(o.quoteNumber));
+      const qe=(q?.environments||[]).find(x=>
+        (e.id&&x.id&&String(x.id)===String(e.id)) ||
+        norm(x.name||'')===norm(e.name||'')
+      );
+      if(qe){
+        const qf=norm(qe.fixation||'');
+        return !!qe.excludeFixation || qf==='SEM FIXACAO' || qf==='SEM FIXACAO / SEM INSTALACAO' || qf==='SEM TRILHO E SEM INSTALACAO';
+      }
+    }
+    return false;
+  }
+
+  function hardware1273(row){
+    const txt=norm([
+      row?.product_name,row?.name,row?.source,row?.category,row?.internal_code
+    ].filter(Boolean).join(' '));
+
+    // Permanecem: materiais da cortina/confecção.
+    if(txt.includes('DESLIZANTE'))return false;
+    if(txt.includes('CORDAO WAVE'))return false;
+    if(txt.includes('FITA WAVE'))return false;
+    if(txt.includes('TECIDO'))return false;
+    if(txt.includes('FORRO'))return false;
+    if(txt.includes('ARGOLA'))return false;
+    if(txt.includes('ILHOS'))return false;
+
+    // Saem: tudo que pertence à fixação.
+    return (
+      txt.includes('TRILHO') ||
+      txt.includes('GARRA') ||
+      txt.includes('TAMPA') ||
+      txt.includes('VARAO') ||
+      txt.includes('SUPORTE') ||
+      txt.includes('TUBO ') ||
+      txt.includes('MOTOR') ||
+      txt.includes('MOTORIZADO') ||
+      txt.includes('CONTROLE REMOTO') ||
+      txt.includes('SQUARE') ||
+      txt.includes('COMANDO POR CORDA')
+    );
+  }
+
+  function cleanEnv1273(e,o=null,production=false){
+    const c=clone(e);
+    if(noFix1273(e,o)){
+      c.excludeFixation=true;
+      c.fixation=production?'SEM FIXAÇÃO / SEM INSTALAÇÃO':'SEM FIXAÇÃO';
+      c.fixColor='';
+      c.railProductId=null;
+      c.railProductName='';
+      c.railInternalCode='';
+      c.fixProductId=null;
+      c.fixProductName='';
+    }
+    return c;
+  }
+
+  // Última barreira: nenhum consumo/baixa/lista pode conter ferragem
+  // de um ambiente marcado como SEM FIXAÇÃO.
+  const prevOfficial1273=officialOrderRequirements;
+  officialOrderRequirements=function(q){
+    const rows=prevOfficial1273(q)||[];
+    const envs=(q?.environments||[]);
+    const excluded=new Set(
+      envs.filter(e=>noFix1273(e)).map(e=>norm(e.name||'')).filter(Boolean)
+    );
+    if(!excluded.size)return rows;
+    return rows.filter(r=>{
+      const rowEnvs=[
+        norm(r?.environment||''),
+        ...((r?.environments||[]).map(x=>norm(x||'')))
+      ].filter(Boolean);
+      if(!rowEnvs.some(x=>excluded.has(x)))return true;
+      return !hardware1273(r);
+    });
+  };
+
+  function materialData1273(e,o){
+    const ce=cleanEnv1273(e,o,false);
+    let rows=officialOrderRequirements({environments:[ce]})||[];
+    if(noFix1273(e,o))rows=rows.filter(r=>!hardware1273(r));
+    return rows;
+  }
+
+  function condKey1273(o){
+    return o.paymentCondition==='cash'?'cash':o.paymentCondition==='p18'?'p18':'p4';
+  }
+
+  function unit1273(r,o){
+    const k=condKey1273(o);
+    return k==='cash'?Number(r.price_cash||0):k==='p18'?Number(r.price_18x||0):Number(r.price_4x||0);
+  }
+
+  function envCommercial1273(e,o,q){
+    const ce=cleanEnv1273(e,o,false);
+    const c=calcEnvironment(ce);
+    if(!c)return {sale:0,materials:0,labor:0,calc:null};
+
+    const raw = condKey1273(o)==='cash'
+      ? Number(c.cash||0)
+      : condKey1273(o)==='p18'
+        ? Number(c.p18||0)
+        : Number(c.base4||0);
+
+    const sale = typeof v1214EnvironmentOrderValue==='function'
+      ? Number(v1214EnvironmentOrderValue(ce,o,q)||0)
+      : raw;
+
+    // Mão de obra parte do valor efetivo de confecção + instalação do ambiente.
+    // Como calcEnvironment já zera instalação quando excludeFixation=true,
+    // peça sem fixação fica somente com confecção/costura.
+    const termRatio = Number(c.base4||0)>0 ? raw/Number(c.base4||1) : 1;
+    const commercialRatio = raw>0 ? sale/raw : 1;
+    const labor = Number(c.laborTotal||0)*termRatio*commercialRatio;
+
+    // Materiais = restante comercial do ambiente. Dessa forma:
+    // VALOR DO AMBIENTE = MATERIAIS + MÃO DE OBRA.
+    const materials=Math.max(0,sale-labor);
+    return {sale,materials,labor,calc:c};
+  }
+
+  function materialRowsHtml1273(e,o){
+    const rows=materialData1273(e,o);
+    return rows.map(r=>{
+      const u=unit1273(r,o),qty=Number(r.qty||0);
+      return `<tr>
+        <td>${esc(r.internal_code||'-')}</td>
+        <td>${esc(r.product_name||'-')}</td>
+        <td>${esc(r.color||'-')}</td>
+        <td>${qty.toFixed(norm(r.unit)==='M'?2:0)} ${esc(norm(r.unit||'UN'))}</td>
+        <td>${money(u)}</td>
+        <td>${money(u*qty)}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // PDF DO PEDIDO — definição final, sem depender das versões antigas.
+  printCustomerOrder=function(o){
+    ensureV119();
+    if(!/^\d{6}$/.test(String(o.clientAccessCode||''))){
+      o.clientAccessCode=String(crypto.getRandomValues(new Uint32Array(1))[0]%1000000).padStart(6,'0');
+      queueSave();
+    }
+
+    const q=(db.quotes||[]).find(x=>Number(x.numero)===Number(o.quoteNumber));
+    const cond=typeof v1213PaymentLabel==='function'?v1213PaymentLabel(o):paymentConditionLabel(o.paymentCondition);
+    const installments=typeof v1214OrderInstallments==='function'?v1214OrderInstallments(o):(o.paymentCondition==='cash'?1:o.paymentCondition==='p18'?18:4);
+    const payText=typeof v1214ContractPaymentText==='function'?v1214ContractPaymentText(o):`${cond}: ${money(o.agreedValue)}`;
+    let envs='';
+
+    for(const original of o.environments||[]){
+      const e=cleanEnv1273(original,o,false);
+      const fin=envCommercial1273(original,o,q);
+      const c=fin.calc;
+      if(!c)continue;
+      const mats=materialRowsHtml1273(original,o);
+      const noFix=noFix1273(original,o);
+
+      envs+=`
+      <div class="env-block">
+        <div class="env-title">${esc(original.name)}</div>
+        <table class="env-table">
+          <tr>
+            <th>Medidas</th><td>${original.width} × ${original.height} cm</td>
+            <th>Aberturas</th><td>${Math.max(0,Number(original.leaves||1)-1)}</td>
+          </tr>
+          <tr>
+            <th>Acabamento</th>
+            <td>${c.finishCalc?esc(`${original.finish} / ${original.finishColor} / ${original.finishPleat} ${original.finishGather}:1`):'—'}</td>
+            <th>Forro</th>
+            <td>${c.liningCalc?esc(`${original.lining} / ${original.liningColor} / ${original.liningPleat} ${original.liningGather}:1`):'—'}</td>
+          </tr>
+          <tr>
+            <th>Fixação</th>
+            <td colspan="3"><strong>${noFix?'SEM FIXAÇÃO':esc(`${original.fixation||'-'}${original.fixColor?' • '+original.fixColor:''}`)}</strong></td>
+          </tr>
+        </table>
+
+        <table class="summary-table" style="margin-top:6px">
+          <tr>
+            <th>VALOR DESTE AMBIENTE</th>
+            <th>VALOR DOS MATERIAIS</th>
+            <th>VALOR DA MÃO DE OBRA</th>
+          </tr>
+          <tr>
+            <td><strong>${money(fin.sale)}</strong>${installments>1?`<br><small>${installments}x de ${money(fin.sale/installments)}</small>`:''}</td>
+            <td><strong>${money(fin.materials)}</strong></td>
+            <td><strong>${money(fin.labor)}</strong><br><small>${noFix?'somente confecção / costura':'confecção + instalação'}</small></td>
+          </tr>
+        </table>
+
+        <div class="section-title">Materiais deste ambiente</div>
+        <table class="summary-table">
+          <tr><th>SKU</th><th>Produto</th><th>Cor</th><th>Quantidade</th><th>Valor Unitário</th><th>Valor Total</th></tr>
+          ${mats||'<tr><td colspan="6">Sem material oficial vinculado.</td></tr>'}
+        </table>
+      </div>`;
+    }
+
+    const cset=companySettings();
+    const warranty=o.documentVersions?.warrantyText||cset.warranty||V119_WARRANTY;
+    const body=`
+      <div class="pdf-head">
+        <img src="${location.origin}/icon-512.png">
+        <div class="store-client">
+          <strong>Nova Imagem Cortinas e Persianas</strong><br>
+          Luiz Sergio Delgobo ME<br>
+          CNPJ 15.115.803/0001-69 • IE 90.588.753-06<br>
+          Av. Bonifácio Vilela, 170 • Ponta Grossa–PR • CEP 84010-330<br><br>
+          <strong>PEDIDO Nº ${String(o.numero).padStart(6,'0')}</strong><br>
+          <strong>Cliente:</strong> ${esc(o.client||'-')}<br>
+          <strong>Contato:</strong> ${esc(o.contact||'-')}<br>
+          <strong>Endereço:</strong> ${esc(o.address||'-')}<br>
+          <strong>Instalação prevista:</strong> ${fmtDate(o.deliveryDate)}<br>
+          <strong>Vendedor:</strong> ${esc(displaySeller(o))}
+        </div>
+      </div>
+      ${envs}
+      <div class="section-title">Acompanhe seu pedido</div>
+      <div class="customer-access-box">
+        <img class="customer-qr" src="${customerPortalQrUrl(o.numero)}" alt="QR Code para acompanhar o pedido">
+        <div>
+          <strong>Portal do Cliente Nova Imagem</strong><br>
+          Aponte a câmera para o QR Code.<br><br>
+          Pedido: <strong>${String(o.numero).padStart(6,'0')}</strong><br>
+          Senha: <strong>${esc(o.clientAccessCode||'NÃO GERADA')}</strong><br>
+          <a class="customer-portal-link" href="${customerPortalUrl(o.numero)}" target="_blank">Clique aqui para acompanhar seu pedido</a>
+        </div>
+      </div>
+      <div class="section-title">Condição contratada</div>
+      <p class="totals">${esc(payText)}</p>
+      <div class="section-title">CONTRATO DE FORNECIMENTO E INSTALAÇÃO</div>
+      <div class="conditions">
+        <p><strong>CONTRATADA:</strong> Luiz Sergio Delgobo ME, CNPJ 15.115.803/0001-69.</p>
+        <p><strong>CONTRATANTE:</strong> ${esc(o.client||'-')}, endereço ${esc(o.address||'-')}.</p>
+        <p><strong>OBJETO:</strong> fornecimento e instalação dos produtos descritos neste pedido.</p>
+        <p><strong>CONDIÇÃO:</strong> ${esc(payText)}</p>
+        <p><strong>PRAZO PREVISTO:</strong> instalação/entrega em ${fmtDate(o.deliveryDate)}.</p>
+      </div>
+      <div class="signature-grid">
+        <div><div class="signature-line"></div><strong>Cliente / Contratante</strong></div>
+        <div><div class="signature-line"></div><strong>Nova Imagem / Vendedor</strong></div>
+      </div>
+      <div style="page-break-before:always"></div>
+      <div class="section-title">TERMO DE GARANTIA</div>
+      <div style="white-space:pre-line;line-height:1.55">${esc(warranty)}</div>
+      <br><p><strong>Pedido:</strong> ${String(o.numero).padStart(6,'0')} • <strong>Cliente:</strong> ${esc(o.client||'-')}</p>
+      <div class="signature-grid">
+        <div><div class="signature-line"></div><strong>Cliente</strong></div>
+        <div><div class="signature-line"></div><strong>Nova Imagem</strong></div>
+      </div>`;
+    printWindow(body);
+  };
+
+  // Ordem de produção: mesma limpeza visual.
+  const prevProduction1273=printProductionOrder;
+  printProductionOrder=function(o){
+    const copy=clone(o);
+    copy.environments=(copy.environments||[]).map(e=>cleanEnv1273(e,o,true));
+    return prevProduction1273(copy);
+  };
+})();
+
+
+
+
+/* ============================================================================
+   V12.7.4 • CONSOLIDAÇÃO DP + PEDIDOS + CONTAS A PAGAR
+   ============================================================================ */
+(function(){
+  const VERSION='V12.7.4';
+  try{companySettings().version=VERSION}catch(_){}
+
+  // ---------- CONTAS A PAGAR: quitado sempre prevalece sobre vencimento ----------
+  payableStatus=function(p){
+    const paid=Number(p?.paidValue||0), val=Number(p?.value||0);
+    if(p?.paidDate) return 'PAGO';
+    if(val>0 && paid>=val-.005) return 'PAGO';
+    if(p?.dueDate && p.dueDate<today()) return 'EM ATRASO';
+    return 'PENDENTE';
+  };
+
+  // ---------- PEDIDOS: DATA + filtros + PDF funcionando ----------
+  function orderDate1274(o){
+    return String(o?.createdDate||o?.date||o?.createdAt||'').slice(0,10);
+  }
+  function orderFilters1274(){
+    return {
+      seller:norm($('orderFilterSeller')?.value||''),
+      from:$('orderFilterFrom')?.value||'',
+      to:$('orderFilterTo')?.value||''
+    };
+  }
+  function filteredOrders1274(){
+    const f=orderFilters1274();
+    return (db.orders||[]).filter(canSeeOrder).filter(o=>{
+      const d=orderDate1274(o), u=resolveSellerUser(o);
+      return (!f.seller||u===f.seller) && (!f.from||d>=f.from) && (!f.to||d<=f.to);
+    });
+  }
+  function fillOrderSellers1274(){
+    const s=$('orderFilterSeller'); if(!s)return;
+    const cur=norm(s.value||'');
+    const users=(typeof allUsers==='function'?allUsers():[])
+      .filter(u=>['SALES','GESTOR','PARTNER'].includes(norm(u.role)))
+      .map(u=>norm(u.username)).filter(Boolean);
+    const fromOrders=(db.orders||[]).map(resolveSellerUser).filter(Boolean);
+    const list=[...new Set([...users,...fromOrders])].sort((a,b)=>sellerName(a).localeCompare(sellerName(b),'pt-BR'));
+    s.innerHTML='<option value="">TODOS OS VENDEDORES</option>'+list.map(u=>`<option value="${esc(u)}">${esc(sellerName(u))}</option>`).join('');
+    if([...s.options].some(o=>norm(o.value)===cur))s.value=cur;
+  }
+  renderOrders=function(){
+    fillOrderSellers1274();
+    const tb=$('ordersTable'); if(!tb)return;
+    tb.innerHTML='';
+    const rows=filteredOrders1274();
+    for(const o of rows){
+      const install=o.installation?.completedDate?'CONCLUÍDA':o.productionStage==='EXPEDIÇÃO'?'PRONTO PARA INSTALAÇÃO':'AGUARDANDO';
+      const paid=orderPaid(o), bal=orderBalance(o), fs=financialStatus(o);
+      const tr=document.createElement('tr');
+      tr.innerHTML=`<td>${String(o.numero).padStart(6,'0')}</td>
+        <td>${fmtDate(orderDate1274(o))}</td>
+        <td>${String(o.quoteNumber).padStart(6,'0')}</td>
+        <td>${esc(o.client)}</td>
+        <td>${esc(displaySeller(o))}</td>
+        <td>${money(o.agreedValue)}</td>
+        <td>${money(paid)}</td>
+        <td><strong>${money(bal)}</strong></td>
+        <td><span class="badge ${fs==='QUITADO'?'ok':fs==='PARCIAL'?'blue':'warn'}">${fs}</span></td>
+        <td><span class="badge blue">${esc(o.productionStage||'RECEPÇÃO')}</span></td>
+        <td><span class="badge ${install==='CONCLUÍDA'?'ok':'warn'}">${install}</span></td>
+        <td><button class="btn primary" data-order-pay="${o.numero}">Inserir pagamento</button>
+        <button class="btn ghost" data-order-open="${o.numero}">Abrir</button>
+        ${isGestor()?`<button class="btn danger" data-order-delete="${o.numero}">Excluir</button>`:''}</td>`;
+      tb.appendChild(tr);
+    }
+    if(!rows.length)tb.innerHTML='<tr><td colspan="12">Nenhum pedido nos filtros informados.</td></tr>';
+    document.querySelectorAll('[data-order-open]').forEach(b=>b.onclick=()=>openOrder(Number(b.dataset.orderOpen)));
+    document.querySelectorAll('[data-order-pay]').forEach(b=>b.onclick=()=>openPayment(Number(b.dataset.orderPay)));
+    document.querySelectorAll('[data-order-delete]').forEach(b=>b.onclick=()=>deleteOrder(Number(b.dataset.orderDelete)));
+  };
+
+  window.printOrdersV1274=function(){
+    const rows=filteredOrders1274(), f=orderFilters1274();
+    const total=rows.reduce((a,o)=>a+orderCashSale(o),0);
+    const pct=f.seller?Number(sellerCommission(f.seller)||0):0;
+    const commission=f.seller?rows.reduce((a,o)=>a+orderCashSale(o)*Number(o.commissionPercent??pct)/100,0):0;
+    const body=`<div class="pdf-head"><img src="${location.origin}/icon-512.png"><div class="store-client">
+      <strong>NOVA IMAGEM CORTINAS E PERSIANAS</strong><br><strong>RELATÓRIO DE PEDIDOS</strong><br><br>
+      Vendedor: <strong>${f.seller?esc(sellerName(f.seller)):'Todos'}</strong><br>
+      Período: ${f.from?fmtDate(f.from):'início'} até ${f.to?fmtDate(f.to):'hoje'}</div></div>
+      <table class="summary-table"><tr><th>Pedido</th><th>Data</th><th>Cliente</th><th>Vendedor</th><th>Valor à vista</th></tr>
+      ${rows.map(o=>`<tr><td>${String(o.numero).padStart(6,'0')}</td><td>${fmtDate(orderDate1274(o))}</td><td>${esc(o.client)}</td><td>${esc(displaySeller(o))}</td><td>${money(orderCashSale(o))}</td></tr>`).join('')||'<tr><td colspan="5">Nenhum pedido.</td></tr>'}</table>
+      <div class="section-title">Fechamento</div><table class="summary-table">
+      <tr><th>Total de pedidos</th><td>${rows.length}</td><th>Soma dos pedidos a valor à vista</th><td><strong>${money(total)}</strong></td></tr>
+      ${f.seller?`<tr><th>Percentual de comissão</th><td>${pct.toFixed(2)}%</td><th>Comissão do vendedor no período</th><td><strong>${money(commission)}</strong></td></tr>`:''}
+      </table>`;
+    printWindow(body);
+  };
+  function bindOrderFilters1274(){
+    const s=$('orderFilterSeller'),fr=$('orderFilterFrom'),to=$('orderFilterTo'),pdf=$('orderFilterPdf'),cl=$('orderFilterClear');
+    if(s)s.onchange=renderOrders;if(fr)fr.onchange=renderOrders;if(to)to.onchange=renderOrders;
+    if(pdf)pdf.onclick=window.printOrdersV1274;
+    if(cl)cl.onclick=()=>{if(s)s.value='';if(fr)fr.value='';if(to)to.value='';renderOrders()};
+  }
+
+  // ---------- DIAS ÚTEIS / FERIADOS ----------
+  function easter1274(year){
+    const a=year%19,b=Math.floor(year/100),c=year%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),
+      g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,
+      m=Math.floor((a+11*h+22*l)/451),month=Math.floor((h+l-7*m+114)/31),day=((h+l-7*m+114)%31)+1;
+    return new Date(year,month-1,day);
+  }
+  function isoLocal1274(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
+  function addDays1274(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x}
+  function holidaySet1274(year){
+    const fixed=[
+      `${year}-01-01`,`${year}-04-21`,`${year}-05-01`,`${year}-09-07`,
+      `${year}-10-12`,`${year}-11-02`,`${year}-11-15`,`${year}-11-20`,`${year}-12-25`,
+      // Ponta Grossa
+      `${year}-07-26`, // Sant'Ana
+      `${year}-09-15`  // Aniversário de Ponta Grossa
+    ];
+    const easter=easter1274(year);
+    fixed.push(isoLocal1274(addDays1274(easter,-2))); // Paixão de Cristo
+    fixed.push(isoLocal1274(addDays1274(easter,60))); // Corpus Christi
+    return new Set(fixed);
+  }
+  function workdayInfo1274(comp,person){
+    if(!comp)return {business:0,worked:0};
+    const [y,m]=comp.split('-').map(Number), holidays=holidaySet1274(y);
+    const last=new Date(y,m,0).getDate();
+    let business=0;
+    for(let d=1;d<=last;d++){
+      const dt=new Date(y,m-1,d), day=dt.getDay(), iso=isoLocal1274(dt);
+      if(day!==0&&day!==6&&!holidays.has(iso))business++;
+    }
+    const absenceDays=new Set();
+    for(const a of person?.absences||[]){
+      if(!a.start)return;
+      let cur=new Date(a.start+'T12:00:00'), end=new Date((a.end||a.start)+'T12:00:00');
+      while(cur<=end){
+        if(cur.getFullYear()===y&&cur.getMonth()+1===m&&cur.getDay()!==0&&cur.getDay()!==6&&!holidays.has(isoLocal1274(cur)))absenceDays.add(isoLocal1274(cur));
+        cur.setDate(cur.getDate()+1);
+      }
+    }
+    return {business,worked:Math.max(0,business-absenceDays.size),absences:absenceDays.size};
+  }
+
+  // ---------- AJUSTES CLT ----------
+  function ensurePersonAdjustments1274(p){
+    p.grants=p.grants||[];p.discounts=p.discounts||[];p.absences=p.absences||[];return p;
+  }
+  function addPersonAdjustment1274(kind,id,type){
+    const h=hrData(),p=kind==='employee'?h.employees.find(x=>x.id===id):h.providers.find(x=>x.id===id);
+    if(!p)return;ensurePersonAdjustments1274(p);
+    const grant=type==='grant';
+    openModal(`<h2>${grant?'ADICIONAR GRATIFICAÇÃO':'ADICIONAR DESCONTO'} • ${esc(p.name)}</h2>
+      <div class="grid two">
+        <label class="field">Competência<input id="dpAdjComp" type="month" value="${new Date().toISOString().slice(0,7)}"></label>
+        <label class="field">Valor<input id="dpAdjValue" type="number" min="0.01" step="0.01"></label>
+        <label class="field" style="grid-column:1/-1">Descrição<input id="dpAdjDesc" placeholder="${grant?'Serviço extra / prêmio / gratificação':'Adiantamento / desconto / ajuste'}"></label>
+        ${grant&&kind==='employee'?`<label class="field">Tratamento<select id="dpAdjTax"><option value="0">NÃO TRIBUTÁVEL</option><option value="1">TRIBUTÁVEL</option></select></label>`:''}
+      </div>
+      <button id="dpAdjSave" class="btn primary">Salvar</button>`);
+    $('dpAdjSave').onclick=()=>{
+      const comp=$('dpAdjComp').value,value=Number($('dpAdjValue').value||0),description=$('dpAdjDesc').value.trim();
+      if(!comp||!value||!description)return alert('Informe competência, valor e descrição.');
+      const row={id:uid(),competence:comp,value,description,nature:description,justification:description,taxable:grant&&kind==='employee'?$('dpAdjTax')?.value==='1':false,createdAt:new Date().toISOString(),by:currentUsername()};
+      (grant?p.grants:p.discounts).push(row);
+      audit('DEPARTAMENTO PESSOAL',grant?'GRATIFICAÇÃO':'DESCONTO',p.name,`${monthLabel(comp)} • ${money(value)} • ${description}`);
+      queueSave();closeModal();renderHR();
+    };
+  }
+
+  function payrollAdjustments1274(e,comp){
+    ensurePersonAdjustments1274(e);
+    return {
+      grants:e.grants.filter(x=>!x.competence||x.competence===comp),
+      discounts:e.discounts.filter(x=>!x.competence||x.competence===comp)
+    };
+  }
+  function payrollCalc1274(e,comp){
+    const adj=payrollAdjustments1274(e,comp);
+    const salary=Number(e.salary||0),salesGrant=commissionForEmployeeMonth(e,comp);
+    const taxableGrants=adj.grants.filter(x=>x.taxable).reduce((a,x)=>a+Number(x.value||0),0);
+    const nonTaxGrants=adj.grants.filter(x=>!x.taxable).reduce((a,x)=>a+Number(x.value||0),0);
+    const extraDisc=adj.discounts.reduce((a,x)=>a+Number(x.value||0),0);
+    const taxable=salary+taxableGrants;
+    const inss=inssEmployee2026(taxable),irrf=irrf2026(taxable,inss),fgts=Math.round(taxable*.08*100)/100;
+    const gross=salary+salesGrant+taxableGrants+nonTaxGrants,deductions=inss+irrf+extraDisc;
+    return {...adj,salary,salesGrant,taxableGrants,nonTaxGrants,extraDisc,taxable,inss,irrf,fgts,gross,deductions,net:Math.max(0,gross-deductions)};
+  }
+  function payrollSlip1274(e,comp,due){
+    const p=payrollCalc1274(e,comp),days=workdayInfo1274(comp,e);
+    const grantRows=[p.salesGrant?`<tr><td>Gratificação por vendas / comissões</td><td>Não tributável</td><td>${money(p.salesGrant)}</td><td>-</td></tr>`:'',
+      ...p.grants.map(x=>`<tr><td>${esc(x.description||x.nature||'Gratificação')}</td><td>${x.taxable?'Tributável':'Não tributável'}</td><td>${money(x.value)}</td><td>-</td></tr>`)].join('');
+    const discRows=p.discounts.map(x=>`<tr><td>${esc(x.description||x.nature||'Desconto')}</td><td>Ajuste</td><td>-</td><td>${money(x.value)}</td></tr>`).join('');
+    return `<div class="pdf-head"><img src="${location.origin}/icon-512.png"><div class="store-client"><strong>NOVA IMAGEM CORTINAS E PERSIANAS</strong><br><strong>HOLERITE / DEMONSTRATIVO DE PAGAMENTO</strong><br>Competência: ${monthLabel(comp)} • Pagamento: ${fmtDate(due)}</div></div>
+      <div class="section-title">Dados do colaborador</div>
+      <table class="summary-table"><tr><th>Nome</th><td>${esc(e.name||'-')}</td><th>Cargo</th><td>${esc(e.role||'-')}</td></tr>
+      <tr><th>CPF</th><td>${esc(e.cpf||'-')}</td><th>Admissão</th><td>${fmtDate(e.admissionDate)}</td></tr>
+      <tr><th>Dias úteis do período</th><td>${days.business}</td><th>Dias trabalhados</th><td><strong>${days.worked}</strong>${days.absences?` • ${days.absences} ausência(s) útil(eis)`:''}</td></tr></table>
+      <div class="section-title">Proventos e descontos</div>
+      <table class="summary-table"><tr><th>Descrição</th><th>Referência</th><th>Provento</th><th>Desconto</th></tr>
+      <tr><td>Salário-base</td><td>Base tributável</td><td>${money(p.salary)}</td><td>-</td></tr>${grantRows}
+      <tr><td>INSS</td><td>Sobre ${money(p.taxable)}</td><td>-</td><td>${money(p.inss)}</td></tr>
+      <tr><td>IRRF</td><td>Base legal aplicável</td><td>-</td><td>${money(p.irrf)}</td></tr>${discRows}
+      <tr><th>TOTAIS</th><th></th><th>${money(p.gross)}</th><th>${money(p.deductions)}</th></tr>
+      <tr><th colspan="3">LÍQUIDO A PAGAR</th><th>${money(p.net)}</th></tr></table>
+      <div class="section-title">Encargos da empresa</div><table class="summary-table"><tr><th>FGTS estimado</th><td>${money(p.fgts)}</td><td>Informativo; não descontado do colaborador.</td></tr></table>
+      <p class="muted" style="font-size:11px">Dias úteis calculados excluindo fins de semana, feriados nacionais e feriados locais cadastrados para Ponta Grossa. Tratamento tributário das verbas deve seguir orientação contábil.</p>`;
+  }
+
+  window.openEmployeePayment1274=function(id){
+    const e=hrData().employees.find(x=>x.id===id);if(!e)return;
+    const comp=new Date().toISOString().slice(0,7),due=today();let pdfOpened=false;
+    openModal(`<h2>Adicionar pagamento • ${esc(e.name)}</h2><div class="grid two">
+      <label class="field">Competência<input id="dpPayComp" type="month" value="${comp}"></label>
+      <label class="field">Data de pagamento / vencimento<input id="dpPayDue" type="date" value="${due}"></label></div>
+      <div id="dpPayPreview" style="margin-top:14px"></div>
+      <div class="actions" style="margin-top:14px"><button id="dpPayPdf" class="btn secondary">VER EM PDF</button>
+      <button id="dpPayGenerate" class="btn primary" style="display:none">GERAR CONTAS A PAGAR</button><button id="dpPayBack" class="btn ghost">RETORNAR</button></div>`);
+    const draw=()=>{$('dpPayPreview').innerHTML=payrollSlip1274(e,$('dpPayComp').value,$('dpPayDue').value)};draw();
+    $('dpPayComp').onchange=()=>{pdfOpened=false;$('dpPayGenerate').style.display='none';draw()};$('dpPayDue').onchange=draw;
+    $('dpPayPdf').onclick=()=>{draw();printWindow($('dpPayPreview').innerHTML);pdfOpened=true;$('dpPayGenerate').style.display='inline-flex'};
+    $('dpPayBack').onclick=closeModal;
+    $('dpPayGenerate').onclick=()=>{
+      if(!pdfOpened)return alert('Abra o PDF antes de gerar o Contas a Pagar.');
+      const comp=$('dpPayComp').value,due=$('dpPayDue').value,h=hrData();
+      if((h.payrollRecords||[]).some(r=>r.employeeId===e.id&&r.competence===comp&&!r.returnedAt))return alert('Já existe uma folha ativa para este colaborador nesta competência.');
+      const p=payrollCalc1274(e,comp),rid=uid(),pid=uid(),days=workdayInfo1274(comp,e);
+      h.payrollRecords=h.payrollRecords||[];
+      h.payrollRecords.unshift({id:rid,employeeId:e.id,name:e.name,role:e.role||'',competence:comp,dueDate:due,salary:p.salary,salesGrant:p.salesGrant,grants:p.grants,discounts:p.discounts,inss:p.inss,irrf:p.irrf,fgts:p.fgts,gross:p.gross,net:p.net,businessDays:days.business,workedDays:days.worked,payableId:pid,createdAt:new Date().toISOString(),by:currentUsername()});
+      db.payables.unshift({id:pid,title:`FOLHA-${comp}-${e.id}`,documentNumber:`FOLHA-${comp}-${e.id}`,definition:`FOLHA DE PAGAMENTO • ${e.name}`,quoteNumber:comp,dueDate:due,value:p.net,paidValue:0,paidDate:'',notes:`Salário ${money(p.salary)} • líquido ${money(p.net)}`,hrCompetence:comp,hrRefId:e.id,payrollRecordId:rid});
+      audit('DEPARTAMENTO PESSOAL','ADICIONAR PAGAMENTO',e.name,`${monthLabel(comp)} • líquido ${money(p.net)}`);queueSave();closeModal();renderAll();setView('payroll');
+    };
+  };
+
+  window.openProviderPayment1274=function(id){
+    const p=hrData().providers.find(x=>x.id===id);if(!p)return;ensurePersonAdjustments1274(p);
+    const comp=new Date().toISOString().slice(0,7),due=today();
+    openModal(`<h2>Adicionar pagamento • ${esc(p.name)}</h2><div class="grid two">
+      <label class="field">Competência<input id="pvPayComp1274" type="month" value="${comp}"></label>
+      <label class="field">Vencimento<input id="pvPayDue1274" type="date" value="${due}"></label></div>
+      <div id="pvPayPreview1274"></div><div class="actions"><button id="pvPayPdf1274" class="btn secondary">VER EM PDF</button><button id="pvPayGen1274" class="btn primary">GERAR CONTAS A PAGAR</button><button id="pvPayBack1274" class="btn ghost">RETORNAR</button></div>`);
+    const calc=()=>{
+      const c=$('pvPayComp1274').value, grants=p.grants.filter(x=>!x.competence||x.competence===c), discounts=p.discounts.filter(x=>!x.competence||x.competence===c);
+      const base=Number(p.value||0),g=grants.reduce((a,x)=>a+Number(x.value||0),0),d=discounts.reduce((a,x)=>a+Number(x.value||0),0),net=Math.max(0,base+g-d);
+      return {c,base,g,d,net,grants,discounts};
+    };
+    const draw=()=>{const x=calc();$('pvPayPreview1274').innerHTML=`<div class="pdf-head"><img src="${location.origin}/icon-512.png"><div class="store-client"><strong>NOVA IMAGEM • DEMONSTRATIVO DE PAGAMENTO</strong><br>Prestador: <strong>${esc(p.name)}</strong> • ${esc(p.service||'-')}</div></div><table class="summary-table"><tr><th>Competência</th><td>${monthLabel(x.c)}</td><th>Base</th><td>${money(x.base)}</td></tr>${x.grants.map(g=>`<tr><th>Gratificação</th><td>${esc(g.description||g.nature||'-')}</td><td colspan="2">${money(g.value)}</td></tr>`).join('')}${x.discounts.map(d=>`<tr><th>Desconto</th><td>${esc(d.description||d.nature||'-')}</td><td colspan="2">- ${money(d.value)}</td></tr>`).join('')}<tr><th colspan="3">LÍQUIDO</th><td><strong>${money(x.net)}</strong></td></tr></table>`};draw();
+    $('pvPayComp1274').onchange=draw;$('pvPayPdf1274').onclick=()=>{draw();printWindow($('pvPayPreview1274').innerHTML)};$('pvPayBack1274').onclick=closeModal;
+    $('pvPayGen1274').onclick=()=>{const x=calc(),due=$('pvPayDue1274').value,pid=uid();db.payables.unshift({id:pid,title:`PRESTADOR-${x.c}-${p.id}`,documentNumber:`PRESTADOR-${x.c}-${p.id}`,definition:`PRESTAÇÃO DE SERVIÇO • ${p.name}`,quoteNumber:x.c,dueDate:due,value:x.net,paidValue:0,paidDate:'',notes:`Base ${money(x.base)} + gratificações ${money(x.g)} - descontos ${money(x.d)}`,hrCompetence:x.c,hrRefId:p.id});audit('DEPARTAMENTO PESSOAL','ADICIONAR PAGAMENTO',p.name,`${monthLabel(x.c)} • líquido ${money(x.net)}`);queueSave();closeModal();renderAll();setView('payables')};
+  };
+
+  window.openHRPerson1274=function(kind,id){
+    const h=hrData(),p=kind==='employee'?h.employees.find(x=>x.id===id):h.providers.find(x=>x.id===id);if(!p)return;ensurePersonAdjustments1274(p);
+    openModal(`<h2>${kind==='employee'?'Colaborador CLT':'Prestador de Serviços'} • ${esc(p.name)}</h2>
+      <div class="kpis" style="margin-bottom:14px">
+        <div class="kpi"><span>${kind==='employee'?'Salário-base':'Valor de referência'}</span><strong>${money(kind==='employee'?p.salary:p.value)}</strong></div>
+        <div class="kpi"><span>Gratificações cadastradas</span><strong>${money(p.grants.reduce((a,x)=>a+Number(x.value||0),0))}</strong></div>
+        <div class="kpi"><span>Descontos cadastrados</span><strong>${money(p.discounts.reduce((a,x)=>a+Number(x.value||0),0))}</strong></div>
+      </div>
+      <div class="actions">
+        <button id="hrPersonPay1274" class="btn primary">ADICIONAR PAGAMENTO</button>
+        <button id="hrPersonGrant1274" class="btn secondary">ADICIONAR GRATIFICAÇÃO</button>
+        <button id="hrPersonDisc1274" class="btn secondary">ADICIONAR DESCONTO</button>
+        <button id="hrPersonEdit1274" class="btn ghost">EDITAR CADASTRO</button>
+        <button id="hrPersonBack1274" class="btn ghost">RETORNAR</button>
+      </div>`);
+    $('hrPersonPay1274').onclick=()=>{closeModal();kind==='employee'?openEmployeePayment1274(id):openProviderPayment1274(id)};
+    $('hrPersonGrant1274').onclick=()=>{closeModal();addPersonAdjustment1274(kind,id,'grant')};
+    $('hrPersonDisc1274').onclick=()=>{closeModal();addPersonAdjustment1274(kind,id,'discount')};
+    $('hrPersonEdit1274').onclick=()=>{closeModal();kind==='employee'?openEmployee(p):openProvider(p)};
+    $('hrPersonBack1274').onclick=closeModal;
+  };
+
+  // Render HR com "ABRIR" como ação principal.
+  const oldRenderHR1274=renderHR;
+  renderHR=function(){
+    const h=hrData(),et=$('employeeTable'),pt=$('providerTable');if(!et||!pt)return oldRenderHR1274();
+    et.innerHTML=h.employees.map(e=>`<tr><td>${esc(e.name)}</td><td>${esc(e.role||'-')}</td><td>${fmtDate(e.admissionDate)}</td><td>${money(e.salary)}</td><td><span class="badge ${e.active===false?'danger':'ok'}">${e.active===false?'INATIVO':'ATIVO'}</span></td><td><button class="btn primary" data-emp-open1274="${e.id}">ABRIR</button></td></tr>`).join('')||'<tr><td colspan="6">Nenhum colaborador CLT.</td></tr>';
+    pt.innerHTML=h.providers.map(p=>`<tr><td>${esc(p.name)}</td><td>${esc(p.personType||'-')}</td><td>${esc(p.service||'-')}</td><td>${money(p.value||0)}</td><td><span class="badge ${p.active===false?'danger':'ok'}">${p.active===false?'INATIVO':'ATIVO'}</span></td><td><button class="btn primary" data-prov-open1274="${p.id}">ABRIR</button>${p.contractFile?.dataUrl?` <a class="btn ghost" href="${p.contractFile.dataUrl}" target="_blank" download="${esc(p.contractFile.name)}">CONTRATO</a>`:''}</td></tr>`).join('')||'<tr><td colspan="6">Nenhum prestador.</td></tr>';
+    const activeEmp=h.employees.filter(x=>x.active!==false),activeProv=h.providers.filter(x=>x.active!==false);
+    if($('hrSummary'))$('hrSummary').innerHTML=[['Colaboradores ativos',activeEmp.length],['Prestadores ativos',activeProv.length],['Folha-base',money(activeEmp.reduce((a,x)=>a+Number(x.salary||0),0))],['Serviços recorrentes',money(activeProv.reduce((a,x)=>a+Number(x.value||0),0))]].map(x=>`<div class="kpi"><span>${x[0]}</span><strong>${x[1]}</strong></div>`).join('');
+    document.querySelectorAll('[data-emp-open1274]').forEach(b=>b.onclick=()=>openHRPerson1274('employee',b.dataset.empOpen1274));
+    document.querySelectorAll('[data-prov-open1274]').forEach(b=>b.onclick=()=>openHRPerson1274('provider',b.dataset.provOpen1274));
+  };
+
+  // Garante handlers de Pedidos mesmo após navegação/re-render.
+  const oldSetView1274=setView;
+  setView=function(id){oldSetView1274(id);if(id==='orders'){bindOrderFilters1274();renderOrders()}if(id==='hr')renderHR()};
+  const oldRenderAll1274=renderAll;
+  renderAll=function(){oldRenderAll1274();bindOrderFilters1274();renderHR()};
+
+  setTimeout(()=>{bindOrderFilters1274();renderOrders();renderHR();renderPayables()},300);
 })();
 
