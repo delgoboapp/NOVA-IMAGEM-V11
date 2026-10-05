@@ -1,0 +1,10 @@
+NOVA IMAGEM ERP • V12.6
+
+ALTERAÇÕES
+- GERAR ETIQUETAS na Ordem de Produção: etiquetas 4 x 5,5 cm em A4, uma por folha, com logo, cliente, pedido, ambiente, medida, EXATO/DAR DESCONTO, tecido e identificação.
+- Correção do carregamento inicial: BEM-VINDO passa a ser a tela inicial, eliminando o pisca do Novo Orçamento.
+- Pedidos: vendedores carregados dos usuários do sistema, filtros por vendedor/data corrigidos, limpar filtros e GERAR PDF corrigidos.
+- PDF de Pedidos: quantidade, total a valor à vista, percentual e comissão do vendedor quando selecionado.
+- Novo botão EXCLUIR FIXAÇÃO por ambiente/peça. Exclui ferragens de fixação e instalação daquela peça. DESLIZANTES e CORDÃO WAVE permanecem. Permite restaurar.
+- Resumo do orçamento: botão EDITAR por ambiente. Recarrega no campo B e troca + ADICIONAR AMBIENTE por SALVAR EDIÇÕES, sem duplicar.
+- Identificação visual atualizada para V12.6.

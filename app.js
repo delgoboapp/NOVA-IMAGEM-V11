@@ -3234,7 +3234,7 @@ function payrollRows(competence){const h=hrData(),rows=[];for(const e of h.emplo
    V12.5 • FOLHA DE PAGAMENTO + PEDIDOS + PRESTADORES + PDFs PADRONIZADOS
    ============================================================================ */
 (function(){
-  const V125='V12.5';
+  const V125='V12.6';
   const BR_DATE=d=>{try{return new Date(String(d)+'T12:00:00').toLocaleDateString('pt-BR')}catch{return d||'-'}};
   const monthLabel=m=>{if(!m)return '-';const [y,mo]=String(m).split('-');return `${mo}/${y}`};
   function ensureV125(){
@@ -3388,4 +3388,136 @@ function payrollRows(competence){const h=hrData(),rows=[];for(const e of h.emplo
     $('orderFilterPdf')?.addEventListener('click',printOrdersV125);$('orderFilterClear')?.addEventListener('click',()=>{if($('orderFilterSeller'))$('orderFilterSeller').value='';if($('orderFilterFrom'))$('orderFilterFrom').value='';if($('orderFilterTo'))$('orderFilterTo').value='';renderOrders()});
     setTimeout(()=>{renderNav();renderHR();renderOrders();renderPayrollV125()},250);
   });
+})();
+
+
+/* ============================================================================
+   V12.6 • ETIQUETAS + EDIÇÃO DE AMBIENTE + FIXAÇÃO POR PEÇA + PEDIDOS
+   ============================================================================ */
+(function(){
+  const V126='V12.6';
+  try{companySettings().version=V126}catch(_){ }
+
+  // ---------- PEDIDOS: filtros confiáveis + PDF ----------
+  function v126OrderDate(o){return String(o?.createdDate||o?.date||o?.createdAt||'').slice(0,10)}
+  function v126OrderFilters(){return {seller:norm($('orderFilterSeller')?.value||''),from:$('orderFilterFrom')?.value||'',to:$('orderFilterTo')?.value||''}}
+  function v126VisibleOrders(){const f=v126OrderFilters();return (db.orders||[]).filter(canSeeOrder).filter(o=>{const d=v126OrderDate(o),u=resolveSellerUser(o);return (!f.seller||u===f.seller)&&(!f.from||d>=f.from)&&(!f.to||d<=f.to)})}
+  function v126FillOrderSellers(){
+    const s=$('orderFilterSeller');if(!s)return;
+    const cur=norm(s.value||'');
+    const fromUsers=(typeof allUsers==='function'?allUsers():[]).filter(u=>['SALES','GESTOR','PARTNER'].includes(norm(u.role))).map(u=>norm(u.username)).filter(Boolean);
+    const fromOrders=(db.orders||[]).map(o=>resolveSellerUser(o)).filter(Boolean);
+    const users=[...new Set([...fromUsers,...fromOrders])].sort((a,b)=>sellerName(a).localeCompare(sellerName(b),'pt-BR'));
+    s.innerHTML='<option value="">TODOS OS VENDEDORES</option>'+users.map(u=>`<option value="${esc(u)}">${esc(sellerName(u))}</option>`).join('');
+    if([...s.options].some(o=>norm(o.value)===cur))s.value=cur;
+  }
+  renderOrders=function(){
+    const tb=$('ordersTable');if(!tb)return;v126FillOrderSellers();tb.innerHTML='';
+    for(const o of v126VisibleOrders()){
+      const install=o.installation?.completedDate?'CONCLUÍDA':o.productionStage==='EXPEDIÇÃO'?'PRONTO PARA INSTALAÇÃO':'AGUARDANDO',paid=orderPaid(o),bal=orderBalance(o),fs=financialStatus(o);
+      const tr=document.createElement('tr');
+      tr.innerHTML=`<td>${String(o.numero).padStart(6,'0')}</td><td>${String(o.quoteNumber).padStart(6,'0')}</td><td>${esc(o.client)}</td><td>${esc(displaySeller(o))}</td><td>${money(o.agreedValue)}</td><td>${money(paid)}</td><td><strong>${money(bal)}</strong></td><td><span class="badge ${fs==='QUITADO'?'ok':fs==='PARCIAL'?'blue':'warn'}">${fs}</span></td><td><span class="badge blue">${esc(o.productionStage||'RECEPÇÃO')}</span></td><td><span class="badge ${install==='CONCLUÍDA'?'ok':'warn'}">${install}</span></td><td><button class="btn primary" data-order-pay="${o.numero}">Inserir pagamento</button> <button class="btn ghost" data-order-open="${o.numero}">Abrir</button> ${isGestor()?`<button class="btn danger" data-order-delete="${o.numero}">Excluir</button>`:''}</td>`;
+      tb.appendChild(tr)
+    }
+    if(!tb.children.length)tb.innerHTML='<tr><td colspan="11">Nenhum pedido nos filtros informados.</td></tr>';
+    document.querySelectorAll('[data-order-open]').forEach(b=>b.onclick=()=>openOrder(Number(b.dataset.orderOpen)));
+    document.querySelectorAll('[data-order-pay]').forEach(b=>b.onclick=()=>openPayment(Number(b.dataset.orderPay)));
+    document.querySelectorAll('[data-order-delete]').forEach(b=>b.onclick=()=>deleteOrder(Number(b.dataset.orderDelete)));
+  };
+  window.printOrdersV126=function(){
+    const rows=v126VisibleOrders(),f=v126OrderFilters(),total=rows.reduce((a,o)=>a+orderCashSale(o),0);
+    const pct=f.seller?Number(sellerCommission(f.seller)||0):0;
+    const commission=f.seller?rows.reduce((a,o)=>a+orderCashSale(o)*Number(o.commissionPercent??pct)/100,0):0;
+    const body=`<div class="pdf-head"><img src="${location.origin}/icon-512.png"><div class="store-client"><strong>NOVA IMAGEM CORTINAS E PERSIANAS</strong><br><strong>RELATÓRIO DE PEDIDOS</strong><br><br>Vendedor: <strong>${f.seller?esc(sellerName(f.seller)):'Todos'}</strong><br>Período: ${f.from?fmtDate(f.from):'início'} até ${f.to?fmtDate(f.to):'hoje'}</div></div><table class="summary-table"><tr><th>Pedido</th><th>Data</th><th>Cliente</th><th>Vendedor</th><th>Valor à vista</th></tr>${rows.map(o=>`<tr><td>${String(o.numero).padStart(6,'0')}</td><td>${fmtDate(v126OrderDate(o))}</td><td>${esc(o.client)}</td><td>${esc(displaySeller(o))}</td><td>${money(orderCashSale(o))}</td></tr>`).join('')||'<tr><td colspan="5">Nenhum pedido.</td></tr>'}</table><div class="section-title">Fechamento</div><table class="summary-table"><tr><th>Total de pedidos</th><td>${rows.length}</td><th>Soma dos pedidos a valor à vista</th><td><strong>${money(total)}</strong></td></tr>${f.seller?`<tr><th>Percentual de comissão</th><td>${pct.toFixed(2)}%</td><th>Comissão do vendedor no período</th><td><strong>${money(commission)}</strong></td></tr>`:''}</table>`;
+    printWindow(body)
+  };
+  function v126BindOrderFilters(){
+    const s=$('orderFilterSeller'),fr=$('orderFilterFrom'),to=$('orderFilterTo');
+    if(s)s.onchange=renderOrders;if(fr)fr.onchange=renderOrders;if(to)to.onchange=renderOrders;
+    let pdf=$('orderFilterPdf');if(pdf&&!pdf.dataset.v126Bound){const n=pdf.cloneNode(true);n.dataset.v126Bound='1';pdf.replaceWith(n);pdf=n}if(pdf)pdf.onclick=window.printOrdersV126;
+    let cl=$('orderFilterClear');if(cl&&!cl.dataset.v126Bound){const n=cl.cloneNode(true);n.dataset.v126Bound='1';cl.replaceWith(n);cl=n}if(cl)cl.onclick=()=>{if(s)s.value='';if(fr)fr.value='';if(to)to.value='';renderOrders()};
+  }
+  const v126OldSetView=setView;setView=function(id){v126OldSetView(id);if(id==='orders'){v126BindOrderFilters();renderOrders()}};
+
+  // ---------- EXCLUIR FIXAÇÃO SOMENTE DE UMA PEÇA ----------
+  let v126ExcludeFixation=false;
+  function v126SyncFixButton(){const b=$('toggleEnvFixBtn');if(!b)return;b.textContent=v126ExcludeFixation?'RESTAURAR FIXAÇÃO':'EXCLUIR FIXAÇÃO';b.className='btn '+(v126ExcludeFixation?'danger':'secondary')}
+  const v126OldEnvFromForm=envFromForm;
+  envFromForm=function(){const e=v126OldEnvFromForm();e.excludeFixation=!!v126ExcludeFixation;return e};
+  const v126OldCalc=calcEnvironment;
+  calcEnvironment=function(e){
+    const c=v126OldCalc(e);if(!c||!e?.excludeFixation)return c;
+    const fix=Number(c.fixationCalc?.total||0),install=Number(c.installCost||0);
+    const laborTotal=Math.max(0,Number(c.laborTotal||0)-install);
+    const base4=Math.max(0,Number(c.base4||0)-fix-install);
+    const p18=base4*(1+Number(db.priceConfig.terms.p18AddPct||0)/100),cash=base4*(1-Number(db.priceConfig.terms.cashDiscountPct||0)/100);
+    return {...c,fixationCalc:{...(c.fixationCalc||{}),total:0,hardwareBase:0,detail:'FIXAÇÃO EXCLUÍDA'},installCost:0,laborTotal,base4,p18,cash};
+  };
+  const v126OldReq=officialOrderRequirements;
+  officialOrderRequirements=function(q){
+    const rows=v126OldReq(q),excluded=new Set((q?.environments||[]).filter(e=>e.excludeFixation).map(e=>String(e.name||'')));
+    if(!excluded.size)return rows;
+    const isFix=r=>/(TRILHO|VARAO|VARÃO|TUBO|SUPORTE|GARRA|TAMPA|MOTOR|CONTROLE REMOTO|COMANDO)/i.test(String(r.source||'')+' '+String(r.product_name||''));
+    return rows.filter(r=>!excluded.has(String(r.environment||''))||!isFix(r));
+  };
+  if(typeof purchaseMaterialsForOrder==='function'){
+    const v126OldPurchase=purchaseMaterialsForOrder;
+    purchaseMaterialsForOrder=function(o){const ex=new Set((o?.environments||[]).filter(e=>e.excludeFixation).map(e=>String(e.name||'')));return v126OldPurchase(o).filter(x=>!ex.has(String(x.environment||'')))};
+  }
+
+  // ---------- EDITAR AMBIENTE ----------
+  let v126EditingEnvId=null;
+  function v126Set(id,val){const x=$(id);if(x&&val!==undefined&&val!==null)x.value=String(val)}
+  function v126LoadEnvironment(e){
+    if(!e)return;v126EditingEnvId=e.id;v126ExcludeFixation=!!e.excludeFixation;
+    v126Set('eModel',e.model);try{updateModelFields()}catch(_){ }
+    v126Set('eName',e.name);v126Set('eWidth',e.width);v126Set('eHeight',e.height);v126Set('eLeaves',e.leaves);
+    v126Set('eFinish',e.finish);try{refreshFinishColors()}catch(_){ }v126Set('eFinishColor',e.finishColor);v126Set('eFinishPleat',e.finishPleat);v126Set('eFinishGather',e.finishGather);
+    v126Set('eLining',e.lining);try{refreshLiningColors()}catch(_){ }v126Set('eLiningColor',e.liningColor);v126Set('eLiningPleat',e.liningPleat);v126Set('eLiningGather',e.liningGather);
+    v126Set('eFixation',e.fixation);try{refreshFixColors()}catch(_){ }v126Set('eRailProduct',e.railProductId||e.fixProductId||'');v126Set('eFixColor',e.fixColor);v126Set('eSupportMaterial',e.supportMaterial||'ALUMINIO');
+    if($('eFinishTube'))v126Set('eFinishTube',e.finishTubeProductId||e.finishTube||'');if($('eLiningTube'))v126Set('eLiningTube',e.liningTubeProductId||e.liningTube||'');
+    if($('eAngle')){$('eAngle').checked=!!e.angle;try{$('eAngle').dispatchEvent(new Event('change',{bubbles:true}))}catch(_){ }}
+    v126Set('eAngleA',e.angleA||'');v126Set('eAngleAHeight',e.angleAHeight||'');v126Set('eAngleB',e.angleB||'');v126Set('eAngleBHeight',e.angleBHeight||'');v126Set('eMotorAngleMode',e.motorAngleMode||'CURVA');
+    v126Set('eCustomPleat',e.customPleat||0);v126Set('eNotes',e.notes||'');
+    if($('addEnvBtn'))$('addEnvBtn').textContent='SALVAR EDIÇÕES';v126SyncFixButton();try{updatePreview()}catch(_){ }
+    $('eName')?.scrollIntoView({behavior:'smooth',block:'center'});
+  }
+  const v126OldRenderQuote=renderQuote;
+  renderQuote=function(){
+    v126OldRenderQuote();
+    document.querySelectorAll('[data-del-env]').forEach(del=>{
+      const id=del.dataset.delEnv;if(del.parentElement?.querySelector(`[data-edit-env="${CSS.escape(id)}"]`))return;
+      const b=document.createElement('button');b.className='btn secondary';b.dataset.editEnv=id;b.textContent='Editar';b.style.marginRight='6px';b.onclick=()=>v126LoadEnvironment((draft.environments||[]).find(x=>String(x.id)===String(id)));del.parentElement?.insertBefore(b,del)
+    });
+  };
+  const v126OldClear=clearEnv;
+  clearEnv=function(){const r=v126OldClear();v126ExcludeFixation=false;v126EditingEnvId=null;if($('addEnvBtn'))$('addEnvBtn').textContent='+ Adicionar ambiente';v126SyncFixButton();return r};
+
+  // Captura antes do listener legado para salvar edição sem duplicar.
+  document.addEventListener('click',ev=>{
+    const t=ev.target;if(t?.id==='toggleEnvFixBtn'){ev.preventDefault();v126ExcludeFixation=!v126ExcludeFixation;v126SyncFixButton();try{updatePreview()}catch(_){ }return}
+    if(t?.id==='addEnvBtn'&&v126EditingEnvId){
+      ev.preventDefault();ev.stopImmediatePropagation();
+      const e=envFromForm();if(!e.name||!e.width||!e.height)return alert('Preencha ambiente, largura e altura.');if(e.fixation==='TRILHO SUÍÇO'&&!e.railProductId&&!e.excludeFixation)return alert('Selecione o Tipo de Trilho no estoque oficial.');
+      const i=(draft.environments||[]).findIndex(x=>String(x.id)===String(v126EditingEnvId));if(i<0)return alert('Ambiente não encontrado para edição.');e.id=v126EditingEnvId;draft.environments[i]=e;v126EditingEnvId=null;v126ExcludeFixation=false;renderQuote();clearEnv();
+    }
+  },true);
+
+  // ---------- ETIQUETAS DE PRODUÇÃO ----------
+  window.generateLabelsV126=function(orderNumber){
+    const o=(db.orders||[]).find(x=>Number(x.numero)===Number(orderNumber));if(!o)return alert('Pedido não encontrado.');
+    const labels=[];
+    for(const e of o.environments||[]){const n=Math.max(1,Number(e.leaves||1));
+      if(e.model!=='LINING')for(let i=1;i<=n;i++)labels.push({env:e.name,size:`${e.width} x ${e.height} cm`,fabric:[e.finish,e.finishColor].filter(Boolean).join(' • '),id:`ACABAMENTO ${i}/${n}`});
+      if(e.model!=='FINISH')for(let i=1;i<=n;i++)labels.push({env:e.name,size:`${e.width} x ${e.height} cm`,fabric:[e.lining,e.liningColor].filter(Boolean).join(' • '),id:`FORRO ${i}/${n}`});
+    }
+    const w=window.open('about:blank','_blank');if(!w)return alert('Libere pop-ups para gerar as etiquetas.');
+    w.document.write(`<html><head><title>Etiquetas • Pedido ${String(o.numero).padStart(6,'0')}</title><style>@page{size:A4 portrait;margin:8mm}*{box-sizing:border-box}body{font-family:Arial,sans-serif;margin:0;color:#000}.tools{margin:0 0 6mm}.tools button{padding:8px 12px;margin-right:6px}.sheet{display:grid;grid-template-columns:repeat(4,40mm);gap:3mm;align-items:start}.label{width:40mm;height:55mm;border:1.2px solid #000;padding:2.2mm;overflow:hidden;break-inside:avoid;font-size:7.2pt;line-height:1.12}.logo{height:8mm;text-align:center;border-bottom:1px solid #000;margin-bottom:1.5mm}.logo img{height:7mm;max-width:25mm;object-fit:contain}.client{font-size:8pt;font-weight:800;margin-bottom:1mm}.row{margin:.8mm 0}.check{font-size:7pt;margin:1.2mm 0;border-top:1px solid #bbb;border-bottom:1px solid #bbb;padding:.8mm 0}.leaf{font-weight:900;font-size:8.3pt;margin-top:1mm}@media print{.tools{display:none}.sheet{gap:3mm}}</style></head><body><div class="tools"><button onclick="window.print()">IMPRIMIR</button><button onclick="window.close()">RETORNAR</button> ${labels.length} etiqueta(s)</div><div class="sheet">${labels.map(l=>`<div class="label"><div class="logo"><img src="${location.origin}/icon-512.png"></div><div class="client">${esc(o.client||'-')}</div><div class="row"><b>PEDIDO:</b> ${String(o.numero).padStart(6,'0')}</div><div class="row"><b>AMBIENTE:</b> ${esc(l.env||'-')}</div><div class="row"><b>MEDIDA:</b> ${esc(l.size)}</div><div class="check">☐ EXATO &nbsp;&nbsp; ☐ DAR DESCONTO</div><div class="row"><b>TECIDO:</b> ${esc(l.fabric||'-')}</div><div class="leaf">${esc(l.id)}</div></div>`).join('')}</div></body></html>`);w.document.close();w.focus();
+  };
+  printProductionOrder=function(o){
+    let envs='';for(const e of o.environments||[]){const c=calcEnvironment(e);if(!c)continue;const mats=environmentMaterialRows(e);envs+=`<div class="env-block"><div class="env-title">${esc(e.name)} ${e.excludeFixation?'<span class="badge warn">FIXAÇÃO EXCLUÍDA</span>':''}</div><table class="env-table"><tr><th>Medidas</th><td>${e.width} × ${e.height} cm</td><th>Aberturas</th><td>${Math.max(0,Number(e.leaves||1)-1)}</td></tr><tr><th>Acabamento</th><td>${c.finishCalc?esc(`${e.finish} / ${e.finishColor} / ${e.finishPleat} ${e.finishGather}:1`):'—'}</td><th>Forro</th><td>${c.liningCalc?esc(`${e.lining} / ${e.liningColor} / ${e.liningPleat} ${e.liningGather}:1`):'—'}</td></tr><tr><th>Fixação</th><td>${e.excludeFixation?'EXCLUÍDA PARA ESTA PEÇA':esc(e.fixation||'-')+' • '+esc(e.fixColor||'')}</td><th>Deslizantes</th><td>${c.finishSliders||0} acabamento + ${c.liningSliders||0} forro</td></tr><tr><th>Costura</th><td colspan="3">${Number(c.sewingMeters||0).toFixed(2)} m</td></tr>${e.notes?`<tr style="background:#fff3a8"><th style="font-weight:900">OBSERVAÇÕES</th><td colspan="3" style="font-weight:800">${esc(e.notes)}</td></tr>`:`<tr><th>Observações</th><td colspan="3">Sem observações.</td></tr>`}</table><div class="section-title">Materiais / separação</div><table class="summary-table"><tr><th>SKU</th><th>Material</th><th>Cor</th><th>Quantidade</th></tr>${mats||'<tr><td colspan="4">Sem material oficial vinculado.</td></tr>'}</table></div>`}
+    const body=`<div class="screen-only" style="margin-bottom:8px"><button onclick="window.opener && window.opener.generateLabelsV126(${Number(o.numero)})">GERAR ETIQUETAS</button></div><div class="pdf-head"><img src="${location.origin}/icon-512.png"><div class="store-client"><strong>Nova Imagem Cortinas & Persianas</strong><br><strong>ORDEM DE SERVIÇO / PRODUÇÃO</strong><br><br><strong>Pedido:</strong> ${String(o.numero).padStart(6,'0')}<br><strong>Cliente:</strong> ${esc(o.client||'-')}<br><strong>Contato:</strong> ${esc(o.contact||'-')}<br><strong>Endereço:</strong> ${esc(o.address||'-')}<br><strong>Instalação prevista:</strong> ${fmtDate(o.deliveryDate)}<br><strong>Vendedor:</strong> ${esc(displaySeller(o))}</div></div>${envs}<div class="section-title">Observações gerais</div><p>${esc((o.notes||'').trim()||'Sem observações gerais.')}</p>`;printWindow(body)
+  };
+
+  document.addEventListener('DOMContentLoaded',()=>{setTimeout(()=>{v126BindOrderFilters();v126FillOrderSellers();v126SyncFixButton();try{renderOrders()}catch(_){ }},300)});
 })();
