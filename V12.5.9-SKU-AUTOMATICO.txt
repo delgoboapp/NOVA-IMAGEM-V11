@@ -1,0 +1,9 @@
+NOVA IMAGEM ERP • V12.5.9
+
+ALTERAÇÃO PONTUAL
+- SKU de novos itens do Estoque de Persianas passa a ser gerado automaticamente pelo sistema.
+- Padrão automático: PER-000001, PER-000002, PER-000003...
+- O campo SKU fica somente leitura no cadastro.
+- Ao duplicar uma persiana, o sistema cria automaticamente um novo SKU único.
+- SKUs existentes são preservados.
+- Nenhuma outra regra do módulo de persianas ou do ERP foi alterada.
