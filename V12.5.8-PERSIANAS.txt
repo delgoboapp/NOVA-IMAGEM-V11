@@ -1,0 +1,24 @@
+NOVA IMAGEM ERP — V12.5.8
+
+NOVO MÓDULO: ESTOQUE DE PERSIANAS
+- Menu abaixo de Estoque: ESTOQUE DE PERSIANAS.
+- Cadastro editável de modelo, coleção, cor, largura máxima, custo/m², markup, estoque e status.
+- Estoque pode ser ILIMITADO ou CONTROLADO, inclusive quantidade zero.
+- Botões Editar, Duplicar e Excluir.
+- Novos itens cadastrados aparecem automaticamente no botão + PERSIANA do orçamento.
+
+MOTOR DE PERSIANAS
+- Defaults Requinte itens 2 a 17 conforme tabela fornecida.
+- Horizontal Alumínio 25 mm itens 1 a 9, custo pela coluna 28 dias.
+- Modelos: ROLÔ SEM BANDÔ, ROLÔ COM BANDÔ, ROMANA, HORIZONTAL 25MM, STRIPE SEM BANDÔ, STRIPE COM BANDÔ.
+- Combinações XXX não cadastradas/disponibilizadas.
+- Área mínima faturável 1,20 m².
+- Largura máxima por coleção.
+- > 2,50 m: +10% e observação ACRÉSCIMO TUBO 50MM.
+- > 6,00 m² reais: +10% e observação TUBO REFORÇADO.
+- Com bandô: altura máxima 440 cm.
+- Manual ou eletrônico. Eletrônico: custo adicional R$ 1.015,00 + R$ 185,00 antes do markup.
+- Markup default 100% para 4x; à vista -5%; 10x = à vista / 0,82.
+- Persianas podem ser incluídas junto com cortinas no mesmo orçamento.
+
+OBS.: Para compatibilidade com o ERP, a coluna geral de 18x continua seguindo os parâmetros gerais do sistema. O módulo de persianas mantém também o valor próprio de até 10x para consulta/cálculo detalhado.
