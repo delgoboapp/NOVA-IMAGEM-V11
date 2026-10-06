@@ -1,0 +1,10 @@
+NOVA IMAGEM ERP — V12.6.0
+
+CORREÇÃO: CONTABILIZAÇÃO DE PERSIANAS
+
+- Persianas permanecem no total do orçamento via quoteTotals.
+- PDF do orçamento agora exibe valores 18x, 4x e à vista de cada persiana e subtotal das persianas.
+- PDF do pedido agora exibe todas as persianas na condição de pagamento contratada.
+- O pedido mostra subtotal das persianas e TOTAL CONTRATADO (cortinas + persianas + adicionais).
+- Mantidas as regras do módulo Requinte e o SKU automático da V12.5.9.
+- Nenhum outro módulo do ERP foi alterado.

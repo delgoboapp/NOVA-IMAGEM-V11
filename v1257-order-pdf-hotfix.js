@@ -2,7 +2,7 @@
 /* V12.5.7 — hotfix isolado do PDF do pedido.
    Carregado DEPOIS do app.js para eliminar conflito entre definições antigas. */
 (function(){
-  const VERSION='V12.5.7';
+  const VERSION='V12.6.0';
 
   function condKey(o){
     if(o?.paymentCondition==='cash')return 'cash';
@@ -138,6 +138,43 @@
         </div>`;
     }
 
+    // V12.6.0 — Persianas passam a compor visualmente e financeiramente o pedido.
+    // O valor total contratado (o.agreedValue) já vem do quoteTotals; aqui mostramos cada persiana
+    // na mesma condição escolhida no pedido, para não parecer que ela ficou fora da contabilização.
+    const qDisc=1-Math.max(0,Math.min(100,Number(q?.discountPercent||0)))/100;
+    const oDisc=1-Math.max(0,Math.min(100,Number(o?.discountPercent||0)))/100;
+    const blindCond=condKey(o);
+    let blindsHtml='';
+    if((o.blinds||[]).length){
+      let blindSubtotal=0;
+      const blindRows=(o.blinds||[]).map(b=>{
+        const qty=Math.max(1,Number(b.qty||1));
+        const unitRaw=blindCond==='cash'?Number(b.cash||0):blindCond==='p18'?Number(b.p18||0):Number(b.p4||0);
+        const unit=unitRaw*qDisc*oDisc;
+        const total=unit*qty; blindSubtotal+=total;
+        const notes=Array.isArray(b.notes)?b.notes.join(' • '):String(b.notes||'');
+        return `<tr>
+          <td>${esc(b.environment||'PERSIANA')}</td>
+          <td>${esc(b.model||b.blindModel||'-')}</td>
+          <td>${esc(b.color||'-')}</td>
+          <td>${b.bando?esc(b.bando):'—'}</td>
+          <td>${Number(b.width||0)} × ${Number(b.height||0)} cm</td>
+          <td>${Number(b.billArea||b.area||0).toFixed(2)} m²</td>
+          <td>${esc(b.commandSide||'-')}</td>
+          <td>${esc(b.drive||'MANUAL')}</td>
+          <td>${qty}</td>
+          <td>${money(unit)}</td>
+          <td><strong>${money(total)}</strong>${notes?`<br><small>${esc(notes)}</small>`:''}</td>
+        </tr>`;
+      }).join('');
+      blindsHtml=`<div class="section-title">Persianas</div>
+        <table class="summary-table">
+          <tr><th>Ambiente</th><th>Modelo / coleção</th><th>Cor</th><th>Bandô</th><th>Medidas</th><th>Área calc.</th><th>Comando</th><th>Acionamento</th><th>Qtd.</th><th>Valor unit.</th><th>Valor total</th></tr>
+          ${blindRows}
+          <tr><th colspan="10" style="text-align:right">TOTAL DAS PERSIANAS • ${esc(cond)}</th><th>${money(blindSubtotal)}</th></tr>
+        </table>`;
+    }
+
     const cset=companySettings();
     const warranty=o.documentVersions?.warrantyText||cset.warranty||V119_WARRANTY;
 
@@ -159,6 +196,10 @@
       </div>
 
       ${envs}
+      ${blindsHtml}
+
+      <div class="section-title">Resumo financeiro do pedido</div>
+      <p class="totals"><strong>TOTAL CONTRATADO • ${esc(cond)}:</strong> ${money(o.agreedValue)}</p>
 
       <div class="section-title">Acompanhe seu pedido</div>
       <div class="customer-access-box">
@@ -199,7 +240,7 @@
         <div><div class="signature-line"></div><strong>Nova Imagem</strong></div>
       </div>
 
-      <div style="font-size:8px;color:#667a79;margin-top:8px">PDF do Pedido • ERP Nova Imagem V12.5.7</div>`;
+      <div style="font-size:8px;color:#667a79;margin-top:8px">PDF do Pedido • ERP Nova Imagem V12.6.0</div>`;
 
     printWindow(body);
   };
