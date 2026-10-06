@@ -1,0 +1,7 @@
+NOVA IMAGEM ERP • V12.6.1
+
+CORREÇÃO
+- Persianas passam a aparecer no PDF do pedido mesmo em pedidos criados antes do hotfix.
+- Se o pedido não possuir o array de persianas, o sistema recupera as persianas do orçamento vinculado e grava no pedido.
+- O total contratado é revalidado pela condição de pagamento escolhida usando o orçamento vinculado, incluindo persianas.
+- Nenhuma outra regra de cortinas, estoque, financeiro ou gestão foi alterada.

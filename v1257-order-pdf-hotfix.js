@@ -141,13 +141,21 @@
     // V12.6.0 — Persianas passam a compor visualmente e financeiramente o pedido.
     // O valor total contratado (o.agreedValue) já vem do quoteTotals; aqui mostramos cada persiana
     // na mesma condição escolhida no pedido, para não parecer que ela ficou fora da contabilização.
+    // V12.6.1 — recuperação robusta das persianas no pedido.
+    // Pedidos criados em versões anteriores podem não ter recebido o array `blinds`.
+    // Nesses casos, recuperamos as persianas diretamente do orçamento vinculado.
+    const orderBlinds=(Array.isArray(o.blinds)&&o.blinds.length)?o.blinds:((q&&Array.isArray(q.blinds))?q.blinds:[]);
+    if((!Array.isArray(o.blinds)||!o.blinds.length)&&orderBlinds.length){
+      o.blinds=clone(orderBlinds);
+      try{queueSave()}catch(_){}
+    }
     const qDisc=1-Math.max(0,Math.min(100,Number(q?.discountPercent||0)))/100;
     const oDisc=1-Math.max(0,Math.min(100,Number(o?.discountPercent||0)))/100;
     const blindCond=condKey(o);
     let blindsHtml='';
-    if((o.blinds||[]).length){
-      let blindSubtotal=0;
-      const blindRows=(o.blinds||[]).map(b=>{
+    let blindSubtotal=0;
+    if(orderBlinds.length){
+      const blindRows=orderBlinds.map(b=>{
         const qty=Math.max(1,Number(b.qty||1));
         const unitRaw=blindCond==='cash'?Number(b.cash||0):blindCond==='p18'?Number(b.p18||0):Number(b.p4||0);
         const unit=unitRaw*qDisc*oDisc;
@@ -199,7 +207,22 @@
       ${blindsHtml}
 
       <div class="section-title">Resumo financeiro do pedido</div>
-      <p class="totals"><strong>TOTAL CONTRATADO • ${esc(cond)}:</strong> ${money(o.agreedValue)}</p>
+      ${(()=>{
+        let total=Number(o.agreedValue||0);
+        try{
+          if(q){
+            const qt=quoteTotals(q);
+            const base=blindCond==='cash'?Number(qt.cash||0):blindCond==='p18'?Number(qt.p18||0):Number(qt.p4||0);
+            total=base*oDisc;
+            if(Number.isFinite(total)&&Math.abs(total-Number(o.agreedValue||0))>0.01){
+              o.originalValue=base;
+              o.agreedValue=total;
+              try{queueSave()}catch(_){}
+            }
+          }
+        }catch(_){}
+        return `<p class="totals"><strong>TOTAL CONTRATADO • ${esc(cond)}:</strong> ${money(total)}</p>`;
+      })()}
 
       <div class="section-title">Acompanhe seu pedido</div>
       <div class="customer-access-box">
@@ -240,7 +263,7 @@
         <div><div class="signature-line"></div><strong>Nova Imagem</strong></div>
       </div>
 
-      <div style="font-size:8px;color:#667a79;margin-top:8px">PDF do Pedido • ERP Nova Imagem V12.6.0</div>`;
+      <div style="font-size:8px;color:#667a79;margin-top:8px">PDF do Pedido • ERP Nova Imagem V12.6.1</div>`;
 
     printWindow(body);
   };
