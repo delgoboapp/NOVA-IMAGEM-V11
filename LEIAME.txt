@@ -1,3 +1,25 @@
+NOVA IMAGEM ERP — CORREÇÃO FECHAMENTO ATACADO (08/10/2026)
+=========================================================
+
+CORREÇÃO PONTUAL NA BASE DO GITHUB ENVIADA PELO USUÁRIO.
+
+- Corrigido o botão PDF / Imprimir fechamento em Clientes Atacado.
+- Problema anterior: window.print() tentava imprimir o modal, ocultado
+  pela regra CSS .modal-backdrop em @media print, gerando página em branco.
+- Agora o relatório abre em uma janela de impressão independente, usando
+  o gerador PDF já existente no ERP (printWindow).
+- Inclui logomarca/dados da empresa, identificação do cliente, competência,
+  KPIs financeiros, extrato e pedidos com seus saldos e status.
+- Suporta clientes sem pedidos ou sem movimentos no período.
+- Mantidas as regras de cálculo e todas as demais telas/rotinas.
+- Para salvar PDF: na nova janela, clique IMPRIMIR / SALVAR PDF e selecione
+  o destino Salvar como PDF no navegador.
+
+VALIDAÇÃO: sintaxe de app.js verificada com node --check.
+ATENÇÃO: não foi realizado teste com o banco D1 de produção.
+
+--- HISTÓRICO DO LEIAME ANTERIOR ---
+
 NOVA IMAGEM ERP — V12.5.7
 ==========================
 
