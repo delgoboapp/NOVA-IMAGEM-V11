@@ -1,0 +1,18 @@
+V12.8.1 — AMORIM / ESTOQUE SUPORTES — 13/10/2026
+
+Implementado:
+- Catálogos Amorim Rolô (entradas disponíveis de tabela, 51 referências) e Romana (referências da tabela transcrita), sem eliminar registros da Requinte.
+- Primeiro campo obrigatório para incluir persiana: ROLÔ ou ROMANA; demais campos condicionais.
+- Custo Amorim = tabela × 0,70, 4x = custo ×2, à vista = 4x ×0,92, 18x conforme tabela geral do ERP.
+- Altura mínima faturada 1 m e área mínima 1,20 m² por peça.
+- Configuração simples/duplex/triplex/quadriplex e acréscimo de R$ 50 por suporte no preço 4x.
+- Escolha de tubo, barra/bandô e acessórios, avisos técnicos não bloqueantes (parâmetros recebidos sujeitos à confirmação em manual original).
+- Aviso obrigatório de validação com a fábrica no orçamento e no PDF.
+- Inventário autorizado dos oito suportes Wave na base oficial D1, uma vez, somente se todos os oito SKUs forem encontrados. Se houver ausência, o ajuste não é marcado como concluído e um aviso é registrado no console.
+
+PENDÊNCIAS IMPORTANTES PARA HOMOLOGAÇÃO:
+- Rolô Stilo/Double Vision não cadastrada (tabela não fornecida).
+- Preço adicional dos bandôs requer confirmação da unidade cobrada pelo fornecedor, por isso não é cobrado nesta versão.
+- Validar correspondência dos 6 mecanismos com o manual original: tabela fornecida estava desalinhada.
+- Os dados efetivos do D1 não podem ser testados offline. Testar com orçamento fictício e conferir estoques antes de vender.
+- A versão ainda não passou por testes ponta a ponta com Cloudflare.
