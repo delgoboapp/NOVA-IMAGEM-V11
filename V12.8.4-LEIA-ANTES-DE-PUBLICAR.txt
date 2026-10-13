@@ -1,0 +1,29 @@
+NOVA IMAGEM V12.8.4 — HOMOLOGAÇÃO — 13/10/2026
+
+BASE: pacote V12.8.3 do Nova Imagem App.
+
+MELHORIAS IMPLEMENTADAS NO CODIGO:
+- Modelo da persiana em primeira seleção, sem seleção prévia: ROLÔ, ROMANA, HORIZONTAL 25MM.
+- Cores Amorim por código individual, incluindo expansão de intervalos mantendo zeros à esquerda.
+- Catálogo Amorim importado no módulo ESTOQUE DE PERSIANAS (51 linhas de Rolô + 51 de Romana expandidas por cor). Horizontal 25mm Requinte (RQ) preservada.
+- Seleção individual do lado do comando das 1/2/3/4 partes; removida a opção SEM COMANDO.
+- Acionamento ELETRÔNICO: alerta para consultar o fornecedor e impedimento de inclusão no orçamento.
+- Seleção convencional automática de tubo 32/38/53 mm conforme dimensões. Sobretaxas 38 mm +5%, 53 mm +10%, 38 mola +5% +R$80, 53 redutor +10% +R$150.
+- Alertas técnicos e aviso de validação obrigatória do valor com a fábrica, sem impedir inserção de configurações manuais com alertas.
+- Fixação de Varão Wave no TETO/PAREDE; garras calculadas por varão (mínimo 2, uma por 60 cm), substituindo suportes na lista de materiais.
+- Novo SKU de GARRA PARA VARÃO WAVE gerado no estoque oficial D1 no login de GESTOR, se ainda não existir. Preço 4x R$10/un.
+- MEDIDA EXATA / DAR DESCONTO no ambiente e destaque em documentos de produção.
+- BARRA TOMBADA renomeada no formulário para BARRA TOMA.
+- Botões SALVAR ORÇAMENTO e SALVAR E GERAR PDF duplicados ao final, vinculados aos botões originais.
+- Endpoint seguro para inventário Wave (9 saldos = 498 un), tenta aplicar uma única vez se e somente se cada variação corresponder a exatamente um produto ativo no D1. Se faltarem SKUs ou houver nomes ambíguos, NÃO altera nenhum saldo e registra aviso no console.
+
+PENDÊNCIAS QUE IMPEDEM HOMOLOGAÇÃO TOTAL:
+1. Unidade comercial e forma de cobrança dos BANDÔS não confirmadas: os bandôs são selecionáveis, mas NÃO somam preço adicional até confirmação.
+2. Catálogo Rolô Stilo/Double Vision ainda não recebido.
+3. Limites de tubo/mecanismo fornecidos em tabela desalinhada; conferir documento original da fábrica antes de venda.
+4. Não houve ensaio ponta-a-ponta com Cloudflare D1 real nesta sessão. Testar em ambiente de homologação e fazer backup do D1 antes da publicação.
+5. O inventário dos suportes Wave só será aplicado se identificar de maneira inequívoca os nove produtos. Confirmar estoque no painel.
+6. O controle de estoque de persianas é catálogo de produtos, NÃO representa quantidade física em peças de pronta-entrega.
+7. Para conjunto Duplex/Triplex/Quadriplex, cada parte registra seu comando, mas esta versão ainda requer homologação das MEDIDAS INDIVIDUAIS das partes.
+
+NÃO USAR ESTA VERSÃO PARA CONFIRMAR VALORES DE PERSIANAS SEM CONSULTAR A FÁBRICA.
