@@ -135,16 +135,54 @@ export async function onRequestPost(context){
 
 
     if(action==='SINCRONIZAR_GARRA_VARAO_WAVE'){
-      if(!gestorOnly(user))return json({error:'Apenas GESTOR pode cadastrar a garra Wave.'},403);
+      if(!gestorOnly(user))return json({error:'Apenas GESTOR pode criar a garra Wave.'},403);
       const name='GARRA PARA VARÃO WAVE';
-      const old=await context.env.DB.prepare('SELECT id FROM price_products WHERE product_name=? AND active=1 LIMIT 1').bind(name).first();
-      if(old)return json({ok:true,created:false});
-      const ids=await context.env.DB.prepare("SELECT internal_code FROM price_products WHERE internal_code LIKE 'NI-%'").all();
-      let max=0;for(const r of ids.results||[]){const m=String(r.internal_code||'').match(/^NI-(\d+)$/i);if(m)max=Math.max(max,Number(m[1]));}
-      const sku=`NI-${String(max+1).padStart(4,'0')}`;
-      const cost=10/2.30, cash=10*0.929, p18=cash/0.83;
-      await context.env.DB.prepare(`INSERT INTO price_products (internal_code,supplier_code,category,supplier,product_name,color,width_cm,unit,stock_quantity,multiplier,cost,markup_percent,price_cash,price_4x,price_18x,ncm,cfop_internal,cfop_interstate,active,price_manual,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)`).bind(sku,'','ACESSÓRIO','NOVA IMAGEM',name,'PADRÃO',0,'UN',0,2.3,cost,130,cash,10,p18,'','','').run();
+      const existing=await context.env.DB.prepare('SELECT id FROM price_products WHERE active=1 AND product_name=? LIMIT 1').bind(name).first();
+      if(existing)return json({ok:true,created:false});
+      const rows=await context.env.DB.prepare("SELECT internal_code FROM price_products WHERE internal_code LIKE 'NI-%'").all();let max=0;
+      for(const r of rows.results||[]){const m=String(r.internal_code||'').match(/^NI-(\d+)$/i);if(m)max=Math.max(max,Number(m[1]));}
+      const sku=`NI-${String(max+1).padStart(4,'0')}`,cost=10/2.3,priceCash=10*.92,price18=priceCash/.82;
+      await context.env.DB.prepare(`INSERT INTO price_products (internal_code,supplier_code,category,supplier,product_name,color,width_cm,unit,stock_quantity,multiplier,cost,markup_percent,price_cash,price_4x,price_18x,ncm,cfop_internal,cfop_interstate,active,price_manual,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)`).bind(sku,'','ACESSÓRIO','NOVA IMAGEM',name,'PADRÃO',0,'UN',0,2.3,cost,130,priceCash,10,price18,'','','').run();
       return json({ok:true,created:true,sku});
+    }
+    if(action==='APLICAR_INVENTARIO_WAVE_20261013'){
+      if(!gestorOnly(user))return json({error:'Apenas GESTOR pode atualizar estoque.'},403);
+      const tag='INVENTARIO-WAVE-20261013-V1284';
+      const done=await context.env.DB.prepare('SELECT id FROM price_product_history WHERE reason=? LIMIT 1').bind(tag).first();
+      if(done)return json({ok:true,alreadyDone:true});
+      const specs=[
+        ['WAVE','28/28','PRATA ESCOVADO',99],['WAVE','28','PRATA ESCOVADO',86],
+        ['WAVE','28/28','CROMADO',50],['WAVE','28/28','OURO VELHO',24],
+        ['WAVE','28/28','DOURADO',47],['WAVE','28','DOURADO',24],
+        ['WAVE','28/28','BRANCO',92],['WAVE','28/28','PRETO',54],
+        ['NORMAL/WAVE','28/28','PRATA ESCOVADO',22]
+      ];
+      const products=(await context.env.DB.prepare('SELECT * FROM price_products WHERE active=1').all()).results||[];
+      const norm=v=>String(v||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim();
+      const matched=[], problems=[],taken=new Set();
+      for(const [kind,size,color,qty] of specs){
+        const candidates=products.filter(p=>{
+          const n=norm(p.product_name),c=norm(p.color);
+          if(c!==norm(color)&&!(color==='PRATA ESCOVADO'&&c==='ESCOVADO'))return false;
+          if(!n.includes('SUPORTE'))return false;
+          if(kind==='NORMAL/WAVE'){if(!(n.includes('NORMAL')&&n.includes('WAVE')))return false;}
+          else {if(!n.includes('WAVE')||n.includes('NORMAL'))return false;}
+          if(size==='28/28')return n.includes('28/28')||n.includes('DUPLO');
+          return !n.includes('28/28')&&!n.includes('DUPLO')&&/28/.test(n);
+        });
+        if(candidates.length!==1){problems.push(`${kind} ${size} ${color}: ${candidates.length} correspondências`);continue;}
+        const found=candidates[0];if(taken.has(found.id)){problems.push('SKU repetido '+found.internal_code);continue;}
+        taken.add(found.id);matched.push({p:found,qty});
+      }
+      if(problems.length)return json({ok:false,error:'Inventário NÃO aplicado. Confira os SKUs: '+problems.join('; ')},409);
+      const statements=[];
+      for(const {p,qty} of matched){
+        const old=Number(p.stock_quantity||0);
+        statements.push(context.env.DB.prepare('UPDATE price_products SET stock_quantity=?,updated_at=CURRENT_TIMESTAMP WHERE id=?').bind(qty,p.id));
+        statements.push(context.env.DB.prepare('INSERT INTO price_product_history (product_id,internal_code,action,field_name,old_value,new_value,reason,changed_by) VALUES (?,?,?,?,?,?,?,?)').bind(p.id,p.internal_code,'INVENTÁRIO','stock_quantity',String(old),String(qty),tag,String(user.username)));
+      }
+      await context.env.DB.batch(statements);
+      return json({ok:true,updated:matched.length});
     }
 
     if(action==='SINCRONIZAR_BLACKOUT_WIDE'){

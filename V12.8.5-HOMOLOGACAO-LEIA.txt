@@ -1,0 +1,30 @@
+NOVA IMAGEM V12.8.5 — PREVIA TECNICA PARA HOMOLOGACAO
+
+CORRECOES IMPLEMENTADAS NESTE PACOTE SOBRE V12.8.4
+- Funcao nextProductCode definida; corrige ReferenceError na carga de inventario.
+- Cache-busting de app.js e arquivos principais corrigido para 12.8.5.
+- Local de fixacao TETO/PAREDE exibido apenas para VARAO WAVE, com comparacao sem acento.
+- Controle local de fixacao deslocado para perto do botao Excluir Fixacao.
+- Mantida regra Wave de garra a cada 60 cm e minimo 2 por varao.
+- Barra TOMA substitui Barra Tombada no codigo de interface.
+- Botao inferior para salvar orcamento e salvar PDF movido para tela visivel (nao apenas impressao).
+- Ao selecionar tubo de acabamento em cortina completa de ilhos/argolas, tenta selecionar tubo 19mm do forro na mesma cor.
+- Catálogos Requinte existentes preservados na migracao incremental, evitando reset destrutivo da V12.8.4.
+- Catalogo Amorim adicionado ao estoque de persianas com codigos de cores separados e SKU.
+- Seletor de marca antes de modelo no novo formulario de persianas.
+- Estoque de persianas com seletor de fornecedor AMORIM/REQUINTE.
+- Apenas gestor pode editar estoque de persianas; verificacao adicional no backend para impedir novos itens Requinte via orcamento por nao-gestores.
+- API de dados nao devolve itens Requinte para nao-gestores.
+- Mantidos calculos de precos, tubos, avisos e conjunto da V12.8.4.
+
+LIMITACOES: NAO HOMOLOGADO; NAO TESTADO CONTRA D1 REAL
+- Regra exata de tubo 53mm precisa conferencia da planilha oficial (cabecalhos desalinhados).
+- Bandos ainda nao cobrados, sem unidade comercial de preco confirmada.
+- Tela Duplex/Triplex/Quadriplex ainda nao calcula medidas diferentes por parte.
+- Quantidades de tampas na tela dependem de correspondencia com catalogo D1; conferir 4 tampas e estoques antes de vender.
+- Atualizacao 498 suportes usa acao backend segura, com verificacao 1:1, e pode retornar conflito se produtos nao combinarem exatamente.
+- Fixacao Wave e ordem de producao precisam teste integrado no sistema publicado.
+- Acesso da Requinte restringido no catalogo e novos orcamentos; seguranca precisa teste de perfil real.
+- NAO publique diretamente na producao. Faça BACKUP D1 e implante num ambiente de homologacao primeiro.
+
+ATENCAO: qualquer cadastro perdido pela migracao anterior nao pode ser recriado sem backup do D1.
