@@ -1,0 +1,4 @@
+V12.8.8 - Dois menus de estoque por fornecedor, novo catálogo Requinte conforme tabela (itens 2 a 17), largura máxima vinculada a cada cor, markup editável e SKU automático independente. Os produtos marcados XXX não foram incluídos.
+AMORIM: dados legados preservados.
+REQUINTE: cadastro inicial feito no carregamento do ERP, gravado no D1 por fluxo existente do app.
+ATENÇÃO: a autenticação/permissões backend e sincronismo D1 exigem validação no ambiente real; homologar antes de publicar em produção.
