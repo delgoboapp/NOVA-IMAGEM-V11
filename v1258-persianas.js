@@ -301,18 +301,57 @@
   function opt(list, current=''){ return list.map(x=>`<option ${String(x)===String(current)?'selected':''}>${esc(String(x))}</option>`).join(''); }
   window.openBlindV1258=function(){
     seedInventory();
-    openModal(`<h2>+ Persiana</h2><p class="muted">Catálogos separados por marca. Requinte: tabela promocional válida até 31/10/2026, somente base redonda.</p><div class="grid two"><label class="field">SELECIONE A MARCA<select id="bpBrand"><option value="">SELECIONE A MARCA</option><option value="AMORIM">AMORIM</option>${isGestor()?'<option value="REQUINTE">REQUINTE</option>':''}</select></label><label class="field">Modelo da persiana<select id="bpModel"><option value="">SELECIONE A MARCA PRIMEIRO</option></select></label><label class="field">Ambiente<input id="bpEnv" placeholder="Ex.: SALA"></label><label class="field">Coleção<select id="bpCollection"></select></label><label class="field">Cor<select id="bpColor"></select></label><label class="field" id="bpColorCodeWrap" style="display:none">Código da cor<input id="bpColorCode" placeholder="Digite o código da cor"></label><label class="field">Largura (cm)<input id="bpW" type="number" min="1"></label><label class="field">Altura (cm)<input id="bpH" type="number" min="1"></label><label class="field">Quantidade<input id="bpQty" type="number" min="1" step="1" value="1"></label><label class="field" id="bpCmdWrap">Lado do comando<select id="bpCmd"><option>DIREITO</option><option>ESQUERDO</option></select></label><div id="bpMultiCommands" style="grid-column:1/-1"></div><label class="field">Altura do comando (cm)<input id="bpCmdH" type="number" min="0" value="120"></label><label class="field">Acionamento<select id="bpDrive"><option value="MANUAL">MANUAL</option><option value="MOTORIZADO REQUINTE">MOTORIZADO REQUINTE</option><option value="MOTORIZADO WIFI">MOTORIZADO WIFI</option></select></label><label class="field" id="bpTubeWrap">Tubo / mecanismo<select id="bpTube">${tubeOptions()}</select></label><label class="field" id="bpBarWrap">Modelo da barra / bandô<select id="bpBar">${barOptions()}</select></label><label class="field" id="bpCfgWrap">Tipo de conjunto<select id="bpCfg">${configOptions()}</select></label><label class="field" id="bpAccWrap">Cor dos acessórios<select id="bpAccColor">${ACCESSORY_COLORS.map(x=>`<option>${esc(x)}</option>`).join('')}</select></label></div><div id="bpPreview" class="notice" style="margin-top:14px">Preencha as medidas para calcular.</div><div class="actions" style="margin-top:14px"><button id="bpSave" class="btn primary">ADICIONAR PERSIANA AO ORÇAMENTO</button></div>`);
+    openModal(`<h2>+ Persiana</h2><div id="bpStepBrand"><p class="muted">Selecione o fornecedor para continuar.</p><label class="field">SELECIONE A MARCA<select id="bpBrandChoice"><option value="">SELECIONE</option><option value="AMORIM">AMORIM</option>${isGestor()?'<option value="REQUINTE">REQUINTE</option>':''}</select></label><div class="actions" style="margin-top:14px"><button id="bpContinue" class="btn primary" disabled>CONTINUAR</button></div></div><div id="bpStepDetails" style="display:none"><p class="muted">Preencha as especificações do fornecedor selecionado.</p><div class="grid two"><label class="field">SELECIONE A MARCA<select id="bpBrand"><option value="">SELECIONE A MARCA</option><option value="AMORIM">AMORIM</option>${isGestor()?'<option value="REQUINTE">REQUINTE</option>':''}</select></label><label class="field">Modelo da persiana<select id="bpModel"><option value="">SELECIONE A MARCA PRIMEIRO</option></select></label><label class="field">Ambiente<input id="bpEnv" placeholder="Ex.: SALA"></label><label class="field">Coleção<select id="bpCollection"></select></label><label class="field">Cor<select id="bpColor"></select></label><label class="field" id="bpColorCodeWrap" style="display:none">Código da cor<input id="bpColorCode" placeholder="Digite o código da cor"></label><label class="field">Largura (cm)<input id="bpW" type="number" min="1"></label><label class="field">Altura (cm)<input id="bpH" type="number" min="1"></label><label class="field">Quantidade<input id="bpQty" type="number" min="1" step="1" value="1"></label><label class="field" id="bpCmdWrap">Lado do comando<select id="bpCmd"><option>DIREITO</option><option>ESQUERDO</option></select></label><div id="bpMultiCommands" style="grid-column:1/-1"></div><label class="field">Altura do comando (cm)<input id="bpCmdH" type="number" min="0" value="120"></label><label class="field">Acionamento<select id="bpDrive"><option value="MANUAL">MANUAL</option><option value="MOTORIZADO REQUINTE">MOTORIZADO REQUINTE</option><option value="MOTORIZADO WIFI">MOTORIZADO WIFI</option></select></label><label class="field" id="bpTubeWrap">Tubo / mecanismo<select id="bpTube">${tubeOptions()}</select></label><label class="field" id="bpBarWrap">Modelo da barra / bandô<select id="bpBar">${barOptions()}</select></label><label class="field" id="bpCfgWrap">Tipo de conjunto<select id="bpCfg">${configOptions()}</select></label><label class="field" id="bpAccWrap">Cor dos acessórios<select id="bpAccColor">${ACCESSORY_COLORS.map(x=>`<option>${esc(x)}</option>`).join('')}</select></label></div><div id="bpPreview" class="notice" style="margin-top:14px">Preencha as medidas para calcular.</div><div class="actions" style="margin-top:14px"><button id="bpBack" class="btn secondary">VOLTAR</button><button id="bpSave" class="btn primary">ADICIONAR PERSIANA AO ORÇAMENTO</button></div></div>`);
     const $id=id=>document.getElementById(id);
-    const state={calc:null};
+    const state={calc:null,parts:[]};
+    $id('bpBrand').closest('.field').style.display='none';
+    $id('bpBrandChoice').onchange=()=>{$id('bpContinue').disabled=!$id('bpBrandChoice').value;};
+    $id('bpContinue').onclick=()=>{$id('bpBrand').value=$id('bpBrandChoice').value;$id('bpBrand').dispatchEvent(new Event('change'));$id('bpStepBrand').style.display='none';$id('bpStepDetails').style.display='block';};
+    $id('bpBack').onclick=()=>{$id('bpStepDetails').style.display='none';$id('bpStepBrand').style.display='block';};
+    const multi=$id('bpMultiCommands');
+    multi.innerHTML='<div id="bpPartsDimensions"></div>';
+    function readParts(){
+      const n=($id('bpBrand').value==='AMORIM'&&$id('bpModel').value==='ROLÔ')?({SIMPLES:1,DUPLEX:2,TRIPLEX:3,QUADRIPLEX:4}[$id('bpCfg').value]||1):1;
+      const container=$id('bpPartsDimensions');
+      if(Number(container.dataset.count||0)!==n){
+        const previous=state.parts;
+        state.parts=Array.from({length:n},(_,i)=>previous[i]||{w:$id('bpW').value,h:$id('bpH').value,side:'DIREITO'});
+        container.dataset.count=n;
+        container.innerHTML=n>1?'<h3>MEDIDAS INDIVIDUAIS — DA ESQUERDA PARA A DIREITA</h3>'+state.parts.map((x,i)=>`<div class="card" style="padding:10px;margin:8px 0"><strong>PARTE ${i+1}</strong><div class="grid three"><label class="field">Largura (cm)<input type="number" min="1" id="bpPartW${i}" value="${esc(String(x.w||''))}"></label><label class="field">Altura (cm)<input type="number" min="1" id="bpPartH${i}" value="${esc(String(x.h||''))}"></label><label class="field">Comando<select id="bpPartSide${i}"><option ${x.side==='DIREITO'?'selected':''}>DIREITO</option><option ${x.side==='ESQUERDO'?'selected':''}>ESQUERDO</option></select></label></div><div id="bpPartArea${i}" class="muted"></div></div>`).join(''):'';
+        container.querySelectorAll('input,select').forEach(el=>{el.addEventListener('input',refresh);el.addEventListener('change',refresh)});
+      }
+      if(n===1)return [{w:Number($id('bpW').value),h:Number($id('bpH').value),side:$id('bpCmd').value}];
+      return Array.from({length:n},(_,i)=>({w:Number($id('bpPartW'+i)?.value||0),h:Number($id('bpPartH'+i)?.value||0),side:$id('bpPartSide'+i)?.value||'DIREITO'}));
+    }
+    function computeSet(item,model){
+      const parts=readParts(),results=parts.map((part,i)=>{
+        const tube=model==='ROLÔ'?autoTube(toM(part.w),toM(part.h)):$id('bpTube').value;
+        const r=blindCalc(model,item,{w:part.w,h:part.h,tube,bar:$id('bpBar').value,config:'SIMPLES',drive:$id('bpDrive').value,brand:$id('bpBrand').value});
+        return {part,tube,result:r,index:i};
+      });
+      if(results.some(x=>!x.result))return null;
+      const extra=($id('bpBrand').value==='AMORIM' && model==='ROLÔ')?Number(CONJUNTOS[$id('bpCfg').value]||0):0;
+      const p4=results.reduce((t,x)=>t+x.result.p4,0)+extra;
+      const brand=$id('bpBrand').value;
+      const cash=brand==='REQUINTE'?p4*.95:p4*.92;
+      const p18=brand==='REQUINTE'?cash/.82:p4*p18Factor();
+      const sum=k=>results.reduce((t,x)=>t+x.result[k],0);
+      const alerts=results.flatMap(x=>x.result.alerts.map(a=>`PARTE ${x.index+1}: ${a}`));
+      const info=uniq(results.flatMap(x=>x.result.info));
+      results.forEach(x=>{const el=$id('bpPartArea'+x.index);if(el)el.textContent=`Área real: ${fixed(x.result.area)} m² | Área cobrada: ${fixed(x.result.billArea)} m² | Tubo: ${x.tube}`;});
+      return {area:sum('area'),billArea:sum('billArea'),p4,cash,p18,alerts,info,parts:results.map(x=>({...x.part,area:x.result.area,billArea:x.result.billArea,tube:x.tube,alerts:x.result.alerts}))};
+    }
     function selected(){ return selectedEntry($id('bpModel').value,$id('bpCollection').value,$id('bpColor').value,$id('bpBrand').value); }
     function fillCollections(){const model=$id('bpModel').value;const selected=!!model;for(const el of $id('bpCollection').closest('.grid').querySelectorAll('.field')){if(!el.querySelector('#bpModel'))el.style.display=selected?'':'none';} $id('bpCollection').innerHTML=selected?opt(currentCollections(model,$id('bpBrand').value)):'';fillColors();}
     function fillColors(){ const model=$id('bpModel').value, collection=$id('bpCollection').value; $id('bpColor').innerHTML=opt(currentColors(model,collection,$id('bpBrand').value)); refresh(); }
     function refresh(){
-      const cnt={SIMPLES:1,DUPLEX:2,TRIPLEX:3,QUADRIPLEX:4}[$id('bpCfg').value]||1, box=$id('bpMultiCommands');if(box&&Number(box.dataset.count||0)!==cnt){box.dataset.count=cnt;box.innerHTML=cnt>1?Array.from({length:cnt},(_,j)=>`<label class="field">Comando parte ${j+1} (da esquerda para direita)<select id="bpCmdPart${j+1}"><option>DIREITO</option><option>ESQUERDO</option></select></label>`).join(''):'';} show('bpCmdWrap',cnt===1);
+
       const model=$id('bpModel').value; const collection=$id('bpCollection').value; const item=selected();
+      const n=($id('bpBrand').value==='AMORIM'&&model==='ROLÔ')?({SIMPLES:1,DUPLEX:2,TRIPLEX:3,QUADRIPLEX:4}[$id('bpCfg').value]||1):1;
+      show('bpW',n===1);show('bpH',n===1);$id('bpW').closest('.field').style.display=n===1?'':'none';$id('bpH').closest('.field').style.display=n===1?'':'none';$id('bpCmdWrap').style.display=n===1?'':'none';
       show('bpColorCodeWrap', model==='HORIZONTAL 25MM');
       show('bpTubeWrap', model==='ROLÔ'&&$id('bpBrand').value==='AMORIM'); show('bpBarWrap', model==='ROLÔ'&&$id('bpBrand').value==='AMORIM'); show('bpCfgWrap', model==='ROLÔ'&&$id('bpBrand').value==='AMORIM'); show('bpAccWrap', model==='ROLÔ'&&$id('bpBrand').value==='AMORIM'); const dr=$id('bpDrive');if($id('bpBrand').value!=='REQUINTE'||!model.startsWith('ROLÔ')){dr.value='MANUAL';dr.disabled=true;}else dr.disabled=false;
-      const result=item?blindCalc(model,item,{w:$id('bpW').value,h:$id('bpH').value,tube:$id('bpTube').value,bar:$id('bpBar').value,config:$id('bpCfg').value,drive:$id('bpDrive').value,brand:$id('bpBrand').value}):null;
+      const result=item?computeSet(item,model):null;
       state.calc=result;
       if(!model){$id('bpPreview').innerHTML='Selecione primeiro o modelo da persiana.';return;} if(!item){ $id('bpPreview').innerHTML='Selecione a coleção.'; return; }
       if(!result){ $id('bpPreview').innerHTML=`<strong>${esc(model)}</strong><br>${esc(collection)}<br>${model==='HORIZONTAL 25MM'?'Informe o código da cor e as medidas.':'Informe as medidas para cálculo e alertas.'}`; return; }
@@ -330,24 +369,24 @@
  $id('bpModel').onchange=fillCollections; $id('bpCollection').onchange=fillColors; $id('bpColor').onchange=refresh; fillCollections();
     $id('bpSave').onclick=()=>{
       if($id('bpBrand').value==='REQUINTE'&&!isGestor())return alert('Acesso restrito ao gestor.');if($id('bpBrand').value==='AMORIM'&&!['ROLÔ','ROMANA'].includes($id('bpModel').value))return alert('Selecione um modelo Amorim.');if($id('bpBrand').value==='AMORIM'&&$id('bpDrive').value!=='MANUAL')return alert('CONSULTAR NA PLATAFORMA DO FORNECEDOR.');const model=$id('bpModel').value, item=selected(), w=Number($id('bpW').value), h=Number($id('bpH').value), qty=Math.max(1,Number($id('bpQty').value||1));
-      if(!item||!state.calc||!(w>0)||!(h>0)) return alert('Informe modelo, coleção, cor e medidas.');
+      if(!item||!state.calc) return alert('Informe modelo, coleção, cor e medidas.');
       const code=($id('bpColorCode').value||'').trim();
       if(model==='HORIZONTAL 25MM' && !code) return alert('Informe o código da cor.');
-      const alerts=(state.calc.alerts||[]).slice();const sideCount={SIMPLES:1,DUPLEX:2,TRIPLEX:3,QUADRIPLEX:4}[$id('bpCfg').value]||1;const sideList=sideCount===1?[$id('bpCmd').value]:Array.from({length:sideCount},(_,j)=>$id('bpCmdPart'+(j+1))?.value||'DIREITO');
+      const alerts=(state.calc.alerts||[]).slice();const sideList=(state.calc.parts||[]).map(x=>x.side);if((state.calc.parts||[]).some(x=>!(x.w>0&&x.h>0)))return alert('Informe largura e altura de todas as partes.');
       const notes=[...(state.calc.info||[]), VALIDATION_TEXT, ...alerts];
       const color=model==='HORIZONTAL 25MM'?code:$id('bpColor').value;
       const detail=[];
       if(model==='ROLÔ'){ detail.push(`Tubo: ${$id('bpTube').value}`); detail.push(`Barra/Bandô: ${$id('bpBar').value}`); detail.push(`Conjunto: ${$id('bpCfg').value}`); detail.push(`Acessórios: ${$id('bpAccColor').value}`); }
       draft.blinds=draft.blinds||[];
       draft.blinds.push({
-        id:uid(), inventoryId:(availableInventory().find(x=>x.model===model&&x.collection===item.collection&&x.color===(model==='HORIZONTAL 25MM'?'CÓDIGO DIGITÁVEL':$id('bpColor').value))?.id||''), environment:$id('bpEnv').value.trim()||'PERSIANA',
+        id:uid(), inventoryId:(availableInventory().find(x=>x.supplier===$id('bpBrand').value&&x.model===model&&x.collection===item.collection&&x.color===(model==='HORIZONTAL 25MM'?'CÓDIGO DIGITÁVEL':$id('bpColor').value))?.id||''), environment:$id('bpEnv').value.trim()||'PERSIANA',
         brand:$id('bpBrand').value,blindModel:model, collection:item.collection, model:`${model} • ${item.collection}`, color,
-        bando:model==='ROLÔ' ? $id('bpBar').value : '', width:w, height:h, qty,
+        bando:model==='ROLÔ' ? $id('bpBar').value : '', width:state.calc.parts?.[0]?.w||w, height:state.calc.parts?.[0]?.h||h, parts:state.calc.parts, qty,
         area:state.calc.area, billArea:state.calc.billArea, commandSide:`${sideList.map((x,i)=>`PARTE ${i+1}: ${x}`).join(' / ')} • ALT. ${Number($id('bpCmdH').value||0)} CM${detail.length?` • ${detail.join(' • ')}`:''}`,
         commandHeight:Number($id('bpCmdH').value||0), drive:$id('bpDrive').value, notes, alerts, validationRequired:true, validationText:VALIDATION_TEXT,
         p18:state.calc.p18, p4:state.calc.p4, cash:state.calc.cash, cost:Number(item.cost||0), markup:100,
         perM2P18:state.calc.billArea?state.calc.p18/state.calc.billArea:0, perM2P4:state.calc.billArea?state.calc.p4/state.calc.billArea:0, perM2Cash:state.calc.billArea?state.calc.cash/state.calc.billArea:0,
-        sourceSku:availableInventory().find(x=>x.model===model&&x.collection===item.collection&&x.color===(model==='HORIZONTAL 25MM'?'CÓDIGO DIGITÁVEL':$id('bpColor').value))?.sku||''
+        sourceSku:availableInventory().find(x=>x.supplier===$id('bpBrand').value&&x.model===model&&x.collection===item.collection&&x.color===(model==='HORIZONTAL 25MM'?'CÓDIGO DIGITÁVEL':$id('bpColor').value))?.sku||''
       });
       closeModal(); renderQuote();
     };

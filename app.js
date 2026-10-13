@@ -467,7 +467,7 @@ function envFromForm(){
     model:$('eModel').value,finish,finishColor,finishProductId:finishSku?.id||null,finishInternalCode:finishSku?.internal_code||'',finishOfficialName:finishSku?.product_name||'',
     lining,liningColor,liningProductId:liningSku?.id||null,liningInternalCode:liningSku?.internal_code||'',liningOfficialName:liningSku?.product_name||'',
     finishPleat:$('eFinishPleat').value,finishGather:$('eFinishGather').value,liningPleat:$('eLiningPleat').value,liningGather:$('eLiningGather').value,
-    fixation:$('eFixation').value, waveLocation:$('eWaveLocation')?.value||'PAREDE',measureMode:$('eMeasureMode')?.value||'DAR DESCONTO',
+    fixation:$('eFixation').value, waveLocation:norm($('eFixation')?.value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes('VARAO WAVE')?($('eWaveLocation')?.value||'PAREDE'):'PAREDE',measureMode:$('eMeasureMode')?.value||'DAR DESCONTO',
     fixColor:$('eFixation').value==='TRILHO SUÍÇO'?(officialProductById($('eRailProduct')?.value)?.color||''):$('eFixColor').value,
     railProductId:$('eFixation').value==='TRILHO SUÍÇO'?Number($('eRailProduct')?.value||0)||null:null,
     railInternalCode:$('eFixation').value==='TRILHO SUÍÇO'?(officialProductById($('eRailProduct')?.value)?.internal_code||''):'',
@@ -4798,7 +4798,7 @@ document.addEventListener('change',function(ev){if(['eFixation','eWaveLocation',
 document.addEventListener('DOMContentLoaded',()=>{
  const refreshWave=()=>{const target=$('eWaveLocationWrap'),fx=$('eFixation');if(!target||!fx)return;
  const normalized=norm(fx.value).normalize('NFD').replace(/[\u0300-\u036f]/g,'');
- target.style.display=normalized==='VARAO WAVE'&&!quoteExcludeFixation?'':'none';
+ target.style.display=normalized.includes('VARAO WAVE')&&!quoteExcludeFixation?'':'none';
  };
  $('eFixation')?.addEventListener('change',()=>{refreshWave();try{updatePreview()}catch(e){console.warn(e)}});
  $('eWaveLocation')?.addEventListener('change',()=>{try{updatePreview()}catch(e){console.warn(e)}});

@@ -1,0 +1,13 @@
+NOVA IMAGEM — V12.8.7 — HOMOLOGAÇÃO
+
+Alterações nesta entrega:
+- Primeira etapa de + PERSIANA mostra somente a escolha AMORIM / REQUINTE (conforme perfil).
+- Segunda etapa apresenta os campos do catálogo selecionado.
+- AMORIM ROLÔ: SIMPLES / DUPLEX / TRIPLEX / QUADRIPLEX, com largura, altura e comando por parte.
+- Área real e área cobrada calculadas individualmente; soma no orçamento.
+- Suportes intermediários somados uma só vez ao conjunto.
+- Seleção automática de tubo por parte e avisos técnicos separados por parte.
+- Exibição de teto/parede somente para fixação VARÃO WAVE; tubos sempre parede.
+- Versão e cache de JS atualizados.
+
+ATENÇÃO: é uma versão parcial de HOMOLOGAÇÃO. Não foi possível executar testes conectados ao D1, autenticação e geração de PDF real. Verifique cadastros, política de acesso, preços de fabricantes e relatórios em um ambiente de testes antes de produção. Mudanças anteriores de estoque e migração devem ser inspecionadas no banco real.
