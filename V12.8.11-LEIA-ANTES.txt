@@ -1,0 +1,7 @@
+V12.8.11
+- No seletor de FIXAÇÃO, o VARÃO WAVE agora aparece como VARÃO WAVE - PAREDE e VARÃO WAVE - TETO.
+- VARÃO WAVE - PAREDE mantém a regra de suportes wave.
+- VARÃO WAVE - TETO aplica a regra das garras para varão wave.
+- A antiga caixa separada de LOCAL DE FIXAÇÃO foi ocultada para o Wave.
+
+Atenção: a investigação sobre o desaparecimento de orçamentos, pedidos e clientes ainda precisa ser tratada separadamente.

@@ -4880,3 +4880,210 @@ document.addEventListener('DOMContentLoaded',()=>{
     enforceTubeOnly();
   });
 })();
+
+
+/* V12.8.11 — VARÃO WAVE com opções diretas no seletor: PAREDE ou TETO. */
+(function(){
+  const FOLD_WAVE_12811 = s => String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase();
+  const $id12811 = id => document.getElementById(id);
+
+  function desiredWaveLocation12811(){
+    const sel = $id12811('eFixation');
+    const opt = sel?.selectedOptions?.[0];
+    if(opt?.dataset?.waveLocation) return opt.dataset.waveLocation;
+    return ($id12811('eWaveLocation')?.value || 'PAREDE');
+  }
+
+  function rebuildWaveFixationOptions12811(){
+    const sel = $id12811('eFixation');
+    if(!sel) return;
+    const raw = [...sel.options].map(o => ({
+      value: o.value,
+      text: o.textContent,
+      selected: o.selected,
+      waveLocation: o.dataset?.waveLocation || ''
+    }));
+    const hasBaseWave = raw.some(o => FOLD_WAVE_12811(o.value) === 'VARAO WAVE');
+    if(!hasBaseWave) return;
+
+    const currentValue = sel.value;
+    let desiredLoc = desiredWaveLocation12811();
+    const selectedOpt = sel.selectedOptions?.[0];
+    if(selectedOpt?.dataset?.waveLocation) desiredLoc = selectedOpt.dataset.waveLocation;
+
+    sel.innerHTML = '';
+    let injected = false;
+    for(const item of raw){
+      if(FOLD_WAVE_12811(item.value) === 'VARAO WAVE'){
+        if(injected) continue;
+        const wall = new Option('VARÃO WAVE - PAREDE','VARÃO WAVE');
+        wall.dataset.waveLocation = 'PAREDE';
+        const ceiling = new Option('VARÃO WAVE - TETO','VARÃO WAVE');
+        ceiling.dataset.waveLocation = 'TETO';
+        sel.add(wall);
+        sel.add(ceiling);
+        injected = true;
+      }else{
+        const opt = new Option(item.text, item.value);
+        if(item.waveLocation) opt.dataset.waveLocation = item.waveLocation;
+        sel.add(opt);
+      }
+    }
+
+    if(FOLD_WAVE_12811(currentValue) === 'VARAO WAVE'){
+      const wanted = [...sel.options].find(o => o.value === 'VARÃO WAVE' && (o.dataset.waveLocation||'PAREDE') === desiredLoc);
+      if(wanted) sel.selectedIndex = wanted.index;
+    }else if(currentValue){
+      const match = [...sel.options].find(o => o.value === currentValue && !o.dataset.waveLocation);
+      if(match) sel.value = currentValue;
+    }
+  }
+
+  function syncWaveLocation12811(){
+    const sel = $id12811('eFixation');
+    const loc = $id12811('eWaveLocation');
+    if(!sel || !loc) return;
+    const opt = sel.selectedOptions?.[0];
+    if(FOLD_WAVE_12811(sel.value) === 'VARAO WAVE'){
+      loc.value = opt?.dataset?.waveLocation === 'TETO' ? 'TETO' : 'PAREDE';
+    }else{
+      loc.value = 'PAREDE';
+    }
+  }
+
+  function hideLegacyWaveLocation12811(){
+    const wrap = $id12811('eWaveLocationWrap');
+    if(wrap){
+      wrap.classList.add('hidden');
+      wrap.style.display = 'none';
+    }
+  }
+
+  function applyWaveFixationUi12811(){
+    rebuildWaveFixationOptions12811();
+    syncWaveLocation12811();
+    hideLegacyWaveLocation12811();
+  }
+
+  const _setup12811 = setupSelectors;
+  setupSelectors = function(){
+    const result = _setup12811.apply(this, arguments);
+    applyWaveFixationUi12811();
+    return result;
+  };
+
+  const _refresh12811 = v12RefreshFixations;
+  v12RefreshFixations = function(){
+    const result = _refresh12811.apply(this, arguments);
+    applyWaveFixationUi12811();
+    return result;
+  };
+
+  const _fixUi12811 = applyEnvironmentFixationUI;
+  applyEnvironmentFixationUI = function(){
+    const result = _fixUi12811.apply(this, arguments);
+    hideLegacyWaveLocation12811();
+    return result;
+  };
+
+  const _loadEnv12811 = loadEnvironmentForEdit;
+  loadEnvironmentForEdit = function(e){
+    const result = _loadEnv12811.apply(this, arguments);
+    applyWaveFixationUi12811();
+    return result;
+  };
+
+  const _updatePreview12811 = updatePreview;
+  updatePreview = function(){
+    applyWaveFixationUi12811();
+    return _updatePreview12811.apply(this, arguments);
+  };
+
+  document.addEventListener('DOMContentLoaded', ()=>{
+    applyWaveFixationUi12811();
+    $id12811('eFixation')?.addEventListener('change', ()=>{
+      syncWaveLocation12811();
+      hideLegacyWaveLocation12811();
+    });
+  });
+})();
+
+
+/* V12.8.12 — esconder "Fixação selecionada no estoque" quando a cortina usa tubos (ilhós/argolas). */
+(function(){
+  const el=id=>document.getElementById(id);
+  const fold=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase();
+  function tubeScenario(){
+    const model=el('eModel')?.value||'COMPLETE';
+    const finishTube = model!=='LINING' && isTubePleat(el('eFinishPleat')?.value||'');
+    const liningTube = model!=='FINISH' && isTubePleat(el('eLiningPleat')?.value||'');
+    return finishTube || liningTube;
+  }
+  function waveScenario(){
+    const opt = el('eFixation')?.selectedOptions?.[0];
+    const base = fold(el('eFixation')?.value||'');
+    return base === 'VARAO WAVE';
+  }
+  function specialStockScenario(){
+    const base = fold(el('eFixation')?.value||'');
+    return ['TRILHO SUICO','TRILHO MOTORIZADO','VARAO WAVE','VARAO WAVE COM COMANDO POR CORDA'].includes(base);
+  }
+  function applyTubeHide12812(){
+    const railWrap = el('eRailProductWrap');
+    const railSelect = el('eRailProduct');
+    const waveWrap = el('eWaveLocationWrap');
+    const waveSelect = el('eWaveLocation');
+    if(!railWrap || !railSelect) return;
+
+    const tube = tubeScenario();
+    const special = specialStockScenario();
+    const wave = waveScenario();
+
+    if(tube){
+      railWrap.classList.add('hidden');
+      railWrap.style.display='none';
+      railSelect.disabled = true;
+      railSelect.value = '';
+      if(waveWrap){ waveWrap.classList.add('hidden'); waveWrap.style.display='none'; }
+      if(waveSelect){ waveSelect.disabled = true; waveSelect.value = 'PAREDE'; }
+      return;
+    }
+
+    railSelect.disabled = false;
+    railWrap.classList.toggle('hidden', !special || quoteExcludeFixation);
+    railWrap.style.display = (!special || quoteExcludeFixation) ? 'none' : '';
+
+    if(waveWrap && waveSelect){
+      const visibleWave = wave && !quoteExcludeFixation;
+      waveWrap.classList.toggle('hidden', !visibleWave);
+      waveWrap.style.display = visibleWave ? 'none' : 'none';
+      waveSelect.disabled = true;
+      if(!visibleWave) waveSelect.value = 'PAREDE';
+    }
+  }
+
+  const _up12812 = updatePreview;
+  updatePreview = function(){ const r = _up12812.apply(this, arguments); applyTubeHide12812(); return r; };
+
+  const _fix12812 = applyEnvironmentFixationUI;
+  applyEnvironmentFixationUI = function(){ const r = _fix12812.apply(this, arguments); applyTubeHide12812(); return r; };
+
+  const _refresh12812 = v12RefreshFixations;
+  v12RefreshFixations = function(){ const r = _refresh12812.apply(this, arguments); applyTubeHide12812(); return r; };
+
+  const _model12812 = updateModelFields;
+  updateModelFields = function(){ const r = _model12812.apply(this, arguments); applyTubeHide12812(); return r; };
+
+  const _load12812 = loadEnvironmentForEdit;
+  loadEnvironmentForEdit = function(e){ const r = _load12812.apply(this, arguments); applyTubeHide12812(); return r; };
+
+  const _setup12812 = setupSelectors;
+  setupSelectors = function(){ const r = _setup12812.apply(this, arguments); applyTubeHide12812(); return r; };
+
+  document.addEventListener('DOMContentLoaded', ()=>{
+    ['eFinishPleat','eLiningPleat','eModel','eFixation','eFinishTube','eLiningTube'].forEach(id=>{
+      el(id)?.addEventListener('change', ()=>setTimeout(applyTubeHide12812,0));
+    });
+    applyTubeHide12812();
+  });
+})();
