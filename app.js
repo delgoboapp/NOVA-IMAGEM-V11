@@ -4838,3 +4838,45 @@ document.addEventListener('DOMContentLoaded',()=>{
     refreshWaveLocation1289();
   });
 })();
+
+
+/* V12.8.10 — isolamento dos tubos (ilhós/argolas) e do produto do varão/trilho. */
+(function(){
+  const el=id=>document.getElementById(id);
+  function tubeActive(){
+    const model=el('eModel')?.value||'COMPLETE';
+    return (model!=='LINING' && isTubePleat(el('eFinishPleat')?.value||'')) ||
+           (model!=='FINISH' && isTubePleat(el('eLiningPleat')?.value||''));
+  }
+  function enforceTubeOnly(){
+    const tube=tubeActive();
+    const rail=el('eRailProductWrap'),railSelect=el('eRailProduct');
+    const wave=el('eWaveLocationWrap'),location=el('eWaveLocation');
+    const kind=String(el('eFixation')?.value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase();
+    if(tube){
+      if(rail){rail.classList.add('hidden');rail.style.display='none';}
+      if(railSelect){railSelect.value='';railSelect.disabled=true;}
+      if(wave){wave.classList.add('hidden');wave.style.display='none';}
+      if(location){location.value='PAREDE';location.disabled=true;}
+    }else{
+      if(rail){rail.style.display='';railSelect && (railSelect.disabled=false);}
+      const showWave=kind==='VARAO WAVE' && !quoteExcludeFixation;
+      if(wave){wave.classList.toggle('hidden',!showWave);wave.style.display=showWave?'flex':'none';}
+      if(location){location.disabled=!showWave;if(!showWave)location.value='PAREDE';}
+    }
+  }
+  const preview=updatePreview;
+  updatePreview=function(){const result=preview.apply(this,arguments);enforceTubeOnly();return result;};
+  const modelFields=updateModelFields;
+  updateModelFields=function(){const result=modelFields.apply(this,arguments);enforceTubeOnly();return result;};
+  const refresh=v12RefreshFixations;
+  v12RefreshFixations=function(){const result=refresh.apply(this,arguments);enforceTubeOnly();return result;};
+  const fixationUI=applyEnvironmentFixationUI;
+  applyEnvironmentFixationUI=function(){const result=fixationUI.apply(this,arguments);enforceTubeOnly();return result;};
+  document.addEventListener('DOMContentLoaded',()=>{
+    for(const id of ['eFinishPleat','eLiningPleat','eModel','eFixation','eFinishTube','eLiningTube']){
+      el(id)?.addEventListener('change',enforceTubeOnly);
+    }
+    enforceTubeOnly();
+  });
+})();

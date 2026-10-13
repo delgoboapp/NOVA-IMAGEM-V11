@@ -1,0 +1,8 @@
+V12.8.10 — Correção na fixação de ilhós e argolas
+
+- Em pregas com tubos 19/28 mm, ocultar completamente Fixação selecionada no estoque (Varão Wave/Trilho).
+- Limpar/desabilitar a seleção anterior de Varão Wave enquanto os tubos estiverem ativos.
+- Não apresentar TETO/PAREDE para tubos; utilizar suportes de parede.
+- Para VARÃO WAVE não tubular, manter TETO/PAREDE ao lado de EXCLUIR FIXAÇÃO.
+- Não foram feitas mudanças novas no módulo de persianas.
+- Necessita validação funcional no navegador e ambiente Cloudflare/D1.
