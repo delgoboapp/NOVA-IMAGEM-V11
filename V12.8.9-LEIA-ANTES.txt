@@ -1,0 +1,7 @@
+V12.8.9 - CORREÇÃO DO VARÃO WAVE
+
+- LOCAL DE FIXAÇÃO: TETO/PAREDE somente na fixação VARÃO WAVE, para pregas não tubulares.
+- Campo localizado ao lado de EXCLUIR FIXAÇÃO.
+- Pregas de ilhós e argolas continuam usando tubos 19/28 e suportes na parede.
+- Mantidos os demais arquivos e regras da V12.8.8, inclusive persianas, sem novas mudanças nelas.
+- Após publicar, testar Wave parede/teto, tubos, PDF e estoque; não homologado no D1.

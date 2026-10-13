@@ -4804,3 +4804,37 @@ document.addEventListener('DOMContentLoaded',()=>{
  $('eWaveLocation')?.addEventListener('change',()=>{try{updatePreview()}catch(e){console.warn(e)}});
  refreshWave();
 });
+
+
+/* V12.8.9 — montagem do VARÃO WAVE: exibição exclusiva para pregas não tubulares. */
+(function(){
+  const waveNorm1289=x=>String(x||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase();
+  function refreshWaveLocation1289(){
+    const wrap=document.getElementById('eWaveLocationWrap');
+    const select=document.getElementById('eWaveLocation');
+    if(!wrap||!select)return;
+    const model=document.getElementById('eModel')?.value||'COMPLETE';
+    const finish=model!=='LINING' && isTubePleat(document.getElementById('eFinishPleat')?.value||'');
+    const lining=model!=='FINISH' && isTubePleat(document.getElementById('eLiningPleat')?.value||'');
+    const wave=waveNorm1289(document.getElementById('eFixation')?.value)==='VARAO WAVE';
+    const visible=wave&&!finish&&!lining&&!quoteExcludeFixation;
+    wrap.classList.remove('hidden'); // prevent old tube layout class from concealing Wave
+    wrap.style.display=visible?'flex':'none';
+    select.disabled=!visible;
+    if(!visible)select.value='PAREDE';
+    const product=document.getElementById('eRailProductWrap');
+    if((finish||lining)&&product)product.classList.add('hidden');
+  }
+  const oldPreview1289=updatePreview;
+  updatePreview=function(){refreshWaveLocation1289();return oldPreview1289.apply(this,arguments)};
+  const oldModel1289=updateModelFields;
+  updateModelFields=function(){const r=oldModel1289.apply(this,arguments);refreshWaveLocation1289();return r};
+  const oldRefresh1289=v12RefreshFixations;
+  v12RefreshFixations=function(){const r=oldRefresh1289.apply(this,arguments);refreshWaveLocation1289();return r};
+  document.addEventListener('DOMContentLoaded',()=>{
+    for(const id of ['eFixation','eFinishPleat','eLiningPleat','eModel','eWaveLocation']){
+      document.getElementById(id)?.addEventListener('change',()=>{refreshWaveLocation1289();if(id==='eWaveLocation')updatePreview()});
+    }
+    refreshWaveLocation1289();
+  });
+})();
