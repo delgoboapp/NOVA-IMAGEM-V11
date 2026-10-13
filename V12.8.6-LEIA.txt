@@ -1,0 +1,5 @@
+V12.8.6 - HOMOLOGAÇÃO
+Requinte: catálogo Outubro 2026, sem Cascade, base redonda, acionamento motor somente Rolô, controle 4 canais incluído, preços 4x custo x2, à vista x0,95, 18x à vista /0,82.
+Amorim: reajuste +48% apenas Rolô na precificação (sem recalcular a cada login); Romana mantida. Bandôs por metro linear.
+O catálogo Requinte foi importado com modelos disponíveis sem XXX. Inclui a preservação dos registros anteriores.
+ATENÇÃO: não homologado no Cloudflare D1. Fazer backup e validar em ambiente de testes. A página 1 do PDF não oferece modelo Cascade para todas as coleções e Cascade foi inteiramente excluído. Não foram inseridos produtos Verticais da Requinte.

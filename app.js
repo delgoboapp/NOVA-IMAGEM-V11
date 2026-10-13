@@ -4569,7 +4569,7 @@ function payrollRows(competence){const h=hrData(),rows=[];for(const e of h.emplo
    qualquer versão antiga de printCustomerOrder.
    ============================================================================ */
 (function(){
-  const VERSION='V12.8.5';
+  const VERSION='V12.8.6';
   try{companySettings().version=VERSION}catch(_){}
 
   function orderConditionKey1275(o){
@@ -4794,7 +4794,7 @@ function payrollRows(competence){const h=hrData(),rows=[];for(const e of h.emplo
 /* V12.8.4 interface — fixação Wave e medida exata */
 document.addEventListener('change',function(ev){if(['eFixation','eWaveLocation','eMeasureMode'].includes(ev.target?.id)){if(typeof applyEnvironmentFixationUI==='function')applyEnvironmentFixationUI();if(typeof updatePreview==='function')updatePreview();}});
 
-/* V12.8.5: controle visual de montagem somente para VARÃO WAVE */
+/* V12.8.6: controle visual de montagem somente para VARÃO WAVE */
 document.addEventListener('DOMContentLoaded',()=>{
  const refreshWave=()=>{const target=$('eWaveLocationWrap'),fx=$('eFixation');if(!target||!fx)return;
  const normalized=norm(fx.value).normalize('NFD').replace(/[\u0300-\u036f]/g,'');
