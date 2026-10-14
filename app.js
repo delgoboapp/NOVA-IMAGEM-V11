@@ -305,7 +305,7 @@ function suggestedInstallDate(baseDate=today()){const d=new Date(String(baseDate
 function installPrice(heightM,widthM){const h=Number(heightM||0),w=Number(widthM||0);const m=db.priceConfig?.installationMatrix||DEFAULT_PRICE_CONFIG.installationMatrix;const band=h<=Number(m.simple?.maxH??3.5)?m.simple:h<=Number(m.double?.maxH??5.5)?m.double:m.high;const key=w<=4?'up4':w<=5?'up5':'up6';return Number(band?.[key]||0)}
 async function ensureCordaoWaveOfficial(){return true}
 async function ensureV115Accessories(){if(!isGestor())return;try{await api('prices',{method:'POST',body:JSON.stringify({action:'SINCRONIZAR_V115_ACESSORIOS'})});const prices=await api('prices');priceProducts=Array.isArray(prices.products)?prices.products:priceProducts}catch(e){console.error('Falha ao sincronizar acessórios V11.5:',e)}}
-async function loadCloud(){try{cloud('Sincronizando...');const j=await api('data');db={...db,...j,priceConfig:mergeConfig(j.priceConfig)};db.wholesaleClients=db.wholesaleClients||[];db.wholesaleSales=db.wholesaleSales||[];db.auditLog=db.auditLog||[];db.attachments=db.attachments||[];db.customerFeedback=db.customerFeedback||[];db.discountApprovals=db.discountApprovals||[];db.userAlerts=db.userAlerts||[];db.blogPosts=db.blogPosts||[];db.settings=db.settings||{};let accessCodesAdded=false;if(isGestor()){for(const o of db.orders||[]){if(!/^\d{6}$/.test(String(o.clientAccessCode||''))){o.clientAccessCode=String(crypto.getRandomValues(new Uint32Array(1))[0]%1000000).padStart(6,'0');accessCodesAdded=true}}}const before=(db.products||[]).length;ensureInitialInventory();try{const prices=await api('prices');priceProducts=Array.isArray(prices.products)?prices.products:[];await ensureCordaoWaveOfficial();await ensureOfficialRailClaws();await ensureV115Accessories();await ensureV12BlackoutWide();await ensureEntretelaParaIlhos();await ensureGarraTetoVaraoWave()}catch(e){priceProducts=[];console.error('Falha ao carregar price_products:',e)}cloud('Dados sincronizados na nuvem');renderAll();if((db.products||[]).length!==before||accessCodesAdded)queueSave()}catch(e){cloud('Sem conexão com a nuvem',true);alert(e.message)}}
+async function loadCloud(){try{cloud('Sincronizando...');const j=await api('data');db={...db,...j,priceConfig:mergeConfig(j.priceConfig)};db.wholesaleClients=db.wholesaleClients||[];db.wholesaleSales=db.wholesaleSales||[];db.auditLog=db.auditLog||[];db.attachments=db.attachments||[];db.customerFeedback=db.customerFeedback||[];db.discountApprovals=db.discountApprovals||[];db.userAlerts=db.userAlerts||[];db.blogPosts=db.blogPosts||[];db.settings=db.settings||{};let accessCodesAdded=false;if(isGestor()){for(const o of db.orders||[]){if(!/^\d{6}$/.test(String(o.clientAccessCode||''))){o.clientAccessCode=String(crypto.getRandomValues(new Uint32Array(1))[0]%1000000).padStart(6,'0');accessCodesAdded=true}}}const before=(db.products||[]).length;ensureInitialInventory();try{const prices=await api('prices');priceProducts=Array.isArray(prices.products)?prices.products:[];await ensureCordaoWaveOfficial();await ensureOfficialRailClaws();await ensureV115Accessories();await ensureV12BlackoutWide();await ensureEntretelaParaIlhos()}catch(e){priceProducts=[];console.error('Falha ao carregar price_products:',e)}cloud('Dados sincronizados na nuvem');renderAll();if((db.products||[]).length!==before||accessCodesAdded)queueSave()}catch(e){cloud('Sem conexão com a nuvem',true);alert(e.message)}}
 let saveTimer=null;function queueSave(){clearTimeout(saveTimer);saveTimer=setTimeout(saveCloud,250)}
 async function saveCloud(){if(!token)return;try{cloud('Salvando...');const j=await api('data',{method:'POST',body:JSON.stringify(db)});db.updatedAt=j.updatedAt;cloud('Dados salvos na nuvem')}catch(e){cloud('Falha ao salvar',true);alert('Não foi possível salvar: '+e.message)}}
 
@@ -777,14 +777,6 @@ async function ensureEntretelaParaIlhos(){
     await api('prices',{method:'POST',body:JSON.stringify({action:'CRIAR',supplier:'NOVA IMAGEM',category:'ACESSÓRIO',product_name:'ENTRETELA PARA ILHÓS',color:'SEM COR',unit:'M',stock_quantity:0,cost:0.60,markup_percent:233.3333333333})});
     const r=await api('prices');priceProducts=Array.isArray(r.products)?r.products:priceProducts;
   }catch(e){console.warn('Cadastro ENTRETELA PARA ILHÓS:',e.message)}
-}
-// Produto oficial: criação idempotente e SKU gerado pela API do estoque.
-async function ensureGarraTetoVaraoWave(){
-  if(!isGestor()||(priceProducts||[]).some(p=>Number(p.active??1)===1&&norm(p.product_name)==='GARRA DE TETO PARA VARAO WAVE'))return;
-  try{
-    await api('prices',{method:'POST',body:JSON.stringify({action:'CRIAR',supplier:'NOVA IMAGEM',category:'ACESSÓRIO',product_name:'GARRA DE TETO PARA VARAO WAVE',color:'SEM COR',unit:'UN',stock_quantity:0,cost:10/2.2,markup_percent:120})});
-    const r=await api('prices');priceProducts=Array.isArray(r.products)?r.products:priceProducts;
-  }catch(e){console.warn('Cadastro GARRA DE TETO PARA VARAO WAVE:',e.message)}
 }
 async function reloadOfficialProducts(){const prices=await api('prices');priceProducts=Array.isArray(prices.products)?prices.products:[];for(const id of [...selectedPriceProductIds])if(!priceProducts.some(p=>Number(p.id)===Number(id)&&Number(p.active??1)===1))selectedPriceProductIds.delete(id);renderProducts()}
 function renderProducts(){
@@ -1422,8 +1414,8 @@ tubeHardwareCalc=function(e,c){
   const supportName=model==='COMPLETE'?`SUPORTE 19/28 ${mat}`:`SUPORTE ${(tubes[0]||'TUBO 28 MM').includes('19')?'19':'28'}MM ${mat}`;
   const support=officialProductByName(supportName,color)||officialProductLike(supportName.split(' '),color);const parts=[];let total=0;
   if(support){parts.push({productId:support.id,name:supportName,qty:supports,unit:'UN'});total+=supports*Number(support.price_4x||0)}
-  for(const t of tubes){const size=t.includes('19')?'19':'28',tube=officialProductByName(`TUBO ${size} MM`,color),capName=`TAMPA PARA TUBO EM ALUMINIO ${size}MM`,cap=officialProductByName(capName,color)||officialProductLike(['TAMPA','TUBO',size],color);if(tube){parts.push({productId:tube.id,name:tube.product_name,qty:w,unit:'M'});total+=w*Number(tube.price_4x||0)}parts.push({productId:cap?.id||null,name:capName,qty:2,unit:'UN'});if(cap)total+=2*Number(cap.price_4x||0)}
-  return {kind:tubes.join(' + '),meters:w*tubes.length,supports,ends:tubes.length*2,supportName,supportProductId:support?.id||null,parts,total,hardwareBase:total,detail:`${tubes.join(' + ')} • ${supports} ${supportName.toLowerCase()} • ${tubes.length*2} tampas${parts.some(x=>x.name.startsWith('TAMPA PARA TUBO')&&!x.productId)?' • ATENÇÃO: tampa não localizada no estoque':''}`};
+  for(const t of tubes){const size=t.includes('19')?'19':'28',tube=officialProductByName(`TUBO ${size} MM`,color),capName=`TAMPA PARA TUBO EM ALUMINIO ${size}MM`,cap=officialProductByName(capName,color)||officialProductLike(['TAMPA','TUBO',size],color);if(tube){parts.push({productId:tube.id,name:tube.product_name,qty:w,unit:'M'});total+=w*Number(tube.price_4x||0)}if(cap){parts.push({productId:cap.id,name:capName,qty:2,unit:'UN'});total+=2*Number(cap.price_4x||0)}}
+  return {kind:tubes.join(' + '),meters:w*tubes.length,supports,ends:tubes.length*2,supportName,supportProductId:support?.id||null,parts,total,hardwareBase:total,detail:`${tubes.join(' + ')} • ${supports} ${supportName.toLowerCase()} • ${tubes.length*2} tampas`};
 };
 const _v118CalcEnvironment=calcEnvironment;
 calcEnvironment=function(e){
@@ -4872,4 +4864,68 @@ function payrollRows(competence){const h=hrData(),rows=[];for(const e of h.emplo
    $('eWaveMount')?.addEventListener('change',updatePreview);
    syncWave();
  });
+})();
+
+
+/* NOVA IMAGEM — sincronização pontual de fixações (homologação 14/10).
+   Preserva cálculos de tecidos, argolas e ilhós da base de 08/10. */
+(function(){
+ const get=id=>document.getElementById(id);
+ const fold=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().trim();
+ const isTube=()=>['eFinishPleat','eLiningPleat'].some(id=>typeof isTubePleat==='function'&&isTubePleat(get(id)?.value||''));
+ const products=()=>typeof priceProducts!=='undefined'&&Array.isArray(priceProducts)?priceProducts:[];
+ const match=(name,color)=>products().find(p=>Number(p.active??1)===1&&fold(p.product_name)===fold(name)&&fold(p.color)===fold(color));
+ const selectProduct=(sel,product)=>{if(!sel||!product)return;const id=String(product.id);if(![...sel.options].some(o=>o.value===id)){sel.add(new Option(`${product.product_name} — ${product.color} — ${product.internal_code||''}`,id))}sel.value=id;};
+ function syncTube(){
+   if(!isTube())return;
+   const finish=get('eFinishTube'),lining=get('eLiningTube');
+   const model=get('eModel')?.value||'COMPLETE';
+   const f=officialProductById(finish?.value);
+   if(model==='COMPLETE'&&f){const lpp=get('eLiningPleat')?.value||'';const size=lpp.includes('19MM')?'19':'28';selectProduct(lining,match(`TUBO ${size} MM`,f.color));}
+   get('eRailProductWrap')?.classList.add('hidden');
+   if(get('eRailProductWrap'))get('eRailProductWrap').style.display='none';
+ }
+ function syncWave(){
+   const box=get('eWaveMountWrap');if(!box)return;
+   const show=!isTube()&&get('eFixation')?.value==='VARÃO WAVE'&&!(typeof quoteExcludeFixation!=='undefined'&&quoteExcludeFixation);
+   box.classList.toggle('hidden',!show);box.style.display=show?'block':'none';
+   if(show&&!get('eWaveMount')?.value)get('eWaveMount').value='PAREDE';
+   if(!isTube()&&get('eRailProductWrap'))get('eRailProductWrap').style.display='';
+ }
+ function syncAll(){syncTube();syncWave();}
+ const priorForm=envFromForm;
+ envFromForm=function(){syncAll();const e=priorForm();if(isTube()&&e.model==='COMPLETE'){
+   const f=officialProductById(get('eFinishTube')?.value),l=officialProductById(get('eLiningTube')?.value);
+   if(f&&l){e.finishTube=f.product_name;e.liningTube=l.product_name;e.finishTubeProductId=f.id;e.liningTubeProductId=l.id;e.finishTubeColor=f.color;e.liningTubeColor=l.color;e.fixColor=f.color;e.fixation=`${f.product_name} + ${l.product_name}`;e.tubeFixation=true;}
+ }else if(e.fixation==='VARÃO WAVE')e.waveMount=get('eWaveMount')?.value||'PAREDE';return e;};
+ const priorRender=renderQuote;renderQuote=function(){priorRender();syncAll();};
+ const priorFields=updateModelFields;updateModelFields=function(){priorFields();syncAll();};
+ const priorRefresh=v12RefreshFixations;v12RefreshFixations=function(){priorRefresh();syncAll();};
+ document.addEventListener('DOMContentLoaded',()=>{
+   for(const id of ['eModel','eFinishPleat','eLiningPleat','eFixation','eFinishTube','eLiningTube','eWaveMount'])get(id)?.addEventListener('change',()=>{queueMicrotask(()=>{syncAll();updatePreview()})});
+   syncAll();
+ });
+ // Para orçamentos já salvos: somente complementa os insumos se o segundo tubo não foi registrado.
+ const previousTubeCalc=tubeHardwareCalc;
+ tubeHardwareCalc=function(e,c){
+   if(!e?.tubeFixation||e.model!=='COMPLETE')return previousTubeCalc(e,c);
+   const color=e.finishTubeColor||e.fixColor||'',width=Number(e.width||0)/100;
+   const finName=e.finishTube||'TUBO 28 MM',linName=e.liningTube||'TUBO 19 MM';
+   const first=match(finName,color),second=match(linName,color);
+   const mat=fold(e.supportMaterial)==='PVC'?'PVC':'ALUMINIO';
+   const support=match('SUPORTE 19/28 '+mat,color)||officialProductLike(['SUPORTE','19/28',mat],color);
+   const supports=width<=2?2:width<=3.5?3:width<=4.5?4:5;
+   const parts=[];let total=0;
+   function add(product,qty,name){if(!product)return;parts.push({productId:product.id,name:name||product.product_name,qty,unit:product.unit||'UN'});total+=qty*Number(product.price_4x||0);}
+   add(support,supports);
+   for(const prod of [first,second]){
+     if(!prod)continue;
+     add(prod,width);
+     const size=fold(prod.product_name).includes('19 MM')?'19':'28';
+     const capName=`TAMPA PARA TUBO EM ALUMINIO ${size}MM`;
+     const cap=match(capName,color)||officialProductLike(['TAMPA','TUBO',size],color);
+     add(cap,2,capName);
+   }
+   return {kind:`${finName} + ${linName}`,meters:width*2,supports,ends:4,supportName:support?.product_name||'SUPORTE DUPLO',supportProductId:support?.id||null,parts,total,hardwareBase:total,detail:`${finName}/${linName} — ${color} • ${supports} suportes duplos • 4 tampas${(!first||!second)?' • ATENÇÃO: TUBO NÃO ENCONTRADO NO ESTOQUE':''}`};
+ };
 })();
