@@ -1,0 +1,9 @@
+NOVA IMAGEM V12.8.13 — 13/10/2026
+Base: V12.8.12
+1. Argolas 19 e 29: largura pronta em cm / 7, arredondar ao par superior, sem fator de franzimento.
+2. Ilhós no acabamento: entretela 1m por metro de tecido consumido; custo R$ 0,60/m e preço 4x R$ 2,00/m.
+3. Seletor técnico de fixação acabamento/forro oculto na interface, mantido para compatibilidade do estoque.
+4. Tubos são selecionados automaticamente: 28mm acabamento, 19mm forro, cor escolhida quando disponível.
+5. Wave teto/parede: mantidas opções que já existem na V12.8.12.
+AVISO: Verifique se ENTRETELA está cadastrada no estoque para baixa automática; sem cadastro, a precificação ainda funciona mas não há baixa.
+ANTES DA PRODUÇÃO: testar interface, orçamentos, PDFs e pedidos com dados reais de homologação; não contém migração D1.

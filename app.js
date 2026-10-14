@@ -200,6 +200,7 @@ function officialOrderRequirements(q){
       add(officialSliderProduct(e.fixColor),(e.finishPleat==='WAVE'?c.finishSliders:0)+(e.liningPleat==='WAVE'?c.liningSliders:0),e.name,'DESLIZANTE WAVE');
       add(officialWaveCord(e.fixColor),(Number(e.width||0)/100),e.name,'CORDÃO WAVE');
     }
+    if(c.interlining?.qty){const interliningProduct=officialProductByName('ENTRETELA')||officialProductLike(['ENTRETELA']);add(interliningProduct,c.interlining.qty,e.name,'ENTRETELA ILHÓS ACABAMENTO');}
     if(c.finishAccessory?.qty)add(officialProductById(c.finishAccessory.productId),c.finishAccessory.qty,e.name,c.finishAccessory.name);
     if(c.liningAccessory?.qty)add(officialProductById(c.liningAccessory.productId),c.liningAccessory.qty,e.name,c.liningAccessory.name);
     if(String(e.fixation||'').startsWith('TUBO ')){
@@ -5086,4 +5087,73 @@ document.addEventListener('DOMContentLoaded',()=>{
     });
     applyTubeHide12812();
   });
+})();
+
+/* ===== V12.8.13 • ARGOLAS / ENTRETELA / CAMPOS INTERNOS =====
+   Correções aplicadas depois das extensões anteriores para manter compatibilidade. */
+(function(){
+  const oldCalc=calcEnvironment;
+  const isRing=p=>['FRANZIDO COM ARGOLAS 19MM','FRANZIDO COM ARGOLAS 29MM'].includes(p);
+  const isEyelet=p=>['ILHÓS REDONDO','ILHÓS QUADRADO'].includes(p);
+  function evenCeil(n){const q=Math.ceil(n);return q%2===0?q:q+1;}
+  calcEnvironment=function(e){
+    const c=oldCalc(e);
+    if(!c)return c;
+    let delta=0,deltaLabor=0;
+    for(const key of ['finish','lining']){
+      const pleat=e[key+'Pleat'], accessory=c[key+'Accessory'];
+      if(!isRing(pleat)||!accessory)continue;
+      const previousQty=Number(accessory.qty||0);
+      // Largura pronta total, em centímetros, dividida pelo espaçamento de 7 cm.
+      const newQty=evenCeil(Number(e.width||0)/7);
+      const unit=Number(accessory.unitPrice||0);
+      const prevLabor=Number(accessory.labor||0);
+      accessory.qty=newQty;
+      accessory.cost=newQty*unit;
+      accessory.labor=newQty*1.20;
+      delta+=(newQty-previousQty)*unit;
+      deltaLabor+=accessory.labor-prevLabor;
+    }
+    c.accessoryCost=Number(c.accessoryCost||0)+delta;
+    c.accessoryLabor=Number(c.accessoryLabor||0)+deltaLabor;
+    c.laborTotal=Number(c.laborTotal||0)+deltaLabor;
+    // Entretela é aplicada apenas no acabamento com ilhós: 1 m por metro
+    // de tecido efetivamente consumido, incluindo corte por altura.
+    const qty=isEyelet(e.finishPleat)&&e.model!=='LINING' ? Number(c.finishCalc?.consumption||0):0;
+    c.interlining={qty,costUnit:0.60,price4xUnit:2,cost:qty*0.60,price4x:qty*2};
+    c.base4=Number(c.base4||0)+delta+deltaLabor+c.interlining.price4x;
+    const terms=db?.priceConfig?.terms||{};
+    c.cash=c.base4*(1-Number(terms.cashDiscountPct||0)/100);
+    c.p18=c.base4*(1+Number(terms.p18AddPct||0)/100);
+    return c;
+  };
+  // Seletores técnicos continuam no DOM para compatibilidade de cálculo,
+  // mas não aparecem ao atendente. Vincula automaticamente os tubos ao SKU
+  // da cor escolhida (28 mm acabamento / 19 mm forro).
+  const oldEnv=envFromForm;
+  envFromForm=function(){
+    const e=oldEnv();
+    if(e.tubeFixation || isTubePleat(e.finishPleat)||isTubePleat(e.liningPleat)){
+      const color=String(document.getElementById('eFixColor')?.value||e.fixColor||'');
+      const find=(size)=>{const list=typeof v12TubeProducts==='function'?v12TubeProducts(size):[];return list.find(p=>norm(p.color)===norm(color))||list[0]||null};
+      const f=e.model!=='LINING'?find('28'):null;
+      const l=e.model!=='FINISH'?find('19'):null;
+      if(f){e.finishTubeProductId=f.id;e.finishTube=f.product_name;e.finishTubeColor=f.color;}
+      if(l){e.liningTubeProductId=l.id;e.liningTube=l.product_name;e.liningTubeColor=l.color;}
+      e.fixation=[f?.product_name,l?.product_name].filter(Boolean).join(' + ');
+      e.tubeFixation=true;
+    }
+    return e;
+  };
+  function hideInternal(){
+    for(const id of ['eFinishTubeWrap','eLiningTubeWrap']){
+      const wrap=document.getElementById(id);
+      if(wrap){wrap.classList.add('hidden');wrap.style.setProperty('display','none','important');}
+    }
+  }
+  const previousPreview=updatePreview;
+  updatePreview=function(){const r=previousPreview.apply(this,arguments);hideInternal();return r;};
+  const previousModel=updateModelFields;
+  updateModelFields=function(){const r=previousModel.apply(this,arguments);hideInternal();return r;};
+  document.addEventListener('DOMContentLoaded',hideInternal);
 })();
