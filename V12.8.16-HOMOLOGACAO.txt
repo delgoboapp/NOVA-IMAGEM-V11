@@ -1,0 +1,9 @@
+NOVA IMAGEM V12.8.16 - HOMOLOGACAO, NAO PUBLICAR SEM TESTAR
+- Prega WAVE: quatro opções do seletor de fixação e localização teto/parede como valor legado compatível.
+- Fixação Wave por produto de estoque; garras na opção teto, suportes na parede (conforme o cálculo existente).
+- Garra Wave: criação com estoque inicial 500, custo 5, venda em 4x 10, a vista 9,20 e 18x 9,20/0,82. O item legado com custo 10/2,3 e saldo zero será migrado uma só vez; outros estoques permanecem inalterados e exigem conferência.
+- UF e município no orçamento e na ficha do cliente; padrão PR/PONTA GROSSA; consulta municípios por UF via API pública IBGE (necessita acesso à internet no navegador).
+- Resumo de acessórios para argolas e ilhós conforme largura pronta; deslizantes zerados nos sistemas de tubo.
+- Tubos, pontas e suportes: lógica existente preservada; HOMOLOGAR ENTRADAS E ESTOQUES ANTES DO DEPLOY.
+- Dados antigos de clientes/orçamentos/pedidos: ESTE ZIP NAO CONTEM RESTAURACAO DO D1.
+- Fazer BACKUP D1 antes de produção. NÃO rodar migrações destrutivas.

@@ -137,12 +137,19 @@ export async function onRequestPost(context){
     if(action==='SINCRONIZAR_GARRA_VARAO_WAVE'){
       if(!gestorOnly(user))return json({error:'Apenas GESTOR pode criar a garra Wave.'},403);
       const name='GARRA PARA VARÃO WAVE';
-      const existing=await context.env.DB.prepare('SELECT id FROM price_products WHERE active=1 AND product_name=? LIMIT 1').bind(name).first();
-      if(existing)return json({ok:true,created:false});
+      const existing=await context.env.DB.prepare('SELECT id,cost,stock_quantity FROM price_products WHERE active=1 AND product_name=? LIMIT 1').bind(name).first();
+      if(existing){
+        // Migra apenas o registro legado de custo 10/2.3 e estoque inicial zero; não repõe estoque após vendas.
+        if(Math.abs(Number(existing.cost||0)-10/2.3)<0.02 && Number(existing.stock_quantity||0)===0){
+          await context.env.DB.prepare('UPDATE price_products SET cost=?,markup_percent=?,multiplier=?,stock_quantity=?,price_cash=?,price_4x=?,price_18x=?,updated_at=CURRENT_TIMESTAMP WHERE id=?').bind(5,100,2,500,9.20,10,9.20/.82,existing.id).run();
+          return json({ok:true,migrated:true});
+        }
+        return json({ok:true,created:false,requiresReview:true});
+      }
       const rows=await context.env.DB.prepare("SELECT internal_code FROM price_products WHERE internal_code LIKE 'NI-%'").all();let max=0;
       for(const r of rows.results||[]){const m=String(r.internal_code||'').match(/^NI-(\d+)$/i);if(m)max=Math.max(max,Number(m[1]));}
-      const sku=`NI-${String(max+1).padStart(4,'0')}`,cost=10/2.3,priceCash=10*.92,price18=priceCash/.82;
-      await context.env.DB.prepare(`INSERT INTO price_products (internal_code,supplier_code,category,supplier,product_name,color,width_cm,unit,stock_quantity,multiplier,cost,markup_percent,price_cash,price_4x,price_18x,ncm,cfop_internal,cfop_interstate,active,price_manual,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)`).bind(sku,'','ACESSÓRIO','NOVA IMAGEM',name,'PADRÃO',0,'UN',0,2.3,cost,130,priceCash,10,price18,'','','').run();
+      const sku=`NI-${String(max+1).padStart(4,'0')}`,cost=5,priceCash=10*.92,price18=priceCash/.82;
+      await context.env.DB.prepare(`INSERT INTO price_products (internal_code,supplier_code,category,supplier,product_name,color,width_cm,unit,stock_quantity,multiplier,cost,markup_percent,price_cash,price_4x,price_18x,ncm,cfop_internal,cfop_interstate,active,price_manual,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)`).bind(sku,'','ACESSÓRIO','NOVA IMAGEM',name,'PADRÃO',0,'UN',500,2,cost,100,priceCash,10,price18,'','','').run();
       return json({ok:true,created:true,sku});
     }
     if(action==='APLICAR_INVENTARIO_WAVE_20261013'){

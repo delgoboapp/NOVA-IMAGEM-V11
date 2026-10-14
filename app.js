@@ -421,6 +421,8 @@ function calcEnvironment(e){
     else if(!finishUsesWave&&liningUsesWave){finishSliders=0;liningSliders=totalRounded}
     else{finishSliders=totalRounded/2;liningSliders=totalRounded/2}
   }
+  if(isTubePleat(e.finishPleat))finishSliders=0;
+  if(isTubePleat(e.liningPleat))liningSliders=0;
   const accessoryFor=(pleat,calc)=>{
     if(!calc)return {qty:0,cost:0,name:'',labor:0};
     const gatheredCm=Number(calc.gathered||0)*100;let name='',spacing=0,laborUnit=0,header=0;
@@ -4917,9 +4919,9 @@ document.addEventListener('DOMContentLoaded',()=>{
     for(const item of raw){
       if(FOLD_WAVE_12811(item.value) === 'VARAO WAVE'){
         if(injected) continue;
-        const wall = new Option('VARÃO - FIXADO NA PAREDE','VARÃO WAVE');
+        const wall = new Option('VARÃO WAVE - PAREDE','VARÃO WAVE');
         wall.dataset.waveLocation = 'PAREDE';
-        const ceiling = new Option('VARÃO - FIXADO NO TETO','VARÃO WAVE');
+        const ceiling = new Option('VARÃO WAVE - TETO','VARÃO WAVE');
         ceiling.dataset.waveLocation = 'TETO';
         sel.add(wall);
         sel.add(ceiling);
@@ -5171,12 +5173,12 @@ document.addEventListener('DOMContentLoaded',()=>{
       const wanted=(old?.dataset.waveLocation||get('eWaveLocation')?.value||'PAREDE')==='TETO'?'TETO':'PAREDE';
       const opts=[...sel.options].filter(o=>fold(o.value)==='VARAO WAVE');
       if(!opts.length)return;
-      const good=opts.length===2 && opts[0].textContent==='VARÃO - FIXADO NO TETO' && opts[1].textContent==='VARÃO - FIXADO NA PAREDE';
+      const good=opts.length===2 && opts[0].textContent==='VARÃO WAVE - TETO' && opts[1].textContent==='VARÃO WAVE - PAREDE';
       if(!good){
         const idx=opts[0].index, active=fold(sel.value)==='VARAO WAVE';
         opts.forEach(o=>o.remove());
-        const teto=new Option('VARÃO - FIXADO NO TETO','VARÃO WAVE');teto.dataset.waveLocation='TETO';
-        const parede=new Option('VARÃO - FIXADO NA PAREDE','VARÃO WAVE');parede.dataset.waveLocation='PAREDE';
+        const teto=new Option('VARÃO WAVE - TETO','VARÃO WAVE');teto.dataset.waveLocation='TETO';
+        const parede=new Option('VARÃO WAVE - PAREDE','VARÃO WAVE');parede.dataset.waveLocation='PAREDE';
         sel.add(teto,idx);sel.add(parede,idx+1);
         if(active)sel.selectedIndex=wanted==='TETO'?idx:idx+1;
       }
@@ -5207,4 +5209,63 @@ document.addEventListener('DOMContentLoaded',()=>{
       observer.observe(sel,{childList:true,subtree:true,characterData:true});
     }
   });
+})();
+
+
+/* V12.8.16 — Homologação Wave, indicadores de acessórios e UF/cidade. */
+(function(){
+ const el=id=>document.getElementById(id), fold=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().trim();
+ const states='AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RS RO RR SC SP SE TO'.split(' ');
+ const cityCache={PR:['PONTA GROSSA']};
+ const even=n=>Math.ceil(n/2)*2;
+ function tubeMode(){const m=el('eModel')?.value||'COMPLETE';return (m!=='LINING'&&isTubePleat(el('eFinishPleat')?.value))||(m!=='FINISH'&&isTubePleat(el('eLiningPleat')?.value));}
+ function adjustWave(){
+  const sel=el('eFixation');if(!sel)return;
+  const fp=el('eFinishPleat')?.value, lp=el('eLiningPleat')?.value;
+  const wave=fp==='WAVE'||(el('eModel')?.value==='LINING'&&lp==='WAVE');
+  if(wave&&!tubeMode()){
+   const original=sel.selectedOptions?.[0],loc=original?.dataset?.waveLocation||el('eWaveLocation')?.value||'PAREDE';
+   const desired=[['TRILHO MOTORIZADO','TRILHO MOTORIZADO',''],['TRILHO SUÍÇO','TRILHO SUÍÇO',''],['VARÃO WAVE - TETO','VARÃO WAVE','TETO'],['VARÃO WAVE - PAREDE','VARÃO WAVE','PAREDE']];
+   const matched=sel.options.length===4&&desired.every((it,i)=>sel.options[i].text===it[0]&&sel.options[i].value===it[1]);
+   if(!matched){const current=sel.value;sel.replaceChildren();desired.forEach(([label,value,position])=>{const o=new Option(label,value);if(position)o.dataset.waveLocation=position;sel.add(o)});
+    const i=desired.findIndex(([label,value,position])=>value===current&&(value!=='VARÃO WAVE'||position===loc));sel.selectedIndex=i>=0?i:0;}
+   const selected=sel.selectedOptions[0];if(selected?.dataset?.waveLocation&&el('eWaveLocation'))el('eWaveLocation').value=selected.dataset.waveLocation;
+  }
+  const waveSelected=fold(sel.value)==='VARAO WAVE'&&!tubeMode();
+  const rail=el('eRailProductWrap');if(rail&&waveSelected&&!quoteExcludeFixation){rail.classList.remove('hidden');rail.style.display='';if(el('eRailProduct'))el('eRailProduct').disabled=false;}
+  const locWrap=el('eWaveLocationWrap');if(locWrap)locWrap.style.display='none';
+ }
+ const preview=updatePreview;
+ updatePreview=function(){const r=preview.apply(this,arguments);adjustWave();
+  try{const e=envFromForm(),c=calcEnvironment(e),node=el('calcPreview');if(!c||!node)return r;
+   const ring=p=>/^FRANZIDO COM ARGOLAS/.test(p||''), eye=p=>/^ILHÓS/.test(p||'');
+   const parts=[];
+   for(const [layer,pleat] of [['ACABAMENTO',e.model==='LINING'?'':e.finishPleat],['FORRO',e.model==='FINISH'?'':e.liningPleat]]){
+     if(ring(pleat))parts.push(`ARGOLAS ${pleat.includes('29')?'29':'19'} MM — ${layer}: ${even(Number(e.width||0)/7)} UN`);
+     if(eye(pleat))parts.push(`${pleat} — ${layer}: ${even(Number(e.width||0)/14)} UN`);
+   }
+   if(parts.length){const labels=[...node.querySelectorAll('.detail-item')];const row=labels.find(x=>fold(x.querySelector('span')?.textContent)==='DESLIZANTES');if(row){row.querySelector('span').textContent='ARGOLAS / ILHÓS';row.querySelector('strong').textContent=parts.join(' • ');}}
+  }catch(err){console.warn('Resumo de acessórios:',err)}return r;
+ };
+ const from=envFromForm;
+ envFromForm=function(){const e=from.apply(this,arguments),opt=el('eFixation')?.selectedOptions?.[0];if(fold(e.fixation)==='VARAO WAVE'){
+  e.waveLocation=opt?.dataset?.waveLocation||el('eWaveLocation')?.value||'PAREDE';
+  const p=officialProductById(el('eRailProduct')?.value);if(p){e.railProductId=p.id;e.railProductName=p.product_name;e.railInternalCode=p.internal_code;e.fixColor=p.color;}
+ }return e;};
+ function installLocation(prefix, uf='PR',city='PONTA GROSSA'){
+  const state=el(prefix+'Uf'),input=el(prefix+'Cidade'),list=el(prefix+'CidadeLista');if(!state||!input||!list)return;
+  state.innerHTML=states.map(s=>`<option value="${s}">${s}</option>`).join('');state.value=states.includes(uf)?uf:'PR';input.value=city||'PONTA GROSSA';
+  const load=async()=>{const chosen=state.value;input.value='';list.replaceChildren();let cities=cityCache[chosen];if(!cities){try{const resp=await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${chosen}/municipios?orderBy=nome`);if(!resp.ok)throw Error('IBGE indisponível');cities=(await resp.json()).map(x=>x.nome.toUpperCase());cityCache[chosen]=cities;}catch(e){console.warn('Municípios indisponíveis:',e);cities=[];}}
+   if(state.value!==chosen)return;const frag=document.createDocumentFragment();cities.forEach(n=>{const op=document.createElement('option');op.value=n;frag.appendChild(op)});list.appendChild(frag);
+  };state.onchange=load;const initial=city||'PONTA GROSSA';load().then(()=>{if(state.value===uf)input.value=initial;});
+  input.addEventListener('blur',()=>{const c=cityCache[state.value]||[];if(c.length&&!c.some(x=>fold(x)===fold(input.value))){input.setCustomValidity('Selecione um município da UF informada.');}else input.setCustomValidity('');});input.addEventListener('input',()=>input.setCustomValidity(''));
+ }
+ const render=renderQuote;renderQuote=function(){const r=render.apply(this,arguments);installLocation('q',draft.uf||'PR',draft.city||'PONTA GROSSA');return r};
+ const sync=syncDraft;syncDraft=function(){sync.apply(this,arguments);draft.uf=el('qUf')?.value||'PR';draft.city=el('qCidade')?.value?.trim()||'PONTA GROSSA';draft.address=[draft.street,draft.number,draft.neighborhood,draft.city,draft.uf,draft.cep,draft.complement].filter(Boolean).join(', ')};
+ const upsert=upsertClientFromQuote;upsertClientFromQuote=function(q){upsert.apply(this,arguments);const c=db.clients.find(x=>fold(x.name)===fold(q.client));if(c){c.uf=q.uf||c.uf||'PR';c.city=q.city||c.city||'PONTA GROSSA';}};
+ const modal=openClientModal;openClientModal=function(c){modal.apply(this,arguments);const cep=el('mClientCep')?.closest('label');if(!cep)return;
+  const holder=document.createElement('div');holder.style.display='contents';holder.innerHTML='<label class="field">UF<select id="mUf"></select></label><label class="field">Cidade<input id="mCidade" list="mCidadeLista" autocomplete="off"><datalist id="mCidadeLista"></datalist></label>';cep.after(holder);installLocation('m',c?.uf||'PR',c?.city||'PONTA GROSSA');
+  const save=el('mClientSave'),prior=save?.onclick;if(save&&prior)save.onclick=function(...args){const uf=el('mUf')?.value||'PR',city=el('mCidade')?.value?.trim()||'PONTA GROSSA';if(!el('mCidade').checkValidity())return alert('Selecione uma cidade válida para a UF.');prior.apply(this,args);const client=db.clients.find(x=>fold(x.name)===fold(el('mClientName')?.value));if(client){client.uf=uf;client.city=city;client.address=[client.street,client.number,client.neighborhood,city,uf,client.cep,client.complement].filter(Boolean).join(', ');queueSave();}};
+ };
+ document.addEventListener('DOMContentLoaded',()=>{const s=el('eFixation');s?.addEventListener('change',()=>{if(fold(s.value)==='VARAO WAVE'){const loc=s.selectedOptions[0]?.dataset?.waveLocation;if(el('eWaveLocation'))el('eWaveLocation').value=loc||'PAREDE';}setTimeout(()=>{adjustWave();updatePreview()},0)});el('eFinishPleat')?.addEventListener('change',()=>setTimeout(adjustWave,0));adjustWave();});
 })();
