@@ -4917,9 +4917,9 @@ document.addEventListener('DOMContentLoaded',()=>{
     for(const item of raw){
       if(FOLD_WAVE_12811(item.value) === 'VARAO WAVE'){
         if(injected) continue;
-        const wall = new Option('VARÃO WAVE - PAREDE','VARÃO WAVE');
+        const wall = new Option('VARÃO - FIXADO NA PAREDE','VARÃO WAVE');
         wall.dataset.waveLocation = 'PAREDE';
-        const ceiling = new Option('VARÃO WAVE - TETO','VARÃO WAVE');
+        const ceiling = new Option('VARÃO - FIXADO NO TETO','VARÃO WAVE');
         ceiling.dataset.waveLocation = 'TETO';
         sel.add(wall);
         sel.add(ceiling);
@@ -5164,26 +5164,25 @@ document.addEventListener('DOMContentLoaded',()=>{
   const fold=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase();
   let applying=false;
   function correctWaveOptions(){
-    const sel=get('eFixation');if(!sel||applying)return;
+    const sel=get('eFixation'); if(!sel||applying)return;
     applying=true;
     try{
       const old=sel.selectedOptions?.[0];
-      const desired=old?.dataset.waveLocation||get('eWaveLocation')?.value||'PAREDE';
-      const base=[...sel.options].filter(o=>fold(o.value)==='VARAO WAVE');
-      if(!base.length)return;
-      if(base.length!==2||base[0].textContent!=='VARÃO WAVE - NA PAREDE'||base[1].textContent!=='VARÃO WAVE - NO TETO'){
-        const first=base[0],idx=first.index,selected=fold(sel.value)==='VARAO WAVE';
-        base.forEach(o=>o.remove());
-        const wall=new Option('VARÃO WAVE - NA PAREDE','VARÃO WAVE');wall.dataset.waveLocation='PAREDE';
-        const ceiling=new Option('VARÃO WAVE - NO TETO','VARÃO WAVE');ceiling.dataset.waveLocation='TETO';
-        sel.add(wall,idx);sel.add(ceiling,idx+1);
-        if(selected)sel.selectedIndex=desired==='TETO'?idx+1:idx;
+      const wanted=(old?.dataset.waveLocation||get('eWaveLocation')?.value||'PAREDE')==='TETO'?'TETO':'PAREDE';
+      const opts=[...sel.options].filter(o=>fold(o.value)==='VARAO WAVE');
+      if(!opts.length)return;
+      const good=opts.length===2 && opts[0].textContent==='VARÃO - FIXADO NO TETO' && opts[1].textContent==='VARÃO - FIXADO NA PAREDE';
+      if(!good){
+        const idx=opts[0].index, active=fold(sel.value)==='VARAO WAVE';
+        opts.forEach(o=>o.remove());
+        const teto=new Option('VARÃO - FIXADO NO TETO','VARÃO WAVE');teto.dataset.waveLocation='TETO';
+        const parede=new Option('VARÃO - FIXADO NA PAREDE','VARÃO WAVE');parede.dataset.waveLocation='PAREDE';
+        sel.add(teto,idx);sel.add(parede,idx+1);
+        if(active)sel.selectedIndex=wanted==='TETO'?idx:idx+1;
       }
-      if(fold(sel.value)==='VARAO WAVE'){
-        const location=sel.selectedOptions?.[0]?.dataset.waveLocation||desired;
-        if(get('eWaveLocation'))get('eWaveLocation').value=location;
-      }
-      const wrap=get('eWaveLocationWrap');if(wrap)wrap.style.display='none';
+      if(fold(sel.value)==='VARAO WAVE' && get('eWaveLocation'))
+        get('eWaveLocation').value=sel.selectedOptions?.[0]?.dataset.waveLocation||wanted;
+      const wrap=get('eWaveLocationWrap'); if(wrap)wrap.style.display='none';
     }finally{applying=false;}
   }
   for(const name of ['setupSelectors','v12RefreshFixations','applyEnvironmentFixationUI','loadEnvironmentForEdit','updatePreview']){
@@ -5203,5 +5202,9 @@ document.addEventListener('DOMContentLoaded',()=>{
       if(fold(sel.value)==='VARAO WAVE'&&get('eWaveLocation'))get('eWaveLocation').value=sel.selectedOptions?.[0]?.dataset.waveLocation||'PAREDE';
     },true);
     correctWaveOptions();
+    if(sel){
+      const observer=new MutationObserver(()=>correctWaveOptions());
+      observer.observe(sel,{childList:true,subtree:true,characterData:true});
+    }
   });
 })();
