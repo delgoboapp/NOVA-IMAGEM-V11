@@ -5157,3 +5157,51 @@ document.addEventListener('DOMContentLoaded',()=>{
   updateModelFields=function(){const r=previousModel.apply(this,arguments);hideInternal();return r;};
   document.addEventListener('DOMContentLoaded',hideInternal);
 })();
+
+/* V12.8.14 — opções Wave visíveis e persistentes, preservando o valor interno legado. */
+(function(){
+  const get=id=>document.getElementById(id);
+  const fold=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase();
+  let applying=false;
+  function correctWaveOptions(){
+    const sel=get('eFixation');if(!sel||applying)return;
+    applying=true;
+    try{
+      const old=sel.selectedOptions?.[0];
+      const desired=old?.dataset.waveLocation||get('eWaveLocation')?.value||'PAREDE';
+      const base=[...sel.options].filter(o=>fold(o.value)==='VARAO WAVE');
+      if(!base.length)return;
+      if(base.length!==2||base[0].textContent!=='VARÃO WAVE - NA PAREDE'||base[1].textContent!=='VARÃO WAVE - NO TETO'){
+        const first=base[0],idx=first.index,selected=fold(sel.value)==='VARAO WAVE';
+        base.forEach(o=>o.remove());
+        const wall=new Option('VARÃO WAVE - NA PAREDE','VARÃO WAVE');wall.dataset.waveLocation='PAREDE';
+        const ceiling=new Option('VARÃO WAVE - NO TETO','VARÃO WAVE');ceiling.dataset.waveLocation='TETO';
+        sel.add(wall,idx);sel.add(ceiling,idx+1);
+        if(selected)sel.selectedIndex=desired==='TETO'?idx+1:idx;
+      }
+      if(fold(sel.value)==='VARAO WAVE'){
+        const location=sel.selectedOptions?.[0]?.dataset.waveLocation||desired;
+        if(get('eWaveLocation'))get('eWaveLocation').value=location;
+      }
+      const wrap=get('eWaveLocationWrap');if(wrap)wrap.style.display='none';
+    }finally{applying=false;}
+  }
+  for(const name of ['setupSelectors','v12RefreshFixations','applyEnvironmentFixationUI','loadEnvironmentForEdit','updatePreview']){
+    const old=({setupSelectors,v12RefreshFixations,applyEnvironmentFixationUI,loadEnvironmentForEdit,updatePreview})[name];
+    if(typeof old!=='function')continue;
+    const wrapped=function(...args){const result=old.apply(this,args);correctWaveOptions();return result};
+    if(name==='setupSelectors')setupSelectors=wrapped;
+    else if(name==='v12RefreshFixations')v12RefreshFixations=wrapped;
+    else if(name==='applyEnvironmentFixationUI')applyEnvironmentFixationUI=wrapped;
+    else if(name==='loadEnvironmentForEdit')loadEnvironmentForEdit=wrapped;
+    else updatePreview=wrapped;
+  }
+  document.addEventListener('DOMContentLoaded',()=>{
+    const sel=get('eFixation');
+    sel?.addEventListener('focus',correctWaveOptions);
+    sel?.addEventListener('change',()=>{
+      if(fold(sel.value)==='VARAO WAVE'&&get('eWaveLocation'))get('eWaveLocation').value=sel.selectedOptions?.[0]?.dataset.waveLocation||'PAREDE';
+    },true);
+    correctWaveOptions();
+  });
+})();
