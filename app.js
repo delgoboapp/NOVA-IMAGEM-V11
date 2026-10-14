@@ -1531,8 +1531,8 @@ function v12RefreshFixations(){
   const fw=$('eFinishTubeWrap'),lw=$('eLiningTubeWrap'),generic=$('eFixationWrap'),prod=$('eRailProductWrap'),color=$('eFixColorWrap');
   generic?.classList.toggle('hidden',fTube||lTube);prod?.classList.add('hidden');color?.classList.add('hidden');
   fw?.classList.toggle('hidden',m==='LINING'||!fTube);lw?.classList.toggle('hidden',m==='FINISH'||!lTube);
-  if(fTube){const size=fp.includes('19MM')?'19':'28';v12FillProductSelect($('eFinishTube'),v12TubeProducts(size),'SELECIONE A FIXAÇÃO DO ACABAMENTO');}
-  if(lTube){const lpp=$('eLiningPleat').value,size=lpp.includes('19MM')?'19':'28';v12FillProductSelect($('eLiningTube'),v12TubeProducts(size),'SELECIONE A FIXAÇÃO DO FORRO');}
+  if(fTube){const size=fp.includes('19MM')?'19':fp.includes('29MM')?'29':'28';v12FillProductSelect($('eFinishTube'),v12TubeProducts(size),'SELECIONE A FIXAÇÃO DO ACABAMENTO');}
+  if(lTube){const lpp=$('eLiningPleat').value,size=lpp.includes('19MM')?'19':lpp.includes('29MM')?'29':'28';v12FillProductSelect($('eLiningTube'),v12TubeProducts(size),'SELECIONE A FIXAÇÃO DO FORRO');}
   if(fTube&&lTube&&m==='COMPLETE'){
     const a=officialProductById($('eFinishTube')?.value), color=norm(a?.color||'');
     const matching=v12TubeProducts('19').find(x=>norm(x.color)===color);
@@ -1551,8 +1551,8 @@ const _v12EnvFromForm=envFromForm;
 envFromForm=function(){const e=_v12EnvFromForm();const fp=e.finishPleat||'',lp=e.liningPleat||'';if(isTubePleat(fp)||isTubePleat(lp)){
   const f=officialProductById($('eFinishTube')?.value),l=officialProductById($('eLiningTube')?.value);e.finishTubeProductId=f?.id||null;e.liningTubeProductId=l?.id||null;e.finishTube=f?.product_name||'';e.liningTube=l?.product_name||'';e.finishTubeColor=f?.color||'';e.liningTubeColor=l?.color||'';e.tubeFixation=true;e.fixation=[f?.product_name,l?.product_name].filter(Boolean).join(' + ');
  }return e;};
-tubeHardwareCalc=function(e,c){const w=Number(e.width||0)/100,model=e.model,mat=norm(e.supportMaterial)==='PVC'?'PVC':'ALUMINIO',supports=w<=2?2:w<=3.5?3:w<=4.5?4:5;const layers=[];if(model!=='LINING'&&e.finishTubeProductId)layers.push({p:officialProductById(e.finishTubeProductId),layer:'ACABAMENTO'});if(model!=='FINISH'&&e.liningTubeProductId)layers.push({p:officialProductById(e.liningTubeProductId),layer:'FORRO'});let total=0,parts=[];for(const x of layers){const p=x.p;if(!p)continue;const size=norm(p.product_name).includes('19')?'19':'28',color=p.color||'';parts.push({productId:p.id,name:`${p.product_name} — ${color}`,qty:w,unit:'M'});total+=w*Number(p.price_4x||0);const cap=officialProductLike(['TAMPA','TUBO',size],color);if(cap){parts.push({productId:cap.id,name:`${cap.product_name} — ${color}`,qty:2,unit:'UN'});total+=2*Number(cap.price_4x||0);}}
-  const sizes=layers.map(x=>norm(x.p?.product_name).includes('19')?'19':'28');const colors=[...new Set(layers.map(x=>x.p?.color||'').filter(Boolean))];let supportName;if(model==='COMPLETE')supportName=`SUPORTE 19/28 ${mat}`;else supportName=`SUPORTE ${sizes[0]||'28'}MM ${mat}`;let support=null;for(const cor of colors){support=officialProductByName(supportName,cor)||officialProductLike(supportName.split(' '),cor);if(support)break;}support=support||officialProductLike(supportName.split(' '),'');if(support){parts.push({productId:support.id,name:`${support.product_name} — ${support.color||''}`,qty:supports,unit:'UN'});total+=supports*Number(support.price_4x||0);}return {kind:layers.map(x=>`${x.p.product_name} — ${x.p.color}`).join(' + '),meters:w*layers.length,supports,ends:layers.length*2,supportName,supportProductId:support?.id||null,parts,total,hardwareBase:total,detail:`${layers.map(x=>`${x.p.product_name} — ${x.p.color}`).join(' + ')} • ${supports} suportes • ${layers.length*2} tampas`};};
+tubeHardwareCalc=function(e,c){const w=Number(e.width||0)/100,model=e.model,mat=norm(e.supportMaterial)==='PVC'?'PVC':'ALUMINIO',supports=w<=2?2:w<=3.5?3:w<=4.5?4:5;const layers=[];if(model!=='LINING'&&e.finishTubeProductId)layers.push({p:officialProductById(e.finishTubeProductId),layer:'ACABAMENTO'});if(model!=='FINISH'&&e.liningTubeProductId)layers.push({p:officialProductById(e.liningTubeProductId),layer:'FORRO'});let total=0,parts=[];for(const x of layers){const p=x.p;if(!p)continue;const size=norm(p.product_name).includes('19')?'19':norm(p.product_name).includes('29')?'29':'28',color=p.color||'';parts.push({productId:p.id,name:`${p.product_name} — ${color}`,qty:w,unit:'M'});total+=w*Number(p.price_4x||0);const cap=officialProductLike(['TAMPA','TUBO',size],color);if(cap){parts.push({productId:cap.id,name:`${cap.product_name} — ${color}`,qty:2,unit:'UN'});total+=2*Number(cap.price_4x||0);}}
+  const sizes=layers.map(x=>norm(x.p?.product_name).includes('19')?'19':norm(x.p?.product_name).includes('29')?'29':'28');const colors=[...new Set(layers.map(x=>x.p?.color||'').filter(Boolean))];let supportName;if(model==='COMPLETE')supportName=`SUPORTE 19/28 ${mat}`;else supportName=`SUPORTE ${sizes[0]||'28'}MM ${mat}`;let support=null;for(const cor of colors){support=officialProductByName(supportName,cor)||officialProductLike(supportName.split(' '),cor);if(support)break;}support=support||officialProductLike(supportName.split(' '),'');if(support){parts.push({productId:support.id,name:`${support.product_name} — ${support.color||''}`,qty:supports,unit:'UN'});total+=supports*Number(support.price_4x||0);}return {kind:layers.map(x=>`${x.p.product_name} — ${x.p.color}`).join(' + '),meters:w*layers.length,supports,ends:layers.length*2,supportName,supportProductId:support?.id||null,parts,total,hardwareBase:total,detail:`${layers.map(x=>`${x.p.product_name} — ${x.p.color}`).join(' + ')} • ${supports} suportes • ${layers.length*2} tampas`};};
 const _v12UpdateModelFields=updateModelFields;updateModelFields=function(){_v12UpdateModelFields();v12RefreshFixations();};
 const _v12SetupSelectors=setupSelectors;setupSelectors=function(){_v12SetupSelectors();v12RefreshFixations();};
 const _v12RenderQuote=renderQuote;renderQuote=function(){_v12RenderQuote();v12RefreshFixations();};
@@ -2519,8 +2519,8 @@ document.addEventListener('DOMContentLoaded',()=>{
     const fw=$('eFinishTubeWrap'),lw=$('eLiningTubeWrap'),generic=$('eFixationWrap');
     generic?.classList.toggle('hidden',fTube||lTube);
     fw?.classList.toggle('hidden',m==='LINING'||!fTube);lw?.classList.toggle('hidden',m==='FINISH'||!lTube);
-    if(fTube){const size=fp.includes('19MM')?'19':'28';v12FillProductSelect($('eFinishTube'),v12TubeProducts(size),'SELECIONE A FIXAÇÃO DO ACABAMENTO')}
-    if(lTube){const lpp=$('eLiningPleat').value,size=lpp.includes('19MM')?'19':'28';v12FillProductSelect($('eLiningTube'),v12TubeProducts(size),'SELECIONE A FIXAÇÃO DO FORRO')}
+    if(fTube){const size=fp.includes('19MM')?'19':fp.includes('29MM')?'29':'28';v12FillProductSelect($('eFinishTube'),v12TubeProducts(size),'SELECIONE A FIXAÇÃO DO ACABAMENTO')}
+    if(lTube){const lpp=$('eLiningPleat').value,size=lpp.includes('19MM')?'19':lpp.includes('29MM')?'29':'28';v12FillProductSelect($('eLiningTube'),v12TubeProducts(size),'SELECIONE A FIXAÇÃO DO FORRO')}
     if(!(fTube||lTube)){
       cleanFixOptions(false);
       if(ALLOWED.includes(wanted))$('eFixation').value=wanted;
@@ -4885,133 +4885,6 @@ document.addEventListener('DOMContentLoaded',()=>{
 })();
 
 
-/* V12.8.11 — VARÃO WAVE com opções diretas no seletor: PAREDE ou TETO. */
-(function(){
-  const FOLD_WAVE_12811 = s => String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase();
-  const $id12811 = id => document.getElementById(id);
-
-  function desiredWaveLocation12811(){
-    const sel = $id12811('eFixation');
-    const opt = sel?.selectedOptions?.[0];
-    if(opt?.dataset?.waveLocation) return opt.dataset.waveLocation;
-    return ($id12811('eWaveLocation')?.value || 'PAREDE');
-  }
-
-  function rebuildWaveFixationOptions12811(){
-    const sel = $id12811('eFixation');
-    if(!sel) return;
-    const raw = [...sel.options].map(o => ({
-      value: o.value,
-      text: o.textContent,
-      selected: o.selected,
-      waveLocation: o.dataset?.waveLocation || ''
-    }));
-    const hasBaseWave = raw.some(o => FOLD_WAVE_12811(o.value) === 'VARAO WAVE');
-    if(!hasBaseWave) return;
-
-    const currentValue = sel.value;
-    let desiredLoc = desiredWaveLocation12811();
-    const selectedOpt = sel.selectedOptions?.[0];
-    if(selectedOpt?.dataset?.waveLocation) desiredLoc = selectedOpt.dataset.waveLocation;
-
-    sel.innerHTML = '';
-    let injected = false;
-    for(const item of raw){
-      if(FOLD_WAVE_12811(item.value) === 'VARAO WAVE'){
-        if(injected) continue;
-        const wall = new Option('VARÃO WAVE - PAREDE','VARÃO WAVE');
-        wall.dataset.waveLocation = 'PAREDE';
-        const ceiling = new Option('VARÃO WAVE - TETO','VARÃO WAVE');
-        ceiling.dataset.waveLocation = 'TETO';
-        sel.add(wall);
-        sel.add(ceiling);
-        injected = true;
-      }else{
-        const opt = new Option(item.text, item.value);
-        if(item.waveLocation) opt.dataset.waveLocation = item.waveLocation;
-        sel.add(opt);
-      }
-    }
-
-    if(FOLD_WAVE_12811(currentValue) === 'VARAO WAVE'){
-      const wanted = [...sel.options].find(o => o.value === 'VARÃO WAVE' && (o.dataset.waveLocation||'PAREDE') === desiredLoc);
-      if(wanted) sel.selectedIndex = wanted.index;
-    }else if(currentValue){
-      const match = [...sel.options].find(o => o.value === currentValue && !o.dataset.waveLocation);
-      if(match) sel.value = currentValue;
-    }
-  }
-
-  function syncWaveLocation12811(){
-    const sel = $id12811('eFixation');
-    const loc = $id12811('eWaveLocation');
-    if(!sel || !loc) return;
-    const opt = sel.selectedOptions?.[0];
-    if(FOLD_WAVE_12811(sel.value) === 'VARAO WAVE'){
-      loc.value = opt?.dataset?.waveLocation === 'TETO' ? 'TETO' : 'PAREDE';
-    }else{
-      loc.value = 'PAREDE';
-    }
-  }
-
-  function hideLegacyWaveLocation12811(){
-    const wrap = $id12811('eWaveLocationWrap');
-    if(wrap){
-      wrap.classList.add('hidden');
-      wrap.style.display = 'none';
-    }
-  }
-
-  function applyWaveFixationUi12811(){
-    rebuildWaveFixationOptions12811();
-    syncWaveLocation12811();
-    hideLegacyWaveLocation12811();
-  }
-
-  const _setup12811 = setupSelectors;
-  setupSelectors = function(){
-    const result = _setup12811.apply(this, arguments);
-    applyWaveFixationUi12811();
-    return result;
-  };
-
-  const _refresh12811 = v12RefreshFixations;
-  v12RefreshFixations = function(){
-    const result = _refresh12811.apply(this, arguments);
-    applyWaveFixationUi12811();
-    return result;
-  };
-
-  const _fixUi12811 = applyEnvironmentFixationUI;
-  applyEnvironmentFixationUI = function(){
-    const result = _fixUi12811.apply(this, arguments);
-    hideLegacyWaveLocation12811();
-    return result;
-  };
-
-  const _loadEnv12811 = loadEnvironmentForEdit;
-  loadEnvironmentForEdit = function(e){
-    const result = _loadEnv12811.apply(this, arguments);
-    applyWaveFixationUi12811();
-    return result;
-  };
-
-  const _updatePreview12811 = updatePreview;
-  updatePreview = function(){
-    applyWaveFixationUi12811();
-    return _updatePreview12811.apply(this, arguments);
-  };
-
-  document.addEventListener('DOMContentLoaded', ()=>{
-    applyWaveFixationUi12811();
-    $id12811('eFixation')?.addEventListener('change', ()=>{
-      syncWaveLocation12811();
-      hideLegacyWaveLocation12811();
-    });
-  });
-})();
-
-
 /* V12.8.12 — esconder "Fixação selecionada no estoque" quando a cortina usa tubos (ilhós/argolas). */
 (function(){
   const el=id=>document.getElementById(id);
@@ -5059,8 +4932,8 @@ document.addEventListener('DOMContentLoaded',()=>{
     if(waveWrap && waveSelect){
       const visibleWave = wave && !quoteExcludeFixation;
       waveWrap.classList.toggle('hidden', !visibleWave);
-      waveWrap.style.display = visibleWave ? 'none' : 'none';
-      waveSelect.disabled = true;
+      waveWrap.style.display = visibleWave ? '' : 'none';
+      waveSelect.disabled = !visibleWave;
       if(!visibleWave) waveSelect.value = 'PAREDE';
     }
   }
@@ -5160,58 +5033,6 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.addEventListener('DOMContentLoaded',hideInternal);
 })();
 
-/* V12.8.14 — opções Wave visíveis e persistentes, preservando o valor interno legado. */
-(function(){
-  const get=id=>document.getElementById(id);
-  const fold=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase();
-  let applying=false;
-  function correctWaveOptions(){
-    const sel=get('eFixation'); if(!sel||applying)return;
-    applying=true;
-    try{
-      const old=sel.selectedOptions?.[0];
-      const wanted=(old?.dataset.waveLocation||get('eWaveLocation')?.value||'PAREDE')==='TETO'?'TETO':'PAREDE';
-      const opts=[...sel.options].filter(o=>fold(o.value)==='VARAO WAVE');
-      if(!opts.length)return;
-      const good=opts.length===2 && opts[0].textContent==='VARÃO WAVE - TETO' && opts[1].textContent==='VARÃO WAVE - PAREDE';
-      if(!good){
-        const idx=opts[0].index, active=fold(sel.value)==='VARAO WAVE';
-        opts.forEach(o=>o.remove());
-        const teto=new Option('VARÃO WAVE - TETO','VARÃO WAVE');teto.dataset.waveLocation='TETO';
-        const parede=new Option('VARÃO WAVE - PAREDE','VARÃO WAVE');parede.dataset.waveLocation='PAREDE';
-        sel.add(teto,idx);sel.add(parede,idx+1);
-        if(active)sel.selectedIndex=wanted==='TETO'?idx:idx+1;
-      }
-      if(fold(sel.value)==='VARAO WAVE' && get('eWaveLocation'))
-        get('eWaveLocation').value=sel.selectedOptions?.[0]?.dataset.waveLocation||wanted;
-      const wrap=get('eWaveLocationWrap'); if(wrap)wrap.style.display='none';
-    }finally{applying=false;}
-  }
-  for(const name of ['setupSelectors','v12RefreshFixations','applyEnvironmentFixationUI','loadEnvironmentForEdit','updatePreview']){
-    const old=({setupSelectors,v12RefreshFixations,applyEnvironmentFixationUI,loadEnvironmentForEdit,updatePreview})[name];
-    if(typeof old!=='function')continue;
-    const wrapped=function(...args){const result=old.apply(this,args);correctWaveOptions();return result};
-    if(name==='setupSelectors')setupSelectors=wrapped;
-    else if(name==='v12RefreshFixations')v12RefreshFixations=wrapped;
-    else if(name==='applyEnvironmentFixationUI')applyEnvironmentFixationUI=wrapped;
-    else if(name==='loadEnvironmentForEdit')loadEnvironmentForEdit=wrapped;
-    else updatePreview=wrapped;
-  }
-  document.addEventListener('DOMContentLoaded',()=>{
-    const sel=get('eFixation');
-    sel?.addEventListener('focus',correctWaveOptions);
-    sel?.addEventListener('change',()=>{
-      if(fold(sel.value)==='VARAO WAVE'&&get('eWaveLocation'))get('eWaveLocation').value=sel.selectedOptions?.[0]?.dataset.waveLocation||'PAREDE';
-    },true);
-    correctWaveOptions();
-    if(sel){
-      const observer=new MutationObserver(()=>correctWaveOptions());
-      observer.observe(sel,{childList:true,subtree:true,characterData:true});
-    }
-  });
-})();
-
-
 /* V12.8.16 — Homologação Wave, indicadores de acessórios e UF/cidade. */
 (function(){
  const el=id=>document.getElementById(id), fold=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().trim();
@@ -5219,24 +5040,8 @@ document.addEventListener('DOMContentLoaded',()=>{
  const cityCache={PR:['PONTA GROSSA']};
  const even=n=>Math.ceil(n/2)*2;
  function tubeMode(){const m=el('eModel')?.value||'COMPLETE';return (m!=='LINING'&&isTubePleat(el('eFinishPleat')?.value))||(m!=='FINISH'&&isTubePleat(el('eLiningPleat')?.value));}
- function adjustWave(){
-  const sel=el('eFixation');if(!sel)return;
-  const fp=el('eFinishPleat')?.value, lp=el('eLiningPleat')?.value;
-  const wave=fp==='WAVE'||(el('eModel')?.value==='LINING'&&lp==='WAVE');
-  if(wave&&!tubeMode()){
-   const original=sel.selectedOptions?.[0],loc=original?.dataset?.waveLocation||el('eWaveLocation')?.value||'PAREDE';
-   const desired=[['TRILHO MOTORIZADO','TRILHO MOTORIZADO',''],['TRILHO SUÍÇO','TRILHO SUÍÇO',''],['VARÃO WAVE - TETO','VARÃO WAVE','TETO'],['VARÃO WAVE - PAREDE','VARÃO WAVE','PAREDE']];
-   const matched=sel.options.length===4&&desired.every((it,i)=>sel.options[i].text===it[0]&&sel.options[i].value===it[1]);
-   if(!matched){const current=sel.value;sel.replaceChildren();desired.forEach(([label,value,position])=>{const o=new Option(label,value);if(position)o.dataset.waveLocation=position;sel.add(o)});
-    const i=desired.findIndex(([label,value,position])=>value===current&&(value!=='VARÃO WAVE'||position===loc));sel.selectedIndex=i>=0?i:0;}
-   const selected=sel.selectedOptions[0];if(selected?.dataset?.waveLocation&&el('eWaveLocation'))el('eWaveLocation').value=selected.dataset.waveLocation;
-  }
-  const waveSelected=fold(sel.value)==='VARAO WAVE'&&!tubeMode();
-  const rail=el('eRailProductWrap');if(rail&&waveSelected&&!quoteExcludeFixation){rail.classList.remove('hidden');rail.style.display='';if(el('eRailProduct'))el('eRailProduct').disabled=false;}
-  const locWrap=el('eWaveLocationWrap');if(locWrap)locWrap.style.display='none';
- }
  const preview=updatePreview;
- updatePreview=function(){const r=preview.apply(this,arguments);adjustWave();
+ updatePreview=function(){const r=preview.apply(this,arguments);
   try{const e=envFromForm(),c=calcEnvironment(e),node=el('calcPreview');if(!c||!node)return r;
    const ring=p=>/^FRANZIDO COM ARGOLAS/.test(p||''), eye=p=>/^ILHÓS/.test(p||'');
    const parts=[];
@@ -5249,7 +5054,7 @@ document.addEventListener('DOMContentLoaded',()=>{
  };
  const from=envFromForm;
  envFromForm=function(){const e=from.apply(this,arguments),opt=el('eFixation')?.selectedOptions?.[0];if(fold(e.fixation)==='VARAO WAVE'){
-  e.waveLocation=opt?.dataset?.waveLocation||el('eWaveLocation')?.value||'PAREDE';
+  e.waveLocation=el('eWaveLocation')?.value||'PAREDE';
   const p=officialProductById(el('eRailProduct')?.value);if(p){e.railProductId=p.id;e.railProductName=p.product_name;e.railInternalCode=p.internal_code;e.fixColor=p.color;}
  }return e;};
  function installLocation(prefix, uf='PR',city='PONTA GROSSA'){
@@ -5267,5 +5072,39 @@ document.addEventListener('DOMContentLoaded',()=>{
   const holder=document.createElement('div');holder.style.display='contents';holder.innerHTML='<label class="field">UF<select id="mUf"></select></label><label class="field">Cidade<input id="mCidade" list="mCidadeLista" autocomplete="off"><datalist id="mCidadeLista"></datalist></label>';cep.after(holder);installLocation('m',c?.uf||'PR',c?.city||'PONTA GROSSA');
   const save=el('mClientSave'),prior=save?.onclick;if(save&&prior)save.onclick=function(...args){const uf=el('mUf')?.value||'PR',city=el('mCidade')?.value?.trim()||'PONTA GROSSA';if(!el('mCidade').checkValidity())return alert('Selecione uma cidade válida para a UF.');prior.apply(this,args);const client=db.clients.find(x=>fold(x.name)===fold(el('mClientName')?.value));if(client){client.uf=uf;client.city=city;client.address=[client.street,client.number,client.neighborhood,city,uf,client.cep,client.complement].filter(Boolean).join(', ');queueSave();}};
  };
- document.addEventListener('DOMContentLoaded',()=>{const s=el('eFixation');s?.addEventListener('change',()=>{if(fold(s.value)==='VARAO WAVE'){const loc=s.selectedOptions[0]?.dataset?.waveLocation;if(el('eWaveLocation'))el('eWaveLocation').value=loc||'PAREDE';}setTimeout(()=>{adjustWave();updatePreview()},0)});el('eFinishPleat')?.addEventListener('change',()=>setTimeout(adjustWave,0));adjustWave();});
+
+})();
+
+/* V12.8.17 — interface simples Wave + seleção de tubos compatíveis + UF persistente. */
+(function(){
+ const get=id=>document.getElementById(id);
+ const fold=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase();
+ const tubePleat=v=>['FRANZIDO COM ARGOLAS 19MM','FRANZIDO COM ARGOLAS 29MM','ILHÓS REDONDO','ILHÓS QUADRADO'].includes(String(v||''));
+ const oldWaveFix=v12RefreshFixations;
+ v12RefreshFixations=function(){const r=oldWaveFix.apply(this,arguments);refresh();return r;};
+ function refresh(){
+   const sel=get('eFixation'),loc=get('eWaveLocation'),wrap=get('eWaveLocationWrap');if(!sel)return;
+   const model=get('eModel')?.value||'COMPLETE';
+   const tube=(model!=='LINING'&&tubePleat(get('eFinishPleat')?.value))||(model!=='FINISH'&&tubePleat(get('eLiningPleat')?.value));
+   // Never offer rails to tube-based pleats. Keep the original stock-based tube selectors.
+   if(tube){sel.closest('#eFixationWrap')?.classList.add('hidden');if(wrap)wrap.style.display='none';if(loc)loc.disabled=true;return;}
+   const selection=sel.value;const options=[['TRILHO MOTORIZADO','TRILHO MOTORIZADO'],['TRILHO SUÍÇO','TRILHO SUÍÇO'],['VARÃO WAVE','VARÃO WAVE'],['VARÃO WAVE COM COMANDO POR CORDA','VARÃO WAVE COM COMANDO POR CORDA']];
+   const same=sel.options.length===options.length&&options.every((o,i)=>sel.options[i].value===o[1]&&sel.options[i].text===o[0]);
+   if(!same){sel.replaceChildren();for(const [text,value] of options)sel.add(new Option(text,value));sel.value=options.some(o=>o[1]===selection)?selection:'TRILHO SUÍÇO';}
+   const wave=fold(sel.value)==='VARAO WAVE'&&!quoteExcludeFixation;
+   if(wrap){wrap.classList.toggle('hidden',!wave);wrap.style.display=wave?'flex':'none';}
+   if(loc){loc.disabled=!wave;if(!['TETO','PAREDE'].includes(loc.value))loc.value='PAREDE';}
+   if(wave){const rail=get('eRailProductWrap'),product=get('eRailProduct');if(rail){rail.classList.remove('hidden');rail.style.display='';}if(product)product.disabled=false;}
+ }
+ const oldPreview=updatePreview;
+ updatePreview=function(){const r=oldPreview.apply(this,arguments);refresh();return r;};
+ const oldForm=envFromForm;
+ envFromForm=function(){const e=oldForm.apply(this,arguments);if(fold(e.fixation)==='VARAO WAVE')e.waveLocation=get('eWaveLocation')?.value||'PAREDE';return e;};
+ const oldLoad=loadEnvironmentForEdit;
+ loadEnvironmentForEdit=function(){const r=oldLoad.apply(this,arguments);refresh();return r;};
+ document.addEventListener('DOMContentLoaded',()=>{
+   const uf=get('qUf'),city=get('qCidade');if(uf&&!uf.options.length){for(const state of 'AC AL AP AM BA CE DF ES GO MA MG MS MT PA PB PE PI PR RJ RN RO RR RS SC SE SP TO'.split(' '))uf.add(new Option(state,state));uf.value='PR';}if(city&&!city.value)city.value='PONTA GROSSA';
+   for(const id of ['eFixation','eModel','eFinishPleat','eLiningPleat','eWaveLocation'])get(id)?.addEventListener('change',()=>{refresh();if(id==='eWaveLocation')updatePreview();});
+   refresh();
+ });
 })();
