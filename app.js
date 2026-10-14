@@ -194,6 +194,7 @@ function officialOrderRequirements(q){
       add(officialSliderProduct(e.fixColor),(e.finishPleat==='WAVE'?c.finishSliders:0)+(e.liningPleat==='WAVE'?c.liningSliders:0),e.name,'DESLIZANTE WAVE');
       add(officialWaveCord(e.fixColor),(Number(e.width||0)/100),e.name,'CORDÃO WAVE');
     }
+    if(c.entretelaQty){const ent=(priceProducts||[]).find(p=>Number(p.active??1)===1&&norm(p.product_name)==='ENTRETELA PARA ILHÓS');add(ent,c.entretelaQty,e.name,'ENTRETELA PARA ILHÓS');}
     if(c.finishAccessory?.qty)add(officialProductById(c.finishAccessory.productId),c.finishAccessory.qty,e.name,c.finishAccessory.name);
     if(c.liningAccessory?.qty)add(officialProductById(c.liningAccessory.productId),c.liningAccessory.qty,e.name,c.liningAccessory.name);
     if(String(e.fixation||'').startsWith('TUBO ')){
@@ -304,7 +305,7 @@ function suggestedInstallDate(baseDate=today()){const d=new Date(String(baseDate
 function installPrice(heightM,widthM){const h=Number(heightM||0),w=Number(widthM||0);const m=db.priceConfig?.installationMatrix||DEFAULT_PRICE_CONFIG.installationMatrix;const band=h<=Number(m.simple?.maxH??3.5)?m.simple:h<=Number(m.double?.maxH??5.5)?m.double:m.high;const key=w<=4?'up4':w<=5?'up5':'up6';return Number(band?.[key]||0)}
 async function ensureCordaoWaveOfficial(){return true}
 async function ensureV115Accessories(){if(!isGestor())return;try{await api('prices',{method:'POST',body:JSON.stringify({action:'SINCRONIZAR_V115_ACESSORIOS'})});const prices=await api('prices');priceProducts=Array.isArray(prices.products)?prices.products:priceProducts}catch(e){console.error('Falha ao sincronizar acessórios V11.5:',e)}}
-async function loadCloud(){try{cloud('Sincronizando...');const j=await api('data');db={...db,...j,priceConfig:mergeConfig(j.priceConfig)};db.wholesaleClients=db.wholesaleClients||[];db.wholesaleSales=db.wholesaleSales||[];db.auditLog=db.auditLog||[];db.attachments=db.attachments||[];db.customerFeedback=db.customerFeedback||[];db.discountApprovals=db.discountApprovals||[];db.userAlerts=db.userAlerts||[];db.blogPosts=db.blogPosts||[];db.settings=db.settings||{};let accessCodesAdded=false;if(isGestor()){for(const o of db.orders||[]){if(!/^\d{6}$/.test(String(o.clientAccessCode||''))){o.clientAccessCode=String(crypto.getRandomValues(new Uint32Array(1))[0]%1000000).padStart(6,'0');accessCodesAdded=true}}}const before=(db.products||[]).length;ensureInitialInventory();try{const prices=await api('prices');priceProducts=Array.isArray(prices.products)?prices.products:[];await ensureCordaoWaveOfficial();await ensureOfficialRailClaws();await ensureV115Accessories();await ensureV12BlackoutWide()}catch(e){priceProducts=[];console.error('Falha ao carregar price_products:',e)}cloud('Dados sincronizados na nuvem');renderAll();if((db.products||[]).length!==before||accessCodesAdded)queueSave()}catch(e){cloud('Sem conexão com a nuvem',true);alert(e.message)}}
+async function loadCloud(){try{cloud('Sincronizando...');const j=await api('data');db={...db,...j,priceConfig:mergeConfig(j.priceConfig)};db.wholesaleClients=db.wholesaleClients||[];db.wholesaleSales=db.wholesaleSales||[];db.auditLog=db.auditLog||[];db.attachments=db.attachments||[];db.customerFeedback=db.customerFeedback||[];db.discountApprovals=db.discountApprovals||[];db.userAlerts=db.userAlerts||[];db.blogPosts=db.blogPosts||[];db.settings=db.settings||{};let accessCodesAdded=false;if(isGestor()){for(const o of db.orders||[]){if(!/^\d{6}$/.test(String(o.clientAccessCode||''))){o.clientAccessCode=String(crypto.getRandomValues(new Uint32Array(1))[0]%1000000).padStart(6,'0');accessCodesAdded=true}}}const before=(db.products||[]).length;ensureInitialInventory();try{const prices=await api('prices');priceProducts=Array.isArray(prices.products)?prices.products:[];await ensureCordaoWaveOfficial();await ensureOfficialRailClaws();await ensureV115Accessories();await ensureV12BlackoutWide();await ensureEntretelaParaIlhos()}catch(e){priceProducts=[];console.error('Falha ao carregar price_products:',e)}cloud('Dados sincronizados na nuvem');renderAll();if((db.products||[]).length!==before||accessCodesAdded)queueSave()}catch(e){cloud('Sem conexão com a nuvem',true);alert(e.message)}}
 let saveTimer=null;function queueSave(){clearTimeout(saveTimer);saveTimer=setTimeout(saveCloud,250)}
 async function saveCloud(){if(!token)return;try{cloud('Salvando...');const j=await api('data',{method:'POST',body:JSON.stringify(db)});db.updatedAt=j.updatedAt;cloud('Dados salvos na nuvem')}catch(e){cloud('Falha ao salvar',true);alert('Não foi possível salvar: '+e.message)}}
 
@@ -422,13 +423,14 @@ function calcEnvironment(e){
     else if(pleat==='ILHÓS REDONDO'){name='ILHOS REDONDO';spacing=14;laborUnit=1.50;header=Number(calc.gathered||0)*9}
     else if(pleat==='ILHÓS QUADRADO'){name='ILHOS QUADRADO';spacing=14;laborUnit=1.50;header=Number(calc.gathered||0)*9}
     else return {qty:0,cost:0,name:'',labor:0};
-    let qty=Math.ceil(gatheredCm/spacing);if(qty%2)qty++;
+    let qty=Math.ceil((name.startsWith('ARGOLA')?Number(e.width||0):gatheredCm)/spacing);if(qty%2)qty++;
     const sku=officialProductByName(name,e.fixColor)||officialProductLike(name.split(' '),e.fixColor);
     return {qty,name,productId:sku?.id||null,unitPrice:Number(sku?.price_4x||0),cost:qty*Number(sku?.price_4x||0),labor:qty*laborUnit+header}
   };
   const finishAccessory=accessoryFor(e.finishPleat,finish),liningAccessory=accessoryFor(e.liningPleat,lining);
   const accessoryCost=finishAccessory.cost+liningAccessory.cost;
   const accessoryLabor=finishAccessory.labor+liningAccessory.labor;
+  if([e.finishPleat,e.liningPleat].some(p=>isTubePleat(p))){finishSliders=0;liningSliders=0;}
   const sliderCost=finishSliders*Number(db.priceConfig.sliders.finish||0)+liningSliders*Number(db.priceConfig.sliders.lining||0);
   const rawFixation=fixationCalc(e.fixation,w,e.model,leaves,e.fixColor,e.railProductId,e.supportMaterial);
   const rawInstall=installPrice(h,w);
@@ -436,10 +438,12 @@ function calcEnvironment(e){
   const fixation=excluded?{...rawFixation,total:0,hardwareBase:0,detail:'FIXAÇÃO EXCLUÍDA'}:rawFixation;
   const install=excluded?0:rawInstall;
   const laborTotal=sewingCost+finishPleat+liningPleat+customPleat+accessoryLabor+install;
-  const base4=(finish?.cost||0)+(lining?.cost||0)+sliderCost+accessoryCost+fixation.total+laborTotal;
+  const entretelaQty=finish&&['ILHÓS REDONDO','ILHÓS QUADRADO'].includes(e.finishPleat)?Number(finish.consumption||0):0;
+  const entretela=entretelaQty*2;
+  const base4=(finish?.cost||0)+(lining?.cost||0)+sliderCost+entretela+accessoryCost+fixation.total+laborTotal;
   const p18=base4*(1+Number(db.priceConfig.terms.p18AddPct||0)/100);
   const cash=base4*(1-Number(db.priceConfig.terms.cashDiscountPct||0)/100);
-  return {...e,finishCalc:finish,liningCalc:lining,lateral,bars,sewingMeters,sewingCost,finishPleat,liningPleat,sliderQtyPerLayer,finishSliders,liningSliders,sliderCost,finishAccessory,liningAccessory,accessoryCost,accessoryLabor,fixationCalc:fixation,installCost:install,laborTotal,base4,p18,cash,alerts:[finish?.mode==='ALTURA'?'ACABAMENTO POR ALTURA':'',lining?.mode==='ALTURA'?'FORRO POR ALTURA':'',finish?.pricePct?`LINHO SINTÉTICO +${finish.pricePct}%`:''].filter(Boolean)}
+  return {...e,finishCalc:finish,liningCalc:lining,lateral,bars,sewingMeters,sewingCost,finishPleat,liningPleat,sliderQtyPerLayer,finishSliders,liningSliders,sliderCost,entretelaQty,entretela,finishAccessory,liningAccessory,accessoryCost,accessoryLabor,fixationCalc:fixation,installCost:install,laborTotal,base4,p18,cash,alerts:[finish?.mode==='ALTURA'?'ACABAMENTO POR ALTURA':'',lining?.mode==='ALTURA'?'FORRO POR ALTURA':'',finish?.pricePct?`LINHO SINTÉTICO +${finish.pricePct}%`:''].filter(Boolean)}
 }
 function envFromForm(){
   applyPleatGatherRules();
@@ -767,6 +771,13 @@ function openBulkInventoryEditorV1257(){
   $('bulkInvConfirm1257').onclick=async()=>{const reason=$('bulkInvReason1257').value.trim(),changes=items.filter(p=>changed(Number(p.id))).map(p=>({id:Number(p.id),...draftRows.get(Number(p.id))}));if(!reason)return alert('Informe o motivo geral.');if(!changes.length)return alert('Nenhuma alteração para salvar.');if(!confirm(`Confirmar ${changes.length} alteração(ões) no estoque oficial?`))return;const btn=$('bulkInvConfirm1257');btn.disabled=true;try{await api('prices',{method:'POST',body:JSON.stringify({action:'EDITAR_LOTE',reason,items:changes})});closeModal();await reloadOfficialProducts();setupSelectors();alert('Alterações em massa aplicadas com sucesso.')}catch(e){alert(e.message)}finally{if(btn)btn.disabled=false}};
 }
 
+async function ensureEntretelaParaIlhos(){
+  if(!isGestor()||(priceProducts||[]).some(p=>Number(p.active??1)===1&&norm(p.product_name)==='ENTRETELA PARA ILHÓS'))return;
+  try{
+    await api('prices',{method:'POST',body:JSON.stringify({action:'CRIAR',supplier:'NOVA IMAGEM',category:'ACESSÓRIO',product_name:'ENTRETELA PARA ILHÓS',color:'SEM COR',unit:'M',stock_quantity:0,cost:0.60,markup_percent:233.3333333333})});
+    const r=await api('prices');priceProducts=Array.isArray(r.products)?r.products:priceProducts;
+  }catch(e){console.warn('Cadastro ENTRETELA PARA ILHÓS:',e.message)}
+}
 async function reloadOfficialProducts(){const prices=await api('prices');priceProducts=Array.isArray(prices.products)?prices.products:[];for(const id of [...selectedPriceProductIds])if(!priceProducts.some(p=>Number(p.id)===Number(id)&&Number(p.active??1)===1))selectedPriceProductIds.delete(id);renderProducts()}
 function renderProducts(){
  const tb=$('productsTable');if(!tb)return;const search=norm($('productSearch')?.value),cat=norm($('productCategoryFilter')?.value),sup=norm($('productSupplierFilter')?.value);tb.innerHTML='';
@@ -4816,4 +4827,41 @@ function payrollRows(competence){const h=hrData(),rows=[];for(const e of h.emplo
     sel.addEventListener('change',()=>{updatePreview()});
     syncWaveMount();
   });
+})();
+
+/* Homologação localização / tubo 08-10: campos adicionais, sem alterar matriz de compatibilidade. */
+(function(){
+ const UFS='AC AL AP AM BA CE DF ES GO MA MG MS MT PA PB PE PI PR RJ RN RO RR RS SC SE SP TO'.split(' ');
+ function syncWave(){
+   const kind=$('eFixation')?.value,box=$('eWaveMountWrap');
+   const fp=$('eFinishPleat')?.value||'',lp=$('eLiningPleat')?.value||'';
+   const tube=(typeof isTubePleat==='function')&&(isTubePleat(fp)||isTubePleat(lp));
+   if(box){box.classList.toggle('hidden',kind!=='VARÃO WAVE'||tube||!!quoteExcludeFixation);box.style.display=(kind==='VARÃO WAVE'&&!tube&&!quoteExcludeFixation)?'':'none'}
+   if(tube){$('eRailProductWrap')?.classList.add('hidden');$('eRailProductWrap').style.display='none'}
+   else if($('eRailProductWrap'))$('eRailProductWrap').style.display='';
+ }
+ function matchLiningColor(){
+   const fp=$('eFinishTube'),lp=$('eLiningTube');
+   if(!fp||!lp||fp.closest('.hidden')||lp.closest('.hidden'))return;
+   const f=officialProductById(fp.value);if(!f)return;
+   const wanted=(priceProducts||[]).find(p=>Number(p.active??1)===1&&norm(p.product_name)==='TUBO 19 MM'&&norm(p.color)===norm(f.color));
+   if(wanted&&[...lp.options].some(o=>o.value===String(wanted.id)))lp.value=String(wanted.id);
+ }
+ const oldRender=renderQuote;renderQuote=function(){oldRender();const u=$('qUf'),c=$('qCidade');if(u)u.value=(draft.uf||'PR');if(c)c.value=(draft.cidade||'PONTA GROSSA');syncWave();matchLiningColor();};
+ const oldSync=syncDraft;syncDraft=function(){oldSync();if($('qUf'))draft.uf=$('qUf').value||'PR';if($('qCidade'))draft.cidade=$('qCidade').value.trim()||'PONTA GROSSA';draft.address=[draft.street,draft.number,draft.neighborhood,draft.cep,draft.complement,draft.cidade,draft.uf].filter(Boolean).join(', ');};
+ const oldForm=envFromForm;envFromForm=function(){matchLiningColor();const e=oldForm();return e};
+ const oldUI=updateModelFields;updateModelFields=function(){oldUI();syncWave();matchLiningColor()};
+ const oldFix=v12RefreshFixations;v12RefreshFixations=function(){oldFix();syncWave();matchLiningColor()};
+ const oldUpsert=upsertClientFromQuote;upsertClientFromQuote=function(q){oldUpsert(q);const c=(db.clients||[]).find(x=>norm(x.name)===norm(q.client)&&norm(x.ownerUser||x.sellerUser||'')===norm(q.ownerUser||q.sellerUser||currentUsername()));if(c){c.uf=q.uf||'PR';c.cidade=q.cidade||'PONTA GROSSA'}};
+ document.addEventListener('DOMContentLoaded',()=>{
+   const u=$('qUf'),c=$('qCidade');if(u){u.innerHTML=UFS.map(x=>`<option value="${x}">${x}</option>`).join('');u.value='PR';u.addEventListener('change',syncDraft)}
+   if(c){c.value='PONTA GROSSA';c.addEventListener('input',syncDraft)}
+   $('qClient')?.addEventListener('change',()=>{const found=(db.clients||[]).find(x=>norm(x.name)===norm($('qClient').value));if(found){if(u)u.value=found.uf||'PR';if(c)c.value=found.cidade||'PONTA GROSSA';syncDraft()}});
+   $('eFinishTube')?.addEventListener('change',()=>{matchLiningColor();updatePreview()});
+   $('eFixation')?.addEventListener('change',syncWave);
+   $('eFinishPleat')?.addEventListener('change',syncWave);
+   $('eLiningPleat')?.addEventListener('change',syncWave);
+   $('eWaveMount')?.addEventListener('change',updatePreview);
+   syncWave();
+ });
 })();

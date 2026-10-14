@@ -16,7 +16,7 @@ function num(v,def=0){
 
 function isV115AccessoryName(name){
   const n=text(name).toUpperCase();
-  return n.startsWith('ARGOLA 19MM')||n.startsWith('ARGOLA 29MM')||n.startsWith('ILHOS QUADRADO')||n.startsWith('ILHOS REDONDO')||n.startsWith('SUPORTE 19MM PVC')||n.startsWith('SUPORTE 28MM PVC')||n.startsWith('SUPORTE 19/28 PVC')||n.startsWith('SUPORTE 28MM ALUMINIO')||n.startsWith('SUPORTE 19MM ALUMINIO')||n.startsWith('SUPORTE 19/28 ALUMINIO')||n.startsWith('TAMPA PARA TUBO EM ALUMINIO 28MM')||n.startsWith('TAMPA PARA TUBO EM ALUMINIO 19MM');
+  return n==='ENTRETELA PARA ILHÓS'||n.startsWith('ARGOLA 19MM')||n.startsWith('ARGOLA 29MM')||n.startsWith('ILHOS QUADRADO')||n.startsWith('ILHOS REDONDO')||n.startsWith('SUPORTE 19MM PVC')||n.startsWith('SUPORTE 28MM PVC')||n.startsWith('SUPORTE 19/28 PVC')||n.startsWith('SUPORTE 28MM ALUMINIO')||n.startsWith('SUPORTE 19MM ALUMINIO')||n.startsWith('SUPORTE 19/28 ALUMINIO')||n.startsWith('TAMPA PARA TUBO EM ALUMINIO 28MM')||n.startsWith('TAMPA PARA TUBO EM ALUMINIO 19MM');
 }
 function isSpecialPaymentProduct(name){
   const n=text(name).toUpperCase();
