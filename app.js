@@ -4765,3 +4765,55 @@ function payrollRows(competence){const h=hrData(),rows=[];for(const e of h.emplo
   };
 })();
 
+
+
+/* STRATECHNE — VARÃO WAVE: opção de montagem TETO/PAREDE.
+   Exclusivamente para VARÃO WAVE comum. Não altera regras de ILHÓS/ARGOLAS. */
+(function(){
+  const waveOnly=e=>String(e?.fixation||'')==='VARÃO WAVE';
+  const foldWave=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
+  const clawSku=()=>{
+    const all=(typeof priceProducts!=='undefined'&&priceProducts)||[];
+    return all.find(p=>Number(p.active??1)===1&&foldWave(p.product_name).includes('GARRA')&&foldWave(p.product_name).includes('VARAO')&&foldWave(p.product_name).includes('WAVE'))||null;
+  };
+  const oldEnvFromForm=envFromForm;
+  envFromForm=function(){const e=oldEnvFromForm();if(waveOnly(e))e.waveMount=$('eWaveMount')?.value||'PAREDE';return e;};
+  let waveContext=null;
+  const oldCalcEnvironment=calcEnvironment;
+  calcEnvironment=function(e){const prev=waveContext;waveContext=waveOnly(e)?e:null;try{return oldCalcEnvironment(e)}finally{waveContext=prev}};
+  const oldFixationCalc=fixationCalc;
+  fixationCalc=function(kind,widthM,model,leaves,fixColor,railProductId,supportMaterial){
+    const original=oldFixationCalc(kind,widthM,model,leaves,fixColor,railProductId,supportMaterial);
+    if(kind!=='VARÃO WAVE'||!waveContext||waveContext.waveMount!=='TETO'||waveContext.excludeFixation)return original;
+    const countPerRod=Math.max(2,Math.ceil(Number(widthM||0)/0.60));
+    const rods=model==='COMPLETE'?2:1;
+    const clamps=countPerRod*rods;
+    const sku=clawSku();
+    const unit=sku?Number(sku.price_4x||0):10;
+    const support=officialProductById(original.supportProductId)||officialProductByName('SUPORTE WAVE 28',original.railColor||fixColor);
+    const previousSupportCost=Number(original.supports||0)*Number(support?.price_4x||0);
+    const total=Number(original.total||0)-previousSupportCost+clamps*unit;
+    return {...original,total,hardwareBase:total,supports:0,clamps,clawProductId:sku?.id||null,
+      waveMount:'TETO',detail:String(original.detail||'').replace(/\s*•\s*\d+\s*suportes/i,'')+` • ${clamps} garras de teto (${countPerRod} por varão)`};
+  };
+  const oldRequirements=officialOrderRequirements;
+  officialOrderRequirements=function(q){
+    const base=oldRequirements(q);
+    for(const e of q?.environments||[]){
+      if(!waveOnly(e)||e.waveMount!=='TETO'||e.excludeFixation)continue;
+      const count=Math.max(2,Math.ceil((Number(e.width||0)/100)/.60))*(e.model==='COMPLETE'?2:1);
+      for(let i=base.length-1;i>=0;i--){const r=base[i];if(r.environment===e.name&&foldWave(r.product_name).includes('SUPORTE')&&foldWave(r.product_name).includes('WAVE'))base.splice(i,1)}
+      const p=clawSku();if(p)base.push({product_id:Number(p.id),internal_code:p.internal_code,product_name:p.product_name,color:p.color,unit:p.unit||'UN',qty:count,environment:e.name,environments:[e.name],source:'GARRA VARÃO WAVE - TETO',cost:Number(p.cost||0),markup_percent:Number(p.markup_percent||0),price_cash:Number(p.price_cash||0),price_4x:Number(p.price_4x||0),price_18x:Number(p.price_18x||0)});
+    }
+    return base;
+  };
+  const oldPreview=updatePreview;
+  updatePreview=function(){syncWaveMount();return oldPreview()};
+  function syncWaveMount(){const sel=$('eWaveMount'),box=$('eWaveMountWrap');if(box)box.classList.toggle('hidden',$('eFixation')?.value!=='VARÃO WAVE');}
+  document.addEventListener('DOMContentLoaded',()=>{
+    const fix=$('eFixation'),sel=$('eWaveMount');if(!fix||!sel)return;
+    fix.addEventListener('change',syncWaveMount);
+    sel.addEventListener('change',()=>{updatePreview()});
+    syncWaveMount();
+  });
+})();
