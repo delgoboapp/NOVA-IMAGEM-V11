@@ -12,12 +12,6 @@ const clone=o=>JSON.parse(JSON.stringify(o));
 const fmtDate=v=>{if(!v)return'-';const [y,m,d]=v.split('-');return y&&m&&d?`${d}/${m}/${y}`:v};
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 
-function nextProductCode(){
- const used=new Set((db?.products||[]).map(p=>String(p.code||'').toUpperCase()));
- let highest=0;for(const code of used){const m=code.match(/^NI-(\d+)$/);if(m)highest=Math.max(highest,Number(m[1]));}
- let n=highest+1;while(used.has('NI-'+String(n).padStart(4,'0')))n++;
- return 'NI-'+String(n).padStart(4,'0');
-}
 function nextQuoteNumber(){
   const nums=(db.quotes||[]).map(q=>Number(q.numero)||0);
   return Math.max(0,...nums)+1;
@@ -200,13 +194,12 @@ function officialOrderRequirements(q){
       add(officialSliderProduct(e.fixColor),(e.finishPleat==='WAVE'?c.finishSliders:0)+(e.liningPleat==='WAVE'?c.liningSliders:0),e.name,'DESLIZANTE WAVE');
       add(officialWaveCord(e.fixColor),(Number(e.width||0)/100),e.name,'CORDÃO WAVE');
     }
-    if(c.interlining?.qty){const interliningProduct=officialProductByName('ENTRETELA')||officialProductLike(['ENTRETELA']);add(interliningProduct,c.interlining.qty,e.name,'ENTRETELA ILHÓS ACABAMENTO');}
     if(c.finishAccessory?.qty)add(officialProductById(c.finishAccessory.productId),c.finishAccessory.qty,e.name,c.finishAccessory.name);
     if(c.liningAccessory?.qty)add(officialProductById(c.liningAccessory.productId),c.liningAccessory.qty,e.name,c.liningAccessory.name);
     if(String(e.fixation||'').startsWith('TUBO ')){
       if(Array.isArray(f.parts))f.parts.forEach(x=>add(officialProductById(x.productId),x.qty,e.name,x.name));else{add(officialProductById(f.supportProductId),f.supports,e.name,f.supportName||'SUPORTE');add(officialProductById(f.capProductId),f.ends,e.name,f.capName||'TAMPA PARA TUBO');}
     }else if(String(e.fixation||'').startsWith('VARÃO WAVE')){
-      if(e.waveLocation==='TETO'){const g=officialProductByName('GARRA PARA VARÃO WAVE')||officialProductLike(['GARRA','VARÃO','WAVE']);add(g,Math.max(2,Math.ceil(Number(e.width||0)/60))*(e.model==='COMPLETE'?2:1),e.name,'GARRAS VARÃO WAVE TETO')} else add(officialSupportProduct(e,f),f.supports,e.name,f.supportName||'SUPORTE');
+      add(officialSupportProduct(e,f),f.supports,e.name,f.supportName||'SUPORTE');
       add(officialProductByName('VARÃO WAVE 28',e.fixColor)||officialProductLike(['VARÃO','WAVE'],e.fixColor),f.meters,e.name,'VARÃO WAVE 28');
       add(officialProductLike(['TAMPA','VARÃO'],e.fixColor),f.ends,e.name,'TAMPA DE VARÃO WAVE');
     }else if(String(e.fixation||'').startsWith('TRILHO')){
@@ -311,7 +304,7 @@ function suggestedInstallDate(baseDate=today()){const d=new Date(String(baseDate
 function installPrice(heightM,widthM){const h=Number(heightM||0),w=Number(widthM||0);const m=db.priceConfig?.installationMatrix||DEFAULT_PRICE_CONFIG.installationMatrix;const band=h<=Number(m.simple?.maxH??3.5)?m.simple:h<=Number(m.double?.maxH??5.5)?m.double:m.high;const key=w<=4?'up4':w<=5?'up5':'up6';return Number(band?.[key]||0)}
 async function ensureCordaoWaveOfficial(){return true}
 async function ensureV115Accessories(){if(!isGestor())return;try{await api('prices',{method:'POST',body:JSON.stringify({action:'SINCRONIZAR_V115_ACESSORIOS'})});const prices=await api('prices');priceProducts=Array.isArray(prices.products)?prices.products:priceProducts}catch(e){console.error('Falha ao sincronizar acessórios V11.5:',e)}}
-async function loadCloud(){try{cloud('Sincronizando...');const j=await api('data');db={...db,...j,priceConfig:mergeConfig(j.priceConfig)};db.wholesaleClients=db.wholesaleClients||[];db.wholesaleSales=db.wholesaleSales||[];db.auditLog=db.auditLog||[];db.attachments=db.attachments||[];db.customerFeedback=db.customerFeedback||[];db.discountApprovals=db.discountApprovals||[];db.userAlerts=db.userAlerts||[];db.blogPosts=db.blogPosts||[];db.settings=db.settings||{};let accessCodesAdded=false;if(isGestor()){for(const o of db.orders||[]){if(!/^\d{6}$/.test(String(o.clientAccessCode||''))){o.clientAccessCode=String(crypto.getRandomValues(new Uint32Array(1))[0]%1000000).padStart(6,'0');accessCodesAdded=true}}}const before=(db.products||[]).length;ensureInitialInventory();try{const prices=await api('prices');priceProducts=Array.isArray(prices.products)?prices.products:[];await ensureCordaoWaveOfficial();await ensureOfficialRailClaws();await ensureV115Accessories();await ensureV12BlackoutWide();if(isGestor()){await api('prices',{method:'POST',body:JSON.stringify({action:'SINCRONIZAR_GARRA_VARAO_WAVE'})});try{await api('prices',{method:'POST',body:JSON.stringify({action:'APLICAR_INVENTARIO_WAVE_20261013'})})}catch(e){console.warn('Inventário Wave pendente de correspondência de SKUs:',e?.message||e)}const p=await api('prices');priceProducts=Array.isArray(p.products)?p.products:priceProducts}}catch(e){priceProducts=[];console.error('Falha ao carregar price_products:',e)}cloud('Dados sincronizados na nuvem');renderAll();if((db.products||[]).length!==before||accessCodesAdded)queueSave()}catch(e){cloud('Sem conexão com a nuvem',true);alert(e.message)}}
+async function loadCloud(){try{cloud('Sincronizando...');const j=await api('data');db={...db,...j,priceConfig:mergeConfig(j.priceConfig)};db.wholesaleClients=db.wholesaleClients||[];db.wholesaleSales=db.wholesaleSales||[];db.auditLog=db.auditLog||[];db.attachments=db.attachments||[];db.customerFeedback=db.customerFeedback||[];db.discountApprovals=db.discountApprovals||[];db.userAlerts=db.userAlerts||[];db.blogPosts=db.blogPosts||[];db.settings=db.settings||{};let accessCodesAdded=false;if(isGestor()){for(const o of db.orders||[]){if(!/^\d{6}$/.test(String(o.clientAccessCode||''))){o.clientAccessCode=String(crypto.getRandomValues(new Uint32Array(1))[0]%1000000).padStart(6,'0');accessCodesAdded=true}}}const before=(db.products||[]).length;ensureInitialInventory();try{const prices=await api('prices');priceProducts=Array.isArray(prices.products)?prices.products:[];await ensureCordaoWaveOfficial();await ensureOfficialRailClaws();await ensureV115Accessories();await ensureV12BlackoutWide()}catch(e){priceProducts=[];console.error('Falha ao carregar price_products:',e)}cloud('Dados sincronizados na nuvem');renderAll();if((db.products||[]).length!==before||accessCodesAdded)queueSave()}catch(e){cloud('Sem conexão com a nuvem',true);alert(e.message)}}
 let saveTimer=null;function queueSave(){clearTimeout(saveTimer);saveTimer=setTimeout(saveCloud,250)}
 async function saveCloud(){if(!token)return;try{cloud('Salvando...');const j=await api('data',{method:'POST',body:JSON.stringify(db)});db.updatedAt=j.updatedAt;cloud('Dados salvos na nuvem')}catch(e){cloud('Falha ao salvar',true);alert('Não foi possível salvar: '+e.message)}}
 
@@ -421,8 +414,6 @@ function calcEnvironment(e){
     else if(!finishUsesWave&&liningUsesWave){finishSliders=0;liningSliders=totalRounded}
     else{finishSliders=totalRounded/2;liningSliders=totalRounded/2}
   }
-  if(isTubePleat(e.finishPleat))finishSliders=0;
-  if(isTubePleat(e.liningPleat))liningSliders=0;
   const accessoryFor=(pleat,calc)=>{
     if(!calc)return {qty:0,cost:0,name:'',labor:0};
     const gatheredCm=Number(calc.gathered||0)*100;let name='',spacing=0,laborUnit=0,header=0;
@@ -441,17 +432,6 @@ function calcEnvironment(e){
   const sliderCost=finishSliders*Number(db.priceConfig.sliders.finish||0)+liningSliders*Number(db.priceConfig.sliders.lining||0);
   const rawFixation=fixationCalc(e.fixation,w,e.model,leaves,e.fixColor,e.railProductId,e.supportMaterial);
   const rawInstall=installPrice(h,w);
-  if(!e.excludeFixation && norm(e.fixation||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')==='VARAO WAVE' && e.waveLocation==='TETO'){
-    const layers=e.model==='COMPLETE'?2:1,metres=Number(e.width||0)/100*layers,qty=Math.max(2,Math.ceil(Number(e.width||0)/60))*layers;
-    const grab=officialProductByName('GARRA PARA VARÃO WAVE')||officialProductLike(['GARRA','VARÃO','WAVE']);
-    const rod=officialProductByName('VARÃO WAVE 28',e.fixColor)||officialProductLike(['VARÃO','WAVE'],e.fixColor);
-    const cap=officialProductLike(['TAMPA','VARÃO'],e.fixColor);
-    const price=(n,fallback=0)=>Number(n?.price_4x??fallback);
-    rawFixation.total=metres*price(rod,Number(db.priceConfig.wave?.rodPerMeter||0))+qty*price(grab,10)+layers*2*price(cap,Number(db.priceConfig.wave?.end||0));
-    rawFixation.supports=0;rawFixation.meters=metres;rawFixation.ends=layers*2;
-    rawFixation.claws=qty;
-    rawFixation.detail=`VARÃO NO TETO • ${qty} garras • ${metres.toFixed(2)} m • ${layers*2} tampas`;
-  }
   const excluded=!!e.excludeFixation;
   const fixation=excluded?{...rawFixation,total:0,hardwareBase:0,detail:'FIXAÇÃO EXCLUÍDA'}:rawFixation;
   const install=excluded?0:rawInstall;
@@ -470,7 +450,7 @@ function envFromForm(){
     model:$('eModel').value,finish,finishColor,finishProductId:finishSku?.id||null,finishInternalCode:finishSku?.internal_code||'',finishOfficialName:finishSku?.product_name||'',
     lining,liningColor,liningProductId:liningSku?.id||null,liningInternalCode:liningSku?.internal_code||'',liningOfficialName:liningSku?.product_name||'',
     finishPleat:$('eFinishPleat').value,finishGather:$('eFinishGather').value,liningPleat:$('eLiningPleat').value,liningGather:$('eLiningGather').value,
-    fixation:$('eFixation').value, waveLocation:norm($('eFixation')?.value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes('VARAO WAVE')?($('eWaveLocation')?.value||'PAREDE'):'PAREDE',measureMode:$('eMeasureMode')?.value||'DAR DESCONTO',
+    fixation:$('eFixation').value,
     fixColor:$('eFixation').value==='TRILHO SUÍÇO'?(officialProductById($('eRailProduct')?.value)?.color||''):$('eFixColor').value,
     railProductId:$('eFixation').value==='TRILHO SUÍÇO'?Number($('eRailProduct')?.value||0)||null:null,
     railInternalCode:$('eFixation').value==='TRILHO SUÍÇO'?(officialProductById($('eRailProduct')?.value)?.internal_code||''):'',
@@ -484,11 +464,11 @@ function updatePreview(){
   if(!e.name||!e.width||!e.height){$('calcPreview').innerHTML='Preencha ambiente, medidas e configuração para visualizar o cálculo.';return}
   const c=calcEnvironment(e);if(!c)return;
   const f=c.finishCalc,l=c.liningCalc;
-  $('calcPreview').innerHTML=`<strong>${esc(e.name)}</strong>${e.waveLocation==='TETO' && norm(e.fixation).normalize('NFD').replace(/[\u0300-\u036f]/g,'')==='VARAO WAVE'?'<br><span class="badge warn">VARÃO NO TETO</span>':''}<br><span class="badge blue">${esc(e.measureMode||'DAR DESCONTO')}</span>${c.alerts.length?` <span class="badge warn">${esc(c.alerts.join(' • '))}</span>`:''}${e.excludeFixation?' <span class="badge warn">FIXAÇÃO EXCLUÍDA</span>':''}<div class="detail-list"><div class="detail-item"><span>Acabamento</span><strong>${f?`${f.consumption.toFixed(2)}m • ${money(f.cost)}`:'—'}</strong></div><div class="detail-item"><span>Forro</span><strong>${l?`${l.consumption.toFixed(2)}m • ${money(l.cost)}`:'—'}</strong></div><div class="detail-item"><span>Costura</span><strong>${c.sewingMeters.toFixed(2)}m • ${money(c.sewingCost)}</strong></div><div class="detail-item"><span>Deslizantes</span><strong>${c.finishSliders+c.liningSliders} un • ${money(c.sliderCost)}</strong></div><div class="detail-item"><span>Fixação</span><strong>${e.excludeFixation?'EXCLUÍDA':money(c.fixationCalc.total)}</strong></div><div class="detail-item"><span>Mão de obra total</span><strong>${money(c.laborTotal)}</strong></div></div><div class="price-strip"><div class="price-box"><span>18x</span><strong>${money(c.p18)}</strong></div><div class="price-box"><span>4x</span><strong>${money(c.base4)}</strong></div><div class="price-box"><span>À vista</span><strong>${money(c.cash)}</strong></div><div class="price-box"><span>Fixação</span><strong>${esc(c.fixationCalc.detail)}</strong></div></div>`
+  $('calcPreview').innerHTML=`<strong>${esc(e.name)}</strong>${c.alerts.length?` <span class="badge warn">${esc(c.alerts.join(' • '))}</span>`:''}${e.excludeFixation?' <span class="badge warn">FIXAÇÃO EXCLUÍDA</span>':''}<div class="detail-list"><div class="detail-item"><span>Acabamento</span><strong>${f?`${f.consumption.toFixed(2)}m • ${money(f.cost)}`:'—'}</strong></div><div class="detail-item"><span>Forro</span><strong>${l?`${l.consumption.toFixed(2)}m • ${money(l.cost)}`:'—'}</strong></div><div class="detail-item"><span>Costura</span><strong>${c.sewingMeters.toFixed(2)}m • ${money(c.sewingCost)}</strong></div><div class="detail-item"><span>Deslizantes</span><strong>${c.finishSliders+c.liningSliders} un • ${money(c.sliderCost)}</strong></div><div class="detail-item"><span>Fixação</span><strong>${e.excludeFixation?'EXCLUÍDA':money(c.fixationCalc.total)}</strong></div><div class="detail-item"><span>Mão de obra total</span><strong>${money(c.laborTotal)}</strong></div></div><div class="price-strip"><div class="price-box"><span>18x</span><strong>${money(c.p18)}</strong></div><div class="price-box"><span>4x</span><strong>${money(c.base4)}</strong></div><div class="price-box"><span>À vista</span><strong>${money(c.cash)}</strong></div><div class="price-box"><span>Fixação</span><strong>${esc(c.fixationCalc.detail)}</strong></div></div>`
 }
 function clearEnv(){
   ['eName','eWidth','eHeight','eNotes'].forEach(id=>$(id).value='');
-  $('eCustomPleat').value=0;if($('eWaveLocation'))$('eWaveLocation').value='PAREDE';if($('eMeasureMode'))$('eMeasureMode').value='DAR DESCONTO';
+  $('eCustomPleat').value=0;
   quoteEditingEnvironmentId=null;
   quoteExcludeFixation=false;
   if($('addEnvBtn'))$('addEnvBtn').textContent='+ Adicionar ambiente';
@@ -497,7 +477,6 @@ function clearEnv(){
 }
 
 function applyEnvironmentFixationUI(){
-  const wave=$('eWaveLocationWrap');if(wave)wave.style.display=!quoteExcludeFixation && norm($('eFixation')?.value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')==='VARAO WAVE'?'':'none';
   const ids=['eFixationWrap','eRailProductWrap','eFixColorWrap','eSupportMaterialWrap','eFinishTubeWrap','eLiningTubeWrap','eMotorAngleWrap'];
   ids.forEach(id=>{
     const el=$(id);if(!el)return;
@@ -518,13 +497,13 @@ function loadEnvironmentForEdit(e){
   quoteExcludeFixation=!!e.excludeFixation;
   const set=(id,v)=>{const el=$(id);if(el&&v!==undefined&&v!==null)el.value=String(v)};
   set('eModel',e.model);try{updateModelFields()}catch(_){}
-  set('eName',e.name);set('eWidth',e.width);set('eHeight',e.height);set('eLeaves',e.leaves);set('eWaveLocation',e.waveLocation||'PAREDE');set('eMeasureMode',e.measureMode||'DAR DESCONTO');
+  set('eName',e.name);set('eWidth',e.width);set('eHeight',e.height);set('eLeaves',e.leaves);
   set('eFinish',e.finish);try{refreshFinishColors()}catch(_){}set('eFinishColor',e.finishColor);set('eFinishPleat',e.finishPleat);set('eFinishGather',e.finishGather);
   set('eLining',e.lining);try{refreshLiningColors()}catch(_){}set('eLiningColor',e.liningColor);set('eLiningPleat',e.liningPleat);set('eLiningGather',e.liningGather);
   const fx=(e.excludeFixation&&e.excludedFixationSnapshot)?e.excludedFixationSnapshot:e;
   set('eFixation',fx.fixation||'TRILHO SUÍÇO');try{refreshFixColors()}catch(_){};try{typeof v12RefreshFixations==='function'&&v12RefreshFixations()}catch(_){}
   set('eRailProduct',fx.railProductId||'');set('eFixColor',fx.fixColor||'');set('eSupportMaterial',fx.supportMaterial||'ALUMINIO');
-  set('eFinishBar',(e.finishBar==='BARRA TOMA'?'BARRA TOMA':e.finishBar)||'BARRA SIMPLES');set('eSoutacheColor',e.soutacheColor||'');set('eCustomPleat',e.customPleat||0);set('eNotes',e.notes||'');
+  set('eFinishBar',e.finishBar||'BARRA SIMPLES');set('eSoutacheColor',e.soutacheColor||'');set('eCustomPleat',e.customPleat||0);set('eNotes',e.notes||'');
   if($('eAngle')){$('eAngle').checked=!!e.angle;try{$('eAngle').dispatchEvent(new Event('change',{bubbles:true}))}catch(_){}}
   set('eAngleA',e.angleA||'');set('eAngleAHeight',e.angleAHeight||'');set('eAngleB',e.angleB||'');set('eAngleBHeight',e.angleBHeight||'');set('eMotorAngleMode',e.motorAngleMode||'CURVA');
   if($('addEnvBtn'))$('addEnvBtn').textContent='SALVAR EDIÇÕES';
@@ -546,7 +525,7 @@ function renderQuote(){
     tr.innerHTML=`<td><strong>${esc(e.name)}</strong>${c.alerts.length?`<br><span class="badge warn">${esc(c.alerts.join(' • '))}</span>`:''}${e.excludeFixation?'<br><span class="badge warn">FIXAÇÃO EXCLUÍDA</span>':''}</td><td>${e.width} × ${e.height} cm<br>${Math.max(0,Number(e.leaves||1)-1)} abertura(s)</td><td>${e.model==='COMPLETE'?'Cortina completa':e.model==='LINING'?'Apenas forro':'Apenas acabamento'}</td><td>${c.finishCalc?`${esc(e.finish)}<br>${esc(e.finishColor)} • ${e.finishPleat} ${e.finishGather}:1`:'—'}</td><td>${c.liningCalc?`${esc(e.lining)}<br>${esc(e.liningColor)} • ${e.liningPleat} ${e.liningGather}:1`:'—'}</td><td>${e.excludeFixation?'SEM FIXAÇÃO / SEM INSTALAÇÃO':`${esc(e.fixation)}<br>${esc(e.fixColor)}`}</td><td>${money(c.laborTotal)}</td><td>${money(c.p18*pm)}</td><td>${money(c.base4*pm)}</td><td>${money(c.cash*pm)}</td><td class="no-print"><button class="btn secondary" data-edit-env="${e.id}">Editar</button> <button class="btn danger" data-del-env="${e.id}">Excluir</button></td>`;
     tbody.appendChild(tr)
   }
-  for(const b of draft.blinds||[]){const qty=Number(b.qty||1),alerts=(b.alerts||[]),validation=b.validationRequired!==false?(b.validationText||'NECESSITA SER VALIDADO JUNTO À FÁBRICA ANTES DE CONFIRMAR O VALOR!'):'';const tr=document.createElement('tr');tr.className='blind-row';tr.innerHTML=`<td><strong>${esc(b.environment||'PERSIANA')}</strong><br><span class="badge blue">PERSIANA</span>${validation?`<br><span class="badge warn">${esc(validation)}</span>`:''}${alerts.length?`<br><span class="badge warn">${esc(alerts.join(' • '))}</span>`:''}</td><td>${b.width} × ${b.height} cm<br>${qty} un.</td><td>Persiana</td><td>${esc(b.model)}<br>${esc(b.color||'-')}</td><td>—</td><td>${esc(b.commandSide||'-')}${b.bando?`<br>Barra/Bandô: ${esc(b.bando)}`:''}</td><td>—</td><td>${money(Number(b.p18||0)*qty)}</td><td>${money(Number(b.p4||0)*qty)}</td><td>${money(Number(b.cash||0)*qty)}</td><td class="no-print"><button class="btn danger" data-del-blind="${b.id}">Excluir</button></td>`;tbody.appendChild(tr)}
+  for(const b of draft.blinds||[]){const qty=Number(b.qty||1);const tr=document.createElement('tr');tr.className='blind-row';tr.innerHTML=`<td><strong>${esc(b.environment||'PERSIANA')}</strong><br><span class="badge blue">PERSIANA</span></td><td>${b.width} × ${b.height} cm<br>${qty} un.</td><td>Persiana</td><td>${esc(b.model)}<br>${esc(b.color||'-')}</td><td>—</td><td>${esc(b.commandSide||'-')}${b.bando?`<br>Bandô: ${esc(b.bando)}`:''}</td><td>—</td><td>${money(Number(b.p18||0)*qty)}</td><td>${money(Number(b.p4||0)*qty)}</td><td>${money(Number(b.cash||0)*qty)}</td><td class="no-print"><button class="btn danger" data-del-blind="${b.id}">Excluir</button></td>`;tbody.appendChild(tr)}
   for(const a of draft.looseProducts||[]){const qty=Number(a.qty||1),tr=document.createElement('tr');tr.className='loose-row';tr.innerHTML=`<td><strong>${esc(a.description||a.name)}</strong><br><span class="badge blue">${a.stockManaged===false?'FORA DE ESTOQUE':'PRODUTO AVULSO'}</span></td><td>${qty} ${esc(a.unit||'UN')}</td><td>${esc(a.type||'')}</td><td>${esc(a.name)}<br>${esc(a.color||'')}</td><td>—</td><td>${a.priceOverride?`Preço ajustado<br><small>${esc(a.priceReason||'')}</small>`:'Preço padrão'}</td><td>—</td><td>${money(Number(a.p18||0)*qty)}</td><td>${money(Number(a.p4||0)*qty)}</td><td>${money(Number(a.cash||0)*qty)}</td><td class="no-print"><button class="btn danger" data-del-loose="${a.id}">Excluir</button></td>`;tbody.appendChild(tr)}
   const t=quoteTotals(draft);$('qCount').textContent=(draft.environments?.length||0)+(draft.blinds?.length||0)+(draft.looseProducts?.length||0);$('q18').textContent=money(t.p18);$('q4').textContent=money(t.p4);$('qCash').textContent=money(t.cash);$('sumLabor').textContent=money(labor);$('sum18').textContent=money(t.p18);$('sum4').textContent=money(t.p4);$('sumCash').textContent=money(t.cash);
   document.querySelectorAll('[data-edit-env]').forEach(b=>b.onclick=()=>{const e=(draft.environments||[]).find(x=>String(x.id)===String(b.dataset.editEnv));if(e)loadEnvironmentForEdit(e)});
@@ -563,7 +542,7 @@ function quoteTotals(q){const raw=quoteRawTotalsV1257(q),fixed=(q.discountMode||
 function saveQuote(print=false){syncDraft();draft.partnerMarkupPercent=partnerMarkupPercent(draft.sellerUser||currentUsername());if(!draft.client)return alert('Informe o cliente.');if(!draft.numero)draft.numero=nextQuoteNumber();if(!draft.environments.length&&!(draft.blinds||[]).length&&!(draft.looseProducts||[]).length)return alert('Adicione pelo menos um ambiente, persiana ou produto avulso.');if((Number(draft.discountPercent||0)>0||Number(draft.discountAmount||0)>0)&&!draft.discountReason)return alert('Informe a justificativa do desconto.');const existing=db.quotes.findIndex(q=>Number(q.numero)===Number(draft.numero));const q={...clone(draft),ownerUser:draft.sellerUser||currentUsername(),sellerUser:draft.sellerUser||currentUsername(),seller:sellerName(draft.sellerUser||currentUsername()),createdAt:existing>=0?db.quotes[existing].createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),status:db.quotes[existing]?.status||'ORÇAMENTO'};if(existing>=0)db.quotes[existing]=q;else db.quotes.unshift(q);upsertClientFromQuote(q);queueSave();renderAll();$('quoteStatus').textContent=`Orçamento ${String(q.numero).padStart(6,'0')} salvo.`;if(print)printQuote(q,'summary')}
 function resetQuote(){if(!confirm('Zerar todos os dados do orçamento atual?'))return;draft={numero:null,client:'',date:today(),address:'',street:'',number:'',complement:'',neighborhood:'',cep:'',document:'',contact:'',seller:sellerName(currentUser?.username),sellerUser:currentUsername(),travel:0,discountPercent:0,discountMode:'percent',discountAmount:0,discountReason:'',environments:[],blinds:[],looseProducts:[]};renderQuote();clearEnv()}
 function upsertClientFromQuote(q){const key=norm(q.client);let c=db.clients.find(x=>norm(x.name)===key);const data={address:q.address,document:q.document||'',contact:q.contact||'',street:q.street||'',number:q.number||'',complement:q.complement||'',neighborhood:q.neighborhood||'',cep:q.cep||'',addressStructured:!!(q.street||q.number||q.neighborhood||q.cep||q.complement),lastSeller:q.seller,updatedAt:new Date().toISOString()};if(c)Object.assign(c,data);else db.clients.unshift({id:uid(),name:q.client,...data,createdAt:new Date().toISOString()})}
-function printQuote(q,type='summary'){const t=quoteTotals(q),detailed=type==='detail';let rows='';for(const e of q.environments||[]){const c=calcEnvironment(e);if(!c)continue;rows+=`<tr><td><strong>${esc(e.name)}</strong><br><small>${esc(e.measureMode||'DAR DESCONTO')}${e.waveLocation==='TETO'&&norm(e.fixation).normalize('NFD').replace(/[\u0300-\u036f]/g,'')==='VARAO WAVE'?' • VARÃO NO TETO':''}</small>${detailed&&e.notes?`<br><small>${esc(e.notes)}</small>`:''}</td><td>${e.width} × ${e.height} cm<br>${Math.max(0,Number(e.leaves||1)-1)} abertura(s)</td><td>${esc(e.model==='COMPLETE'?'CORTINA COMPLETA':e.model==='LINING'?'APENAS FORRO':'APENAS ACABAMENTO')}</td><td>${c.finishCalc?esc(e.finish+' '+(e.finishColor||'')):'—'}</td><td>${c.liningCalc?esc(e.lining+' '+(e.liningColor||'')):'—'}</td><td>${esc(e.fixation||'-')}<br>${esc(e.fixColor||'')}</td><td>${money(c.labor)}</td><td>${money(c.p18)}</td><td>${money(c.base4)}</td><td>${money(c.cash)}</td></tr>`}for(const x of q.blinds||[]){const qty=Number(x.qty||1),validation=x.validationRequired!==false?(x.validationText||'NECESSITA SER VALIDADO JUNTO À FÁBRICA ANTES DE CONFIRMAR O VALOR!'):'';rows+=`<tr><td><strong>${esc(x.environment||'PERSIANA')}</strong>${validation?`<br><small style="color:#9b5d00;font-weight:700">${esc(validation)}</small>`:''}${x.alerts?.length?`<br><small>${esc(x.alerts.join(' • '))}</small>`:''}</td><td>${x.width} × ${x.height} cm<br>${qty} un.</td><td>PERSIANA</td><td>${esc(x.model||'-')} ${esc(x.color||'')}</td><td>—</td><td>${esc(x.commandSide||'-')}${x.bando?`<br>${esc(x.bando)}`:''}</td><td>—</td><td>${money(Number(x.p18||0)*qty)}</td><td>${money(Number(x.p4||0)*qty)}</td><td>${money(Number(x.cash||0)*qty)}</td></tr>`}if(Number(q.travel||0)>0)rows+=`<tr><td><strong>DESLOCAMENTO</strong></td><td colspan="5">Atendimento / instalação fora da praça</td><td>—</td><td>${money(Number(q.travel)*(1+db.priceConfig.terms.p18AddPct/100))}</td><td>${money(q.travel)}</td><td>${money(Number(q.travel)*(1-db.priceConfig.terms.cashDiscountPct/100))}</td></tr>`;const html=`<div class="quote-client-head"><div class="quote-brand"><img src="${location.origin}/icon-512.png"><div><h2>ORÇAMENTO Nº ${String(q.numero).padStart(6,'0')}</h2><strong>${detailed?'DETALHADO':'RESUMIDO'}</strong></div></div><div class="quote-date"><small>Data</small><div>${fmtDate(q.date)}</div></div></div><div class="section-title">▪ &nbsp; Dados do cliente</div><div class="client-grid"><div><small>Cliente</small><strong>${esc(q.client||'-')}</strong></div><div><small>Contato</small><strong>${esc(q.contact||'-')}</strong></div><div><small>Endereço</small><strong>${esc(q.address||'-')}</strong></div><div><small>Vendedor</small><strong>${esc(q.seller||'-')}</strong></div></div><div class="section-title">▪ &nbsp; Resumo do orçamento</div><table class="client-quote"><thead><tr><th>AMBIENTE</th><th>MEDIDAS</th><th>MODELO</th><th>TECIDO ACABAMENTO</th><th>FORRO</th><th>FIXAÇÃO</th><th>MÃO DE OBRA TOTAL</th><th>18X</th><th>4X</th><th>À VISTA</th></tr></thead><tbody>${rows}<tr class="total-row"><th colspan="6">TOTAL</th><th>${money((q.environments||[]).reduce((a,e)=>a+(calcEnvironment(e)?.labor||0),0))}</th><th>${money(t.p18)}</th><th>${money(t.p4)}</th><th>${money(t.cash)}</th></tr></tbody></table>${(Number(q.discountPercent||0)>0||Number(q.discountAmount||0)>0)?`<p><strong>Desconto aplicado:</strong> ${q.discountMode==='fixed'?money(q.discountAmount):Number(q.discountPercent||0).toFixed(2)+'%'} • ${esc(q.discountReason||'')}</p>`:''}<div class="section-title">▪ &nbsp; Condições</div><ol class="conditions"><li>Validade do orçamento: 5 dias.</li><li>Medidas, tecidos, cores e fixações devem ser conferidos antes da ordem de produção.</li><li>Prazo sugerido para a instalação de 30 dias, devendo ser agendado no pedido.</li></ol>`;printWindow(html)}
+function printQuote(q,type='summary'){const t=quoteTotals(q),detailed=type==='detail';let rows='';for(const e of q.environments||[]){const c=calcEnvironment(e);if(!c)continue;rows+=`<tr><td><strong>${esc(e.name)}</strong>${detailed&&e.notes?`<br><small>${esc(e.notes)}</small>`:''}</td><td>${e.width} × ${e.height} cm<br>${Math.max(0,Number(e.leaves||1)-1)} abertura(s)</td><td>${esc(e.model==='COMPLETE'?'CORTINA COMPLETA':e.model==='LINING'?'APENAS FORRO':'APENAS ACABAMENTO')}</td><td>${c.finishCalc?esc(e.finish+' '+(e.finishColor||'')):'—'}</td><td>${c.liningCalc?esc(e.lining+' '+(e.liningColor||'')):'—'}</td><td>${esc(e.fixation||'-')}<br>${esc(e.fixColor||'')}</td><td>${money(c.labor)}</td><td>${money(c.p18)}</td><td>${money(c.base4)}</td><td>${money(c.cash)}</td></tr>`}for(const x of q.blinds||[]){const qty=Number(x.qty||1);rows+=`<tr><td><strong>${esc(x.environment||'PERSIANA')}</strong></td><td>${x.width} × ${x.height} cm<br>${qty} un.</td><td>PERSIANA</td><td>${esc(x.model||'-')} ${esc(x.color||'')}</td><td>—</td><td>${esc(x.commandSide||'-')}</td><td>—</td><td>${money(Number(x.p18||0)*qty)}</td><td>${money(Number(x.p4||0)*qty)}</td><td>${money(Number(x.cash||0)*qty)}</td></tr>`}if(Number(q.travel||0)>0)rows+=`<tr><td><strong>DESLOCAMENTO</strong></td><td colspan="5">Atendimento / instalação fora da praça</td><td>—</td><td>${money(Number(q.travel)*(1+db.priceConfig.terms.p18AddPct/100))}</td><td>${money(q.travel)}</td><td>${money(Number(q.travel)*(1-db.priceConfig.terms.cashDiscountPct/100))}</td></tr>`;const html=`<div class="quote-client-head"><div class="quote-brand"><img src="${location.origin}/icon-512.png"><div><h2>ORÇAMENTO Nº ${String(q.numero).padStart(6,'0')}</h2><strong>${detailed?'DETALHADO':'RESUMIDO'}</strong></div></div><div class="quote-date"><small>Data</small><div>${fmtDate(q.date)}</div></div></div><div class="section-title">▪ &nbsp; Dados do cliente</div><div class="client-grid"><div><small>Cliente</small><strong>${esc(q.client||'-')}</strong></div><div><small>Contato</small><strong>${esc(q.contact||'-')}</strong></div><div><small>Endereço</small><strong>${esc(q.address||'-')}</strong></div><div><small>Vendedor</small><strong>${esc(q.seller||'-')}</strong></div></div><div class="section-title">▪ &nbsp; Resumo do orçamento</div><table class="client-quote"><thead><tr><th>AMBIENTE</th><th>MEDIDAS</th><th>MODELO</th><th>TECIDO ACABAMENTO</th><th>FORRO</th><th>FIXAÇÃO</th><th>MÃO DE OBRA TOTAL</th><th>18X</th><th>4X</th><th>À VISTA</th></tr></thead><tbody>${rows}<tr class="total-row"><th colspan="6">TOTAL</th><th>${money((q.environments||[]).reduce((a,e)=>a+(calcEnvironment(e)?.labor||0),0))}</th><th>${money(t.p18)}</th><th>${money(t.p4)}</th><th>${money(t.cash)}</th></tr></tbody></table>${(Number(q.discountPercent||0)>0||Number(q.discountAmount||0)>0)?`<p><strong>Desconto aplicado:</strong> ${q.discountMode==='fixed'?money(q.discountAmount):Number(q.discountPercent||0).toFixed(2)+'%'} • ${esc(q.discountReason||'')}</p>`:''}<div class="section-title">▪ &nbsp; Condições</div><ol class="conditions"><li>Validade do orçamento: 5 dias.</li><li>Medidas, tecidos, cores e fixações devem ser conferidos antes da ordem de produção.</li><li>Prazo sugerido para a instalação de 30 dias, devendo ser agendado no pedido.</li></ol>`;printWindow(html)}
 
 function renderQuotes(){const tb=$('quotesTable');if(!tb)return;const q=norm($('quoteSearch')?.value);const converted=new Set(db.orders.map(o=>Number(o.quoteNumber)));tb.innerHTML='';for(const x of db.quotes.filter(canSeeQuote).filter(x=>!q||norm(`${x.numero} ${x.client} ${displaySeller(x)}`).includes(q))){const t=quoteTotals(x),conv=converted.has(Number(x.numero));const tr=document.createElement('tr');tr.innerHTML=`<td>${String(x.numero).padStart(6,'0')}</td><td>${fmtDate(x.date)}</td><td>${esc(x.client)}</td><td>${esc(displaySeller(x))}</td><td>${(x.environments?.length||0)+(x.blinds?.length||0)+(x.looseProducts?.length||0)}</td><td>${money(t.cash)}</td><td><span class="badge ${conv?'blue':'ok'}">${conv?'PEDIDO':'ORÇAMENTO'}</span></td><td><div class="actions"><button class="btn ghost" data-q-load="${x.numero}">Abrir</button><button class="btn ghost" data-q-print="${x.numero}">PDF</button>${conv?`<button class="btn danger" data-q-revert="${x.numero}">Reverter</button>`:`<button class="btn primary" data-q-convert="${x.numero}">Converter</button>`}${isGestor()?`<button class="btn danger" data-q-delete="${x.numero}">Excluir</button>`:''}</div></td>`;tb.appendChild(tr)}bindQuoteActions()}
 function bindQuoteActions(){document.querySelectorAll('[data-q-load]').forEach(b=>b.onclick=()=>{const q=db.quotes.find(x=>Number(x.numero)===Number(b.dataset.qLoad));if(q){draft=clone(q);quoteEditingEnvironmentId=null;quoteExcludeFixation=false;renderQuote();clearEnv();setView('quote')}});document.querySelectorAll('[data-q-print]').forEach(b=>b.onclick=()=>{const q=db.quotes.find(x=>Number(x.numero)===Number(b.dataset.qPrint));if(q)openPrintChoice(q)});document.querySelectorAll('[data-q-convert]').forEach(b=>b.onclick=()=>convertQuote(Number(b.dataset.qConvert)));document.querySelectorAll('[data-q-revert]').forEach(b=>b.onclick=()=>revertQuote(Number(b.dataset.qRevert)));document.querySelectorAll('[data-q-delete]').forEach(b=>b.onclick=()=>deleteQuote(Number(b.dataset.qDelete)))}
@@ -701,7 +680,7 @@ function orderTimeline(o){const ev=[...(o.timeline||[])];if(o.createdAt&&!ev.som
 function openTimeline(n){const o=db.orders.find(x=>Number(x.numero)===Number(n));if(!o)return;const rows=orderTimeline(o).map(x=>`<tr><td>${new Date(x.at).toLocaleString('pt-BR')}</td><td><strong>${esc(x.type)}</strong></td><td>${esc(x.detail||'-')}</td><td>${esc(x.by||'-')}</td></tr>`).join('');openModal(`<h2>Linha do tempo • Pedido ${String(o.numero).padStart(6,'0')}</h2><div class="table-wrap"><table class="table"><tr><th>Data / hora</th><th>Evento</th><th>Detalhe</th><th>Usuário</th></tr>${rows||'<tr><td colspan="4">Sem eventos.</td></tr>'}</table></div>`)}
 function audit(area,action,reference='',detail=''){db.auditLog=db.auditLog||[];db.auditLog.unshift({id:uid(),at:new Date().toISOString(),by:currentUsername(),area,action,reference:String(reference||''),detail:String(detail||'')});if(db.auditLog.length>5000)db.auditLog.length=5000}
 function renderAudit(){const tb=$('auditTable');if(!tb)return;tb.innerHTML=(db.auditLog||[]).slice(0,1000).map(a=>`<tr><td>${new Date(a.at).toLocaleString('pt-BR')}</td><td>${esc(a.by||'-')}</td><td>${esc(a.area||'-')}</td><td>${esc(a.action||'-')}</td><td>${esc(a.reference||'-')}</td><td>${esc(a.detail||'-')}</td></tr>`).join('')||'<tr><td colspan="6">Nenhum evento registrado.</td></tr>'}
-function companySettings(){db.settings=db.settings||{};db.settings.company=db.settings.company||{tradeName:'Nova Imagem Cortinas e Persianas',legalName:'Luiz Sergio Delgobo ME',cnpj:'15.115.803/0001-69',ie:'90.588.753-06',address:'Av. Bonifácio Vilela, 170, Ponta Grossa–PR, CEP 84010-330',phone:'42 98801-1435',version:'V12.8.3',clauses:'O cliente declara ter conferido medidas, tecidos, cores, acabamentos e condições comerciais. Alterações após a liberação para produção poderão alterar prazo e custos. O prazo contratado considera as condições registradas no pedido.'};return db.settings.company}
+function companySettings(){db.settings=db.settings||{};db.settings.company=db.settings.company||{tradeName:'Nova Imagem Cortinas e Persianas',legalName:'Luiz Sergio Delgobo ME',cnpj:'15.115.803/0001-69',ie:'90.588.753-06',address:'Av. Bonifácio Vilela, 170, Ponta Grossa–PR, CEP 84010-330',phone:'42 98801-1435',version:'V12.5.8',clauses:'O cliente declara ter conferido medidas, tecidos, cores, acabamentos e condições comerciais. Alterações após a liberação para produção poderão alterar prazo e custos. O prazo contratado considera as condições registradas no pedido.'};return db.settings.company}
 function renderSettings(){const c=companySettings();[['cfgTradeName','tradeName'],['cfgLegalName','legalName'],['cfgCnpj','cnpj'],['cfgIe','ie'],['cfgAddress','address'],['cfgPhone','phone'],['cfgVersion','version'],['cfgClauses','clauses']].forEach(([id,k])=>{if($(id))$(id).value=c[k]||''})}
 function saveCompanySettings(){const c=companySettings(),before=JSON.stringify(c);Object.assign(c,{tradeName:$('cfgTradeName').value.trim(),legalName:$('cfgLegalName').value.trim(),cnpj:$('cfgCnpj').value.trim(),ie:$('cfgIe').value.trim(),address:$('cfgAddress').value.trim(),phone:$('cfgPhone').value.trim(),version:$('cfgVersion').value.trim()||'V11.5',clauses:$('cfgClauses').value.trim()});audit('CONFIGURAÇÕES','ALTERAÇÃO','EMPRESA',before===JSON.stringify(c)?'Sem mudança':'Dados da empresa/contrato atualizados');queueSave();alert('Configurações salvas.')}
 function downloadJson(name,data){const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
@@ -750,9 +729,9 @@ function openOrderDateEditor(orderNumber){
 }
 function printCustomerOrder(o){
  const q=db.quotes.find(x=>Number(x.numero)===Number(o.quoteNumber));const cond=paymentConditionLabel(o.paymentCondition);let envs='';
- for(const e of o.environments||[]){const c=calcEnvironment(e);if(!c)continue;const mats=environmentMaterialRows(e,o.paymentCondition),sum=orderEnvironmentCommercialSummary(o,e);envs+=`<div class="env-block"><div class="env-title">${esc(e.name)} • ${esc(e.measureMode||'DAR DESCONTO')}${e.waveLocation==='TETO'&&norm(e.fixation).normalize('NFD').replace(/[\u0300-\u036f]/g,'')==='VARAO WAVE'?' • VARÃO NO TETO':''}</div><table class="env-table"><tr><th>Medidas</th><td>${e.width} × ${e.height} cm</td><th>Aberturas</th><td>${Math.max(0,Number(e.leaves||1)-1)}</td></tr><tr><th>Acabamento</th><td>${c.finishCalc?esc(`${e.finish} / ${e.finishColor} / ${e.finishPleat} ${e.finishGather}:1`):'—'}</td><th>Forro</th><td>${c.liningCalc?esc(`${e.lining} / ${e.liningColor} / ${e.liningPleat} ${e.liningGather}:1`):'—'}</td></tr><tr><th>Fixação</th><td colspan="3">${e.excludeFixation?'SEM FIXAÇÃO / SEM INSTALAÇÃO':`${esc(e.fixation||'-')} • ${esc(e.fixColor||'')}`}</td></tr><tr><th>VALOR DESTE AMBIENTE</th><td><strong>${money(sum.sale)}</strong></td><th>INSUMOS</th><td><strong>${money(sum.inputs)}</strong></td></tr><tr><th>MÃO DE OBRA</th><td colspan="3"><strong>${money(sum.labor)}</strong> <small>(confecção + instalação)</small></td></tr>${e.notes?`<tr><th>Observações</th><td colspan="3">${esc(e.notes)}</td></tr>`:''}</table><div class="section-title">Materiais deste ambiente</div><table class="summary-table"><tr><th>SKU</th><th>Produto</th><th>Cor</th><th>Quantidade</th><th>Valor Unitário</th><th>Valor Total</th></tr>${mats||'<tr><td colspan="6">Sem material oficial vinculado.</td></tr>'}</table></div>`}
+ for(const e of o.environments||[]){const c=calcEnvironment(e);if(!c)continue;const mats=environmentMaterialRows(e,o.paymentCondition),sum=orderEnvironmentCommercialSummary(o,e);envs+=`<div class="env-block"><div class="env-title">${esc(e.name)}</div><table class="env-table"><tr><th>Medidas</th><td>${e.width} × ${e.height} cm</td><th>Aberturas</th><td>${Math.max(0,Number(e.leaves||1)-1)}</td></tr><tr><th>Acabamento</th><td>${c.finishCalc?esc(`${e.finish} / ${e.finishColor} / ${e.finishPleat} ${e.finishGather}:1`):'—'}</td><th>Forro</th><td>${c.liningCalc?esc(`${e.lining} / ${e.liningColor} / ${e.liningPleat} ${e.liningGather}:1`):'—'}</td></tr><tr><th>Fixação</th><td colspan="3">${e.excludeFixation?'SEM FIXAÇÃO / SEM INSTALAÇÃO':`${esc(e.fixation||'-')} • ${esc(e.fixColor||'')}`}</td></tr><tr><th>VALOR DESTE AMBIENTE</th><td><strong>${money(sum.sale)}</strong></td><th>INSUMOS</th><td><strong>${money(sum.inputs)}</strong></td></tr><tr><th>MÃO DE OBRA</th><td colspan="3"><strong>${money(sum.labor)}</strong> <small>(confecção + instalação)</small></td></tr>${e.notes?`<tr><th>Observações</th><td colspan="3">${esc(e.notes)}</td></tr>`:''}</table><div class="section-title">Materiais deste ambiente</div><table class="summary-table"><tr><th>SKU</th><th>Produto</th><th>Cor</th><th>Quantidade</th><th>Valor Unitário</th><th>Valor Total</th></tr>${mats||'<tr><td colspan="6">Sem material oficial vinculado.</td></tr>'}</table></div>`}
  const body=`<div class="screen-only" style="margin-bottom:8px"><button onclick="window.opener && window.opener.generateOrderLabelsV127(${Number(o.numero)})">GERAR ETIQUETAS</button></div><div class="pdf-head"><img src="${location.origin}/icon-512.png"><div class="store-client"><strong>Nova Imagem Cortinas e Persianas</strong><br>Luiz Sergio Delgobo ME<br>CNPJ 15.115.803/0001-69 • IE 90.588.753-06<br>Av. Bonifácio Vilela, 170 • Ponta Grossa–PR • CEP 84010-330<br><br><strong>PEDIDO Nº ${String(o.numero).padStart(6,'0')}</strong><br><strong>Cliente:</strong> ${esc(o.client||'-')}<br><strong>Contato:</strong> ${esc(o.contact||'-')}<br><strong>Endereço:</strong> ${esc(o.address||'-')}<br><strong>Data do pedido:</strong> ${fmtDate(o.createdDate)}<br><strong>Instalação prevista:</strong> ${fmtDate(o.deliveryDate)}<br><strong>Vendedor:</strong> ${esc(displaySeller(o))}</div></div>${envs}<div class="section-title">Acompanhe seu pedido</div><div class="customer-access-box"><img class="customer-qr" src="${customerPortalQrUrl(o.numero)}" alt="QR Code para acompanhar o pedido"><div><strong>Portal do Cliente Nova Imagem</strong><br><span>Aponte a câmera do celular para o QR Code.</span><br><br>Pedido: <strong>${String(o.numero).padStart(6,'0')}</strong><br>Senha: <strong>${esc(o.clientAccessCode||'NÃO GERADA')}</strong><br><br><strong>Acesso pelo PDF:</strong><br><a class="customer-portal-link" href="${customerPortalUrl(o.numero)}" target="_blank">Clique aqui para acompanhar seu pedido</a></div></div><div class="section-title">Condição contratada</div><p class="totals">${cond}: ${money(o.agreedValue)}</p><div class="section-title">CONTRATO DE FORNECIMENTO E INSTALAÇÃO</div><div class="conditions"><p><strong>CONTRATADA:</strong> Luiz Sergio Delgobo ME, CNPJ 15.115.803/0001-69.</p><p><strong>CONTRATANTE:</strong> ${esc(o.client||'-')}, endereço ${esc(o.address||'-')}.</p><p><strong>OBJETO:</strong> fornecimento e instalação dos produtos descritos neste pedido.</p><p><strong>CONDIÇÃO:</strong> ${esc(cond)}, valor contratado de ${money(o.agreedValue)}.</p><p><strong>PRAZO PREVISTO:</strong> instalação/entrega em ${fmtDate(o.deliveryDate)}.</p></div><div class="signature-grid"><div><div class="signature-line"></div><strong>Cliente / Contratante</strong></div><div><div class="signature-line"></div><strong>Nova Imagem / Vendedor</strong></div></div>`;printWindow(body)}
-function printProductionOrder(o){let envs='';for(const e of o.environments||[]){const c=calcEnvironment(e);if(!c)continue;const mats=environmentMaterialRows(e);envs+=`<div class="env-block"><div class="env-title">${esc(e.name)} • ${esc(e.measureMode||'DAR DESCONTO')}${e.waveLocation==='TETO'&&norm(e.fixation).normalize('NFD').replace(/[\u0300-\u036f]/g,'')==='VARAO WAVE'?' • VARÃO NO TETO':''}</div><table class="env-table"><tr><th>Medidas</th><td>${e.width} × ${e.height} cm</td><th>Aberturas</th><td>${Math.max(0,Number(e.leaves||1)-1)}</td></tr><tr><th>Acabamento</th><td>${c.finishCalc?esc(`${e.finish} / ${e.finishColor} / ${e.finishPleat} ${e.finishGather}:1`):'—'}</td><th>Forro</th><td>${c.liningCalc?esc(`${e.lining} / ${e.liningColor} / ${e.liningPleat} ${e.liningGather}:1`):'—'}</td></tr><tr><th>Fixação</th><td>${esc(e.fixation||'-')} • ${esc(e.fixColor||'')}</td><th>Deslizantes</th><td>${c.finishSliders||0} acabamento + ${c.liningSliders||0} forro</td></tr><tr><th>Costura</th><td colspan="3">${Number(c.sewingMeters||0).toFixed(2)} m</td></tr>${e.notes?`<tr style="background:#fff3a8"><th style="font-weight:900">OBSERVAÇÕES</th><td colspan="3" style="font-weight:800">${esc(e.notes)}</td></tr>`:`<tr><th>Observações</th><td colspan="3">Sem observações.</td></tr>`}</table><div class="section-title">Materiais / separação</div><table class="summary-table"><tr><th>SKU</th><th>Material</th><th>Cor</th><th>Quantidade</th></tr>${mats||'<tr><td colspan="4">Sem material oficial vinculado.</td></tr>'}</table></div>`}const body=`<div class="screen-only" style="margin-bottom:8px"><button onclick="window.opener && window.opener.generateOrderLabelsV127(${Number(o.numero)})">GERAR ETIQUETAS</button></div><div class="pdf-head"><img src="${location.origin}/icon-512.png"><div class="store-client"><strong>Nova Imagem Cortinas & Persianas</strong><br><strong>ORDEM DE SERVIÇO / PRODUÇÃO</strong><br><br><strong>Pedido:</strong> ${String(o.numero).padStart(6,'0')}<br><strong>Cliente:</strong> ${esc(o.client||'-')}<br><strong>Contato:</strong> ${esc(o.contact||'-')}<br><strong>Endereço:</strong> ${esc(o.address||'-')}<br><strong>Instalação prevista:</strong> ${fmtDate(o.deliveryDate)}<br><strong>Vendedor:</strong> ${esc(displaySeller(o))}</div></div>${envs}<div class="section-title">Observações gerais</div><p>${esc((o.notes||'').trim()||'Sem observações gerais.')}</p>`;printWindow(body)}
+function printProductionOrder(o){let envs='';for(const e of o.environments||[]){const c=calcEnvironment(e);if(!c)continue;const mats=environmentMaterialRows(e);envs+=`<div class="env-block"><div class="env-title">${esc(e.name)}</div><table class="env-table"><tr><th>Medidas</th><td>${e.width} × ${e.height} cm</td><th>Aberturas</th><td>${Math.max(0,Number(e.leaves||1)-1)}</td></tr><tr><th>Acabamento</th><td>${c.finishCalc?esc(`${e.finish} / ${e.finishColor} / ${e.finishPleat} ${e.finishGather}:1`):'—'}</td><th>Forro</th><td>${c.liningCalc?esc(`${e.lining} / ${e.liningColor} / ${e.liningPleat} ${e.liningGather}:1`):'—'}</td></tr><tr><th>Fixação</th><td>${esc(e.fixation||'-')} • ${esc(e.fixColor||'')}</td><th>Deslizantes</th><td>${c.finishSliders||0} acabamento + ${c.liningSliders||0} forro</td></tr><tr><th>Costura</th><td colspan="3">${Number(c.sewingMeters||0).toFixed(2)} m</td></tr>${e.notes?`<tr style="background:#fff3a8"><th style="font-weight:900">OBSERVAÇÕES</th><td colspan="3" style="font-weight:800">${esc(e.notes)}</td></tr>`:`<tr><th>Observações</th><td colspan="3">Sem observações.</td></tr>`}</table><div class="section-title">Materiais / separação</div><table class="summary-table"><tr><th>SKU</th><th>Material</th><th>Cor</th><th>Quantidade</th></tr>${mats||'<tr><td colspan="4">Sem material oficial vinculado.</td></tr>'}</table></div>`}const body=`<div class="screen-only" style="margin-bottom:8px"><button onclick="window.opener && window.opener.generateOrderLabelsV127(${Number(o.numero)})">GERAR ETIQUETAS</button></div><div class="pdf-head"><img src="${location.origin}/icon-512.png"><div class="store-client"><strong>Nova Imagem Cortinas & Persianas</strong><br><strong>ORDEM DE SERVIÇO / PRODUÇÃO</strong><br><br><strong>Pedido:</strong> ${String(o.numero).padStart(6,'0')}<br><strong>Cliente:</strong> ${esc(o.client||'-')}<br><strong>Contato:</strong> ${esc(o.contact||'-')}<br><strong>Endereço:</strong> ${esc(o.address||'-')}<br><strong>Instalação prevista:</strong> ${fmtDate(o.deliveryDate)}<br><strong>Vendedor:</strong> ${esc(displaySeller(o))}</div></div>${envs}<div class="section-title">Observações gerais</div><p>${esc((o.notes||'').trim()||'Sem observações gerais.')}</p>`;printWindow(body)}
 function openOrder(n){const o=db.orders.find(x=>Number(x.numero)===n);if(!o)return;const paid=orderPaid(o);const payRows=(o.payments||[]).slice().reverse().map(p=>`<tr><td>${fmtDate(p.date)}</td><td>${money(p.value)}</td><td>${esc(paymentMethodLabel(p.method))}</td><td>${esc(p.notes||'-')}</td><td>${esc(p.by||'-')}</td></tr>`).join('');openModal(`<h2>Pedido ${String(o.numero).padStart(6,'0')}</h2><div class="detail-list"><div class="detail-item"><span>Cliente</span><strong>${esc(o.client)}</strong></div><div class="detail-item"><span>Valor contratado</span><strong>${money(o.agreedValue)}</strong></div><div class="detail-item"><span>Valor pago</span><strong>${money(paid)}</strong></div><div class="detail-item"><span>Saldo devedor</span><strong>${money(orderBalance(o))}</strong></div><div class="detail-item"><span>Status financeiro</span><strong>${financialStatus(o)}</strong></div><div class="detail-item"><span>Produção</span><strong>${esc(o.productionStage)}</strong></div><div class="detail-item"><span>Data do pedido</span><strong>${fmtDate(o.createdDate)}</strong></div><div class="detail-item"><span>Entrega</span><strong>${fmtDate(o.deliveryDate)}</strong></div><div class="detail-item"><span>Condição</span><strong>${paymentConditionLabel(o.paymentCondition)}</strong></div></div><div class="actions" style="margin:12px 0"><button id="openCustomerOrder" class="btn primary">ABRIR PEDIDO</button><button id="printOS" class="btn secondary">ABRIR ORDEM DE SERVIÇO</button><button id="labelsBtn" class="btn secondary">GERAR ETIQUETAS</button><button id="timelineBtn" class="btn ghost">LINHA DO TEMPO</button><button id="orderAttachmentsBtn" class="btn ghost">ANEXOS</button><button id="reworkOrderBtn" class="btn ghost">ABRIR RETRABALHO</button>${isGestor()?'<button id="changeOrderDateBtn" class="btn ghost">ALTERAR DATA DO PEDIDO</button><button id="printResult" class="btn ghost">RESULTADO DO PEDIDO</button>':''}${orderBalance(o)>0.005?'<button id="addPay" class="btn primary">INSERIR PAGAMENTO</button>':''}</div><h3>Histórico de recebimentos</h3><div class="table-wrap"><table class="table"><tr><th>Data</th><th>Valor</th><th>Forma</th><th>Observação</th><th>Usuário</th></tr>${payRows||'<tr><td colspan="5">Nenhum pagamento registrado.</td></tr>'}</table></div>`);$('openCustomerOrder').onclick=()=>printCustomerOrder(o);$('printOS').onclick=()=>printProductionOrder(o);$('labelsBtn').onclick=()=>generateOrderLabelsV127(o.numero);$('timelineBtn').onclick=()=>openTimeline(o.numero);$('orderAttachmentsBtn').onclick=()=>openAttachments('ORDER',o.numero,`Pedido ${String(o.numero).padStart(6,'0')}`);$('reworkOrderBtn').onclick=()=>openRework(o.numero);if($('changeOrderDateBtn'))$('changeOrderDateBtn').onclick=()=>openOrderDateEditor(o.numero);if($('printResult'))$('printResult').onclick=()=>printOrderResult(o);if($('addPay'))$('addPay').onclick=()=>openPayment(o.numero)}
 function environmentCostSnapshot(o,e){const x=(o.costSnapshot?.environments||[]).find(v=>v.name===e.name);if(x)return x;const c=calcEnvironment(e);return {name:e.name,installation:Number(c?.installCost||0),production:Number((c?.sewingCost||0)+(c?.finishPleat||0)+(c?.liningPleat||0)+(c?.customPleat||0)),cashSale:Number(c?.cash||0)}}
 function environmentResultRows(o){return (o.environments||[]).map(e=>{const snap=environmentCostSnapshot(o,e),discount=1-Number(o.discountPercent||0)/100,sale=Number(snap.cashSale||0)*discount;const mats=(o.officialStockSnapshot||[]).filter(x=>(x.environments||[]).includes(e.name));const inputs=mats.reduce((a,x)=>a+Number(x.qty||0)*Number(x.cost||0)/(Math.max(1,(x.environments||[]).length)),0);const installation=Number(snap.installation||0),production=Number(snap.production||0),commission=sale*Number(o.commissionPercent??sellerCommission(resolveSellerUser(o)))/100,totalCost=inputs+installation+production+commission,result=sale-totalCost,margin=sale?result/sale*100:0;return {name:e.name,sale,inputs,installation,production,commission,totalCost,result,margin}})}
@@ -957,7 +936,7 @@ function printWindow(body){const w=window.open('about:blank','_blank');if(!w)ret
 function detailRows(c,e){const r=[];if(c.finishCalc)r.push([e.finish+' '+e.finishColor,c.finishCalc.consumption.toFixed(2)+' m',c.finishCalc.unitPrice,c.finishCalc.cost]);if(c.liningCalc)r.push([e.lining+' '+e.liningColor,c.liningCalc.consumption.toFixed(2)+' m',c.liningCalc.unitPrice,c.liningCalc.cost]);if(c.finishCalc&&e.finishPleat==='WAVE')r.push(['FITA WAVE COM BOTÕES INOX',c.finishCalc.consumption.toFixed(2)+' m',Number(db.priceConfig.pleatLabor.WAVE||0),c.finishPleat]);r.push(['DESLIZANTES',c.finishSliders+c.liningSliders+' un',c.sliderCost/Math.max(1,c.finishSliders+c.liningSliders),c.sliderCost]);if(e.finishPleat==='WAVE'||e.liningPleat==='WAVE')r.push(['CORDÃO WAVE',e.width/100+' m',0,0]);r.push([e.fixation+' '+e.fixColor,c.fixationCalc.meters?.toFixed(2)+' m',c.fixationCalc.total/Math.max(1,c.fixationCalc.meters||1),c.fixationCalc.total]);r.push(['ACABAMENTO / CONFECÇÃO',c.sewingMeters.toFixed(2)+' m',Number(db.priceConfig.sewingPerMeter||0),c.sewingCost+c.finishPleat+c.liningPleat]);r.push(['MÃO DE OBRA / INSTALAÇÃO','1',c.installCost,c.installCost]);return r}
 function printQuote(q,type='summary'){
  const t=quoteTotals(q);let body=`<div class="pdf-head"><img src="${location.origin}/icon-512.png"><div class="store-client"><strong>Nova Imagem Cortinas & Persianas</strong><br><span>ORÇAMENTO COMERCIAL</span><br><br><strong>Cliente:</strong> ${esc(q.client||'-')}<br><strong>Contato:</strong> ${esc(q.contact||'-')}<br><strong>Endereço:</strong> ${esc(q.address||'-')}<br><strong>Vendedor:</strong> ${esc(displaySeller(q))}<br><strong>Data:</strong> ${fmtDate(q.date)}</div></div><div class="quote-number">ORÇAMENTO Nº ${String(q.numero).padStart(6,'0')}</div>`;
- for(const e of q.environments||[]){const c=calcEnvironment(e);if(!c)continue;body+=`<div class="env-block"><div class="env-title">${esc(e.name)} • ${esc(e.measureMode||'DAR DESCONTO')}${e.waveLocation==='TETO'&&norm(e.fixation).normalize('NFD').replace(/[\u0300-\u036f]/g,'')==='VARAO WAVE'?' • VARÃO NO TETO':''}</div><table class="env-table"><tr><th>Medidas</th><td>${e.width} × ${e.height} cm</td><th>Aberturas</th><td>${Math.max(0,Number(e.leaves||1)-1)}</td></tr><tr><th>Acabamento</th><td>${c.finishCalc?esc(`${e.finish} / ${e.finishColor} / ${e.finishPleat} ${e.finishGather}:1`):'—'}</td><th>Forro</th><td>${c.liningCalc?esc(`${e.lining} / ${e.liningColor} / ${e.liningPleat} ${e.liningGather}:1`):'—'}</td></tr><tr><th>Fixação</th><td colspan="3">${esc(e.fixation||'-')} • ${esc(e.fixColor||'')}</td></tr><tr><th>18x</th><td>${money(c.p18)}</td><th>4x</th><td>${money(c.base4)}</td></tr><tr><th>À vista</th><td colspan="3"><strong>${money(c.cash)}</strong></td></tr>${e.notes?`<tr><th>Observações</th><td colspan="3">${esc(e.notes)}</td></tr>`:''}</table></div>`}
+ for(const e of q.environments||[]){const c=calcEnvironment(e);if(!c)continue;body+=`<div class="env-block"><div class="env-title">${esc(e.name)}</div><table class="env-table"><tr><th>Medidas</th><td>${e.width} × ${e.height} cm</td><th>Aberturas</th><td>${Math.max(0,Number(e.leaves||1)-1)}</td></tr><tr><th>Acabamento</th><td>${c.finishCalc?esc(`${e.finish} / ${e.finishColor} / ${e.finishPleat} ${e.finishGather}:1`):'—'}</td><th>Forro</th><td>${c.liningCalc?esc(`${e.lining} / ${e.liningColor} / ${e.liningPleat} ${e.liningGather}:1`):'—'}</td></tr><tr><th>Fixação</th><td colspan="3">${esc(e.fixation||'-')} • ${esc(e.fixColor||'')}</td></tr><tr><th>18x</th><td>${money(c.p18)}</td><th>4x</th><td>${money(c.base4)}</td></tr><tr><th>À vista</th><td colspan="3"><strong>${money(c.cash)}</strong></td></tr>${e.notes?`<tr><th>Observações</th><td colspan="3">${esc(e.notes)}</td></tr>`:''}</table></div>`}
  if((q.blinds||[]).length){body+=`<div class="section-title">Persianas</div>`;for(const x of q.blinds){const qty=Number(x.qty||1);body+=`<div class="env-block"><div class="env-title">${esc(x.environment||'PERSIANA')}</div><table class="env-table"><tr><th>Modelo</th><td>${esc(x.model||'-')}</td><th>Cor</th><td>${esc(x.color||'-')}</td></tr><tr><th>Medidas</th><td>${x.width} × ${x.height} cm</td><th>Quantidade</th><td>${qty} un.</td></tr><tr><th>Comando</th><td>${esc(x.commandSide||'-')}</td><th>Bandô</th><td>${esc(x.bando||'-')}</td></tr><tr><th>18x</th><td>${money(Number(x.p18||0)*qty)}</td><th>4x</th><td>${money(Number(x.p4||0)*qty)}</td></tr><tr><th>À vista</th><td colspan="3"><strong>${money(Number(x.cash||0)*qty)}</strong></td></tr></table></div>`}}
  if((q.looseProducts||[]).length){for(const [title,list] of [['Produtos Avulsos',(q.looseProducts||[]).filter(a=>a.stockManaged!==false)],['Produtos Fora de Estoque',(q.looseProducts||[]).filter(a=>a.stockManaged===false)]]){if(!list.length)continue;body+=`<div class="section-title">${title}</div><table class="summary-table"><tr><th>Descrição</th><th>Produto</th><th>Qtd.</th><th>18x</th><th>4x</th><th>À vista</th></tr>${list.map(a=>`<tr><td>${esc(a.description||a.name)}</td><td>${esc(a.name)} / ${esc(a.color||'')}</td><td>${a.qty} ${esc(a.unit||'')}</td><td>${money(Number(a.p18||0)*Number(a.qty||1))}</td><td>${money(Number(a.p4||0)*Number(a.qty||1))}</td><td>${money(Number(a.cash||0)*Number(a.qty||1))}</td></tr>`).join('')}</table>`}}
  if(Number(q.travel||0)>0)body+=`<p><strong>Deslocamento:</strong> ${money(q.travel)}</p>`;
@@ -1430,8 +1409,8 @@ tubeHardwareCalc=function(e,c){
 const _v118CalcEnvironment=calcEnvironment;
 calcEnvironment=function(e){
   const c=_v118CalcEnvironment(e);if(!c)return c;
-  const bar=(e.finishBar==='BARRA TOMA'?'BARRA TOMA':e.finishBar)||'BARRA SIMPLES',barMeters=Number(c.finishCalc?.gathered||0);let laborRate=0,soutacheFactor=0;
-  if(bar==='BARRA TOMA')laborRate=15;if(bar==='BARRA SOUTACHE'){laborRate=20;soutacheFactor=1}if(bar==='BARRA SOUTACHE DUPLA'){laborRate=35;soutacheFactor=2}
+  const bar=e.finishBar||'BARRA SIMPLES',barMeters=Number(c.finishCalc?.gathered||0);let laborRate=0,soutacheFactor=0;
+  if(bar==='BARRA TOMBADA')laborRate=15;if(bar==='BARRA SOUTACHE'){laborRate=20;soutacheFactor=1}if(bar==='BARRA SOUTACHE DUPLA'){laborRate=35;soutacheFactor=2}
   const barLabor=barMeters*laborRate,soutacheMeters=barMeters*soutacheFactor,soutache=soutacheMeters?officialProductByName('SOUTACHE',e.soutacheColor):null,soutacheCost=soutacheMeters*Number(soutache?.price_4x||0);
   c.barType=bar;c.barMeters=barMeters;c.barLabor=barLabor;c.soutacheMeters=soutacheMeters;c.soutacheProductId=soutache?.id||null;c.soutacheCost=soutacheCost;c.laborTotal=Number(c.laborTotal||0)+barLabor;c.base4=Number(c.base4||0)+barLabor+soutacheCost;c.p18=c.base4*(1+Number(db.priceConfig.terms.p18AddPct||0)/100);c.cash=c.base4*(1-Number(db.priceConfig.terms.cashDiscountPct||0)/100);return c;
 };
@@ -1462,7 +1441,7 @@ document.addEventListener('DOMContentLoaded',()=>{$('eAngle')?.addEventListener(
 // Configurações, histórico e versionamento documental.
 function v119DocVersion(type,text){db.settings.documentVersions=db.settings.documentVersions||[];const last=[...db.settings.documentVersions].reverse().find(x=>x.type===type);if(last?.text===text)return last.version;const version=(db.settings.documentVersions.filter(x=>x.type===type).length+1);db.settings.documentVersions.push({type,version,text,at:new Date().toISOString(),by:currentUsername()});return version}
 renderSettings=function(){ensureV119();const c=companySettings();[['cfgTradeName','tradeName'],['cfgLegalName','legalName'],['cfgCnpj','cnpj'],['cfgIe','ie'],['cfgAddress','address'],['cfgPhone','phone'],['cfgVersion','version'],['cfgClauses','clauses'],['cfgWarranty','warranty'],['cfgSewingCost','sewingCost'],['cfgInstallCost','installCost']].forEach(([id,k])=>{if($(id))$(id).value=c[k]??''})};
-saveCompanySettings=function(){ensureV119();const c=companySettings(),before=clone(c);Object.assign(c,{tradeName:$('cfgTradeName').value.trim(),legalName:$('cfgLegalName').value.trim(),cnpj:$('cfgCnpj').value.trim(),ie:$('cfgIe').value.trim(),address:$('cfgAddress').value.trim(),phone:$('cfgPhone').value.trim(),version:'V12.8.3',sewingCost:Number($('cfgSewingCost').value||0),installCost:Number($('cfgInstallCost').value||0),clauses:$('cfgClauses').value.trim(),warranty:$('cfgWarranty').value.trim()||V119_WARRANTY});if(before.clauses!==c.clauses)v119DocVersion('CONTRATO',c.clauses);if(before.warranty!==c.warranty)v119DocVersion('GARANTIA',c.warranty);for(const k of Object.keys(c))if(JSON.stringify(before[k])!==JSON.stringify(c[k]))audit('CONFIGURAÇÕES','ALTERAÇÃO',k,`Anterior: ${String(before[k]??'').slice(0,600)} | Novo: ${String(c[k]??'').slice(0,600)}`);if(db.priceConfig)db.priceConfig.sewingCost=c.sewingCost;queueSave();alert('Configurações salvas e versionadas.')};
+saveCompanySettings=function(){ensureV119();const c=companySettings(),before=clone(c);Object.assign(c,{tradeName:$('cfgTradeName').value.trim(),legalName:$('cfgLegalName').value.trim(),cnpj:$('cfgCnpj').value.trim(),ie:$('cfgIe').value.trim(),address:$('cfgAddress').value.trim(),phone:$('cfgPhone').value.trim(),version:'V12.5.8',sewingCost:Number($('cfgSewingCost').value||0),installCost:Number($('cfgInstallCost').value||0),clauses:$('cfgClauses').value.trim(),warranty:$('cfgWarranty').value.trim()||V119_WARRANTY});if(before.clauses!==c.clauses)v119DocVersion('CONTRATO',c.clauses);if(before.warranty!==c.warranty)v119DocVersion('GARANTIA',c.warranty);for(const k of Object.keys(c))if(JSON.stringify(before[k])!==JSON.stringify(c[k]))audit('CONFIGURAÇÕES','ALTERAÇÃO',k,`Anterior: ${String(before[k]??'').slice(0,600)} | Novo: ${String(c[k]??'').slice(0,600)}`);if(db.priceConfig)db.priceConfig.sewingCost=c.sewingCost;queueSave();alert('Configurações salvas e versionadas.')};
 const _v119Finalize=finalizeQuoteOrder;finalizeQuoteOrder=async function(...args){ensureV119();const o=await _v119Finalize(...args);if(o){const c=companySettings();o.documentVersions={contractVersion:v119DocVersion('CONTRATO',c.clauses||''),warrantyVersion:v119DocVersion('GARANTIA',c.warranty||V119_WARRANTY),contractText:c.clauses||'',warrantyText:c.warranty||V119_WARRANTY,frozenAt:new Date().toISOString()};queueSave()}return o};
 function printWarranty(order=null){ensureV119();const c=companySettings(),text=order?.documentVersions?.warrantyText||c.warranty||V119_WARRANTY;printWindow(`<div class="pdf-head"><img src="${location.origin}/icon-512.png"><div class="store-client"><strong>${esc(c.tradeName)}</strong><br>${esc(c.address)}<br>${esc(c.phone)}<br><br><strong>TERMO DE GARANTIA</strong></div></div>${order?`<p><strong>Pedido:</strong> ${String(order.numero).padStart(6,'0')} • <strong>Cliente:</strong> ${esc(order.client)}</p>`:''}<div style="white-space:pre-line;line-height:1.55">${esc(text)}</div><br><p>Cliente: ____________________________________ &nbsp;&nbsp; CPF: ____________________</p><p>Data: ____/____/________ &nbsp;&nbsp; Assinatura: ____________________________________</p><p class="muted">Documento emitido em ${new Date().toLocaleString('pt-BR')} • Nova Imagem Cortinas e Persianas</p>`)}
 const _v119Commercial=renderCommercialPanel;renderCommercialPanel=function(){_v119Commercial();const box=$('commercialPanelBody');if(box&&!$('commercialWarrantyBtn'))box.insertAdjacentHTML('afterbegin','<div class="card" style="margin-bottom:14px"><div class="card-title">Documentos comerciais</div><button id="commercialWarrantyBtn" class="btn secondary">TERMO DE GARANTIA • PDF</button></div>');$('commercialWarrantyBtn')?.addEventListener('click',()=>printWarranty())};
@@ -1531,15 +1510,8 @@ function v12RefreshFixations(){
   const fw=$('eFinishTubeWrap'),lw=$('eLiningTubeWrap'),generic=$('eFixationWrap'),prod=$('eRailProductWrap'),color=$('eFixColorWrap');
   generic?.classList.toggle('hidden',fTube||lTube);prod?.classList.add('hidden');color?.classList.add('hidden');
   fw?.classList.toggle('hidden',m==='LINING'||!fTube);lw?.classList.toggle('hidden',m==='FINISH'||!lTube);
-  if(fTube){const size=fp.includes('19MM')?'19':fp.includes('29MM')?'29':'28';v12FillProductSelect($('eFinishTube'),v12TubeProducts(size),'SELECIONE A FIXAÇÃO DO ACABAMENTO');}
-  if(lTube){const lpp=$('eLiningPleat').value,size=lpp.includes('19MM')?'19':lpp.includes('29MM')?'29':'28';v12FillProductSelect($('eLiningTube'),v12TubeProducts(size),'SELECIONE A FIXAÇÃO DO FORRO');}
-  if(fTube&&lTube&&m==='COMPLETE'){
-    const a=officialProductById($('eFinishTube')?.value), color=norm(a?.color||'');
-    const matching=v12TubeProducts('19').find(x=>norm(x.color)===color);
-    if(matching&&$('eLiningTube'))$('eLiningTube').value=String(matching.id);
-    if(lw){lw.querySelector('select')?.setAttribute('disabled','disabled')}
-  }else{$('eLiningTube')?.removeAttribute('disabled')}
-
+  if(fTube){const size=fp.includes('19MM')?'19':'28';v12FillProductSelect($('eFinishTube'),v12TubeProducts(size),'SELECIONE A FIXAÇÃO DO ACABAMENTO');}
+  if(lTube){const lpp=$('eLiningPleat').value,size=lpp.includes('19MM')?'19':'28';v12FillProductSelect($('eLiningTube'),v12TubeProducts(size),'SELECIONE A FIXAÇÃO DO FORRO');}
   if(!(fTube||lTube)){
     const kind=$('eFixation')?.value||'';let list=[];
     if(kind==='TRILHO SUÍÇO')list=v12RailProducts();else if(kind.startsWith('VARÃO WAVE'))list=v12WaveProducts();
@@ -1551,12 +1523,12 @@ const _v12EnvFromForm=envFromForm;
 envFromForm=function(){const e=_v12EnvFromForm();const fp=e.finishPleat||'',lp=e.liningPleat||'';if(isTubePleat(fp)||isTubePleat(lp)){
   const f=officialProductById($('eFinishTube')?.value),l=officialProductById($('eLiningTube')?.value);e.finishTubeProductId=f?.id||null;e.liningTubeProductId=l?.id||null;e.finishTube=f?.product_name||'';e.liningTube=l?.product_name||'';e.finishTubeColor=f?.color||'';e.liningTubeColor=l?.color||'';e.tubeFixation=true;e.fixation=[f?.product_name,l?.product_name].filter(Boolean).join(' + ');
  }return e;};
-tubeHardwareCalc=function(e,c){const w=Number(e.width||0)/100,model=e.model,mat=norm(e.supportMaterial)==='PVC'?'PVC':'ALUMINIO',supports=w<=2?2:w<=3.5?3:w<=4.5?4:5;const layers=[];if(model!=='LINING'&&e.finishTubeProductId)layers.push({p:officialProductById(e.finishTubeProductId),layer:'ACABAMENTO'});if(model!=='FINISH'&&e.liningTubeProductId)layers.push({p:officialProductById(e.liningTubeProductId),layer:'FORRO'});let total=0,parts=[];for(const x of layers){const p=x.p;if(!p)continue;const size=norm(p.product_name).includes('19')?'19':norm(p.product_name).includes('29')?'29':'28',color=p.color||'';parts.push({productId:p.id,name:`${p.product_name} — ${color}`,qty:w,unit:'M'});total+=w*Number(p.price_4x||0);const cap=officialProductLike(['TAMPA','TUBO',size],color);if(cap){parts.push({productId:cap.id,name:`${cap.product_name} — ${color}`,qty:2,unit:'UN'});total+=2*Number(cap.price_4x||0);}}
-  const sizes=layers.map(x=>norm(x.p?.product_name).includes('19')?'19':norm(x.p?.product_name).includes('29')?'29':'28');const colors=[...new Set(layers.map(x=>x.p?.color||'').filter(Boolean))];let supportName;if(model==='COMPLETE')supportName=`SUPORTE 19/28 ${mat}`;else supportName=`SUPORTE ${sizes[0]||'28'}MM ${mat}`;let support=null;for(const cor of colors){support=officialProductByName(supportName,cor)||officialProductLike(supportName.split(' '),cor);if(support)break;}support=support||officialProductLike(supportName.split(' '),'');if(support){parts.push({productId:support.id,name:`${support.product_name} — ${support.color||''}`,qty:supports,unit:'UN'});total+=supports*Number(support.price_4x||0);}return {kind:layers.map(x=>`${x.p.product_name} — ${x.p.color}`).join(' + '),meters:w*layers.length,supports,ends:layers.length*2,supportName,supportProductId:support?.id||null,parts,total,hardwareBase:total,detail:`${layers.map(x=>`${x.p.product_name} — ${x.p.color}`).join(' + ')} • ${supports} suportes • ${layers.length*2} tampas`};};
+tubeHardwareCalc=function(e,c){const w=Number(e.width||0)/100,model=e.model,mat=norm(e.supportMaterial)==='PVC'?'PVC':'ALUMINIO',supports=w<=2?2:w<=3.5?3:w<=4.5?4:5;const layers=[];if(model!=='LINING'&&e.finishTubeProductId)layers.push({p:officialProductById(e.finishTubeProductId),layer:'ACABAMENTO'});if(model!=='FINISH'&&e.liningTubeProductId)layers.push({p:officialProductById(e.liningTubeProductId),layer:'FORRO'});let total=0,parts=[];for(const x of layers){const p=x.p;if(!p)continue;const size=norm(p.product_name).includes('19')?'19':'28',color=p.color||'';parts.push({productId:p.id,name:`${p.product_name} — ${color}`,qty:w,unit:'M'});total+=w*Number(p.price_4x||0);const cap=officialProductLike(['TAMPA','TUBO',size],color);if(cap){parts.push({productId:cap.id,name:`${cap.product_name} — ${color}`,qty:2,unit:'UN'});total+=2*Number(cap.price_4x||0);}}
+  const sizes=layers.map(x=>norm(x.p?.product_name).includes('19')?'19':'28');const colors=[...new Set(layers.map(x=>x.p?.color||'').filter(Boolean))];let supportName;if(model==='COMPLETE')supportName=`SUPORTE 19/28 ${mat}`;else supportName=`SUPORTE ${sizes[0]||'28'}MM ${mat}`;let support=null;for(const cor of colors){support=officialProductByName(supportName,cor)||officialProductLike(supportName.split(' '),cor);if(support)break;}support=support||officialProductLike(supportName.split(' '),'');if(support){parts.push({productId:support.id,name:`${support.product_name} — ${support.color||''}`,qty:supports,unit:'UN'});total+=supports*Number(support.price_4x||0);}return {kind:layers.map(x=>`${x.p.product_name} — ${x.p.color}`).join(' + '),meters:w*layers.length,supports,ends:layers.length*2,supportName,supportProductId:support?.id||null,parts,total,hardwareBase:total,detail:`${layers.map(x=>`${x.p.product_name} — ${x.p.color}`).join(' + ')} • ${supports} suportes • ${layers.length*2} tampas`};};
 const _v12UpdateModelFields=updateModelFields;updateModelFields=function(){_v12UpdateModelFields();v12RefreshFixations();};
 const _v12SetupSelectors=setupSelectors;setupSelectors=function(){_v12SetupSelectors();v12RefreshFixations();};
 const _v12RenderQuote=renderQuote;renderQuote=function(){_v12RenderQuote();v12RefreshFixations();};
-document.addEventListener('DOMContentLoaded',()=>{['eFinishPleat','eLiningPleat','eModel','eFixation'].forEach(id=>$(id)?.addEventListener('change',()=>{v12RefreshFixations();updatePreview()}));['eFinishTube','eLiningTube','eRailProduct'].forEach(id=>$(id)?.addEventListener('change',()=>{if(id==='eFinishTube')v12RefreshFixations();updatePreview()}));v12RefreshFixations();});
+document.addEventListener('DOMContentLoaded',()=>{['eFinishPleat','eLiningPleat','eModel','eFixation'].forEach(id=>$(id)?.addEventListener('change',()=>{v12RefreshFixations();updatePreview()}));['eFinishTube','eLiningTube','eRailProduct'].forEach(id=>$(id)?.addEventListener('change',updatePreview));v12RefreshFixations();});
 
 
 /* ===== V12.0.4 • APENAS FORRO INDEPENDENTE + PORTAL CONFIG/ANALYTICS ===== */
@@ -1640,7 +1612,7 @@ purchaseMaterialsForOrder=function(o){const out=[];for(const b of (o?.blinds||[]
 paymentConditionLabel=function(cond,order=null){if(cond==='cash')return'À VISTA (PIX/DINHEIRO)';if(cond==='p18')return'18X';if(cond==='custom')return `${Number(order?.installments||0)||''}X`;return'EM ATÉ 4X'};
 function v1213PaymentLabel(o){return paymentConditionLabel(o.paymentCondition,o)}
 convertQuote=function(n){if(conversionInProgress)return alert('Conversão já está em andamento. Aguarde.');const q=db.quotes.find(x=>Number(x.numero)===n);if(!q)return;if(db.orders.some(o=>Number(o.quoteNumber)===n))return alert('Este orçamento já foi convertido em pedido.');if(pendingDiscountApprovalForQuote(n))return alert('Este orçamento já está aguardando aprovação do gestor.');const t=quoteTotals(q);openModal(`<h2>Converter em pedido</h2><div class="grid two"><label class="field">Condição<select id="convCond"><option value="cash">À VISTA (PIX/DINHEIRO)</option><option value="p4">EM ATÉ 4X</option><option value="p18">18X</option><option value="custom">OUTRO</option></select></label><label id="convInstallmentsWrap" class="field hidden">Número de parcelas<input id="convInstallments" type="number" min="1" max="99" step="1" value="6"></label><label class="field">Data de instalação / entrega<input id="convDate" type="date" value="${q.suggestedDeliveryDate||suggestedInstallDate(today())}"></label><label class="field">Desconto adicional (%)<input id="convDiscount" type="number" min="0" max="100" value="0"></label><label class="field">Justificativa<input id="convReason"></label></div><p class="muted">À vista ${money(t.cash)} • 4x ${money(t.p4)} • 18x ${money(t.p18)}</p><button id="convGo" class="btn primary">Gerar pedido</button>`);$('convCond').onchange=()=>$('convInstallmentsWrap').classList.toggle('hidden',$('convCond').value!=='custom');$('convGo').onclick=async()=>{const cond=$('convCond').value,date=$('convDate').value,disc=Number($('convDiscount').value||0),reason=$('convReason').value.trim(),installments=cond==='custom'?Math.max(1,Number($('convInstallments').value||0)):null;if(!date)return alert('Informe a data.');if(cond==='custom'&&!installments)return alert('Informe o número de parcelas.');if(disc>0&&!reason)return alert('Justifique o desconto.');const seller=resolveSellerUser(q),role=norm(userPermissionRecord(seller).role),total=Number(q.discountPercent||0)+disc,limit=userDiscountLimit(seller);if(['SALES','PARTNER'].includes(role)&&total>limit){db.discountApprovals=db.discountApprovals||[];db.discountApprovals.unshift({id:uid(),quoteNumber:q.numero,client:q.client,requestedBy:seller,requestedAt:new Date().toISOString(),condition:cond,installments,deliveryDate:date,additionalDiscount:disc,totalDiscount:total,userLimit:limit,reason,status:'PENDENTE'});q.status='PENDENTE DE APROVAÇÃO';queueSave();closeModal();renderAll();return alert('Desconto acima do seu limite. Orçamento enviado para aprovação do gestor.');}conversionInProgress=true;const order=await finalizeQuoteOrder(q,cond==='custom'?'p4':cond,date,disc,reason);conversionInProgress=false;if(order){order.paymentCondition=cond;order.installments=installments;queueSave();closeModal();renderAll();setView('orders')}}};
-const _v1213PrintCustomerOrder=printCustomerOrder;printCustomerOrder=function(o){ensureV119();const original=paymentConditionLabel;o.paymentConditionLabel=v1213PaymentLabel(o);const q=db.quotes.find(x=>Number(x.numero)===Number(o.quoteNumber));const cond=v1213PaymentLabel(o);let envs='';for(const e of o.environments||[]){const c=calcEnvironment(e);if(!c)continue;const mats=environmentMaterialRows(e,o.paymentCondition==='custom'?'p4':o.paymentCondition);envs+=`<div class="env-block"><div class="env-title">${esc(e.name)} • ${esc(e.measureMode||'DAR DESCONTO')}${e.waveLocation==='TETO'&&norm(e.fixation).normalize('NFD').replace(/[\u0300-\u036f]/g,'')==='VARAO WAVE'?' • VARÃO NO TETO':''}</div><table class="env-table"><tr><th>Medidas</th><td>${e.width} × ${e.height} cm</td><th>Aberturas</th><td>${Math.max(0,Number(e.leaves||1)-1)}</td></tr><tr><th>Acabamento</th><td>${c.finishCalc?esc(`${e.finish} / ${e.finishColor} / ${e.finishPleat} ${e.finishGather}:1`):'—'}</td><th>Forro</th><td>${c.liningCalc?esc(`${e.lining} / ${e.liningColor} / ${e.liningPleat} ${e.liningGather}:1`):'—'}</td></tr><tr><th>Fixação</th><td colspan="3">${esc(e.fixation||'-')} • ${esc(e.fixColor||'')}</td></tr><tr><th>${esc(cond)}</th><td colspan="3"><strong>${money(o.agreedValue)}</strong></td></tr></table><div class="section-title">Materiais deste ambiente</div><table class="summary-table"><tr><th>SKU</th><th>Produto</th><th>Cor</th><th>Quantidade</th><th>Valor Unitário</th><th>Valor Total</th></tr>${mats||'<tr><td colspan="6">Sem material oficial vinculado.</td></tr>'}</table></div>`}const cset=companySettings(),warranty=o.documentVersions?.warrantyText||cset.warranty||V119_WARRANTY;const body=`<div class="pdf-head"><img src="${location.origin}/icon-512.png"><div class="store-client"><strong>Nova Imagem Cortinas e Persianas</strong><br>Luiz Sergio Delgobo ME<br>CNPJ 15.115.803/0001-69 • IE 90.588.753-06<br>Av. Bonifácio Vilela, 170 • Ponta Grossa–PR • CEP 84010-330<br><br><strong>PEDIDO Nº ${String(o.numero).padStart(6,'0')}</strong><br><strong>Cliente:</strong> ${esc(o.client||'-')}<br><strong>Contato:</strong> ${esc(o.contact||'-')}<br><strong>Endereço:</strong> ${esc(o.address||'-')}<br><strong>Instalação prevista:</strong> ${fmtDate(o.deliveryDate)}<br><strong>Vendedor:</strong> ${esc(displaySeller(o))}</div></div>${envs}<div class="section-title">Acompanhe seu pedido</div><div class="customer-access-box"><img class="customer-qr" src="${customerPortalQrUrl(o.numero)}" alt="QR Code para acompanhar o pedido"><div><strong>Portal do Cliente Nova Imagem</strong><br>Aponte a câmera para o QR Code.<br><br>Pedido: <strong>${String(o.numero).padStart(6,'0')}</strong><br>Senha: <strong>${esc(o.clientAccessCode||'NÃO GERADA')}</strong><br><a class="customer-portal-link" href="${customerPortalUrl(o.numero)}" target="_blank">Clique aqui para acompanhar seu pedido</a></div></div><div class="section-title">Condição contratada</div><p class="totals">${esc(cond)}: ${money(o.agreedValue)}</p><div class="section-title">CONTRATO DE FORNECIMENTO E INSTALAÇÃO</div><div class="conditions"><p><strong>CONTRATADA:</strong> Luiz Sergio Delgobo ME, CNPJ 15.115.803/0001-69.</p><p><strong>CONTRATANTE:</strong> ${esc(o.client||'-')}, endereço ${esc(o.address||'-')}.</p><p><strong>OBJETO:</strong> fornecimento e instalação dos produtos descritos neste pedido.</p><p><strong>CONDIÇÃO:</strong> ${esc(cond)}, valor contratado de ${money(o.agreedValue)}.</p><p><strong>PRAZO PREVISTO:</strong> instalação/entrega em ${fmtDate(o.deliveryDate)}.</p></div><div class="signature-grid"><div><div class="signature-line"></div><strong>Cliente / Contratante</strong></div><div><div class="signature-line"></div><strong>Nova Imagem / Vendedor</strong></div></div><div style="page-break-before:always"></div><div class="section-title">TERMO DE GARANTIA</div><div style="white-space:pre-line;line-height:1.55">${esc(warranty)}</div><br><p><strong>Pedido:</strong> ${String(o.numero).padStart(6,'0')} • <strong>Cliente:</strong> ${esc(o.client||'-')}</p><div class="signature-grid"><div><div class="signature-line"></div><strong>Cliente</strong></div><div><div class="signature-line"></div><strong>Nova Imagem</strong></div></div>`;printWindow(body)};
+const _v1213PrintCustomerOrder=printCustomerOrder;printCustomerOrder=function(o){ensureV119();const original=paymentConditionLabel;o.paymentConditionLabel=v1213PaymentLabel(o);const q=db.quotes.find(x=>Number(x.numero)===Number(o.quoteNumber));const cond=v1213PaymentLabel(o);let envs='';for(const e of o.environments||[]){const c=calcEnvironment(e);if(!c)continue;const mats=environmentMaterialRows(e,o.paymentCondition==='custom'?'p4':o.paymentCondition);envs+=`<div class="env-block"><div class="env-title">${esc(e.name)}</div><table class="env-table"><tr><th>Medidas</th><td>${e.width} × ${e.height} cm</td><th>Aberturas</th><td>${Math.max(0,Number(e.leaves||1)-1)}</td></tr><tr><th>Acabamento</th><td>${c.finishCalc?esc(`${e.finish} / ${e.finishColor} / ${e.finishPleat} ${e.finishGather}:1`):'—'}</td><th>Forro</th><td>${c.liningCalc?esc(`${e.lining} / ${e.liningColor} / ${e.liningPleat} ${e.liningGather}:1`):'—'}</td></tr><tr><th>Fixação</th><td colspan="3">${esc(e.fixation||'-')} • ${esc(e.fixColor||'')}</td></tr><tr><th>${esc(cond)}</th><td colspan="3"><strong>${money(o.agreedValue)}</strong></td></tr></table><div class="section-title">Materiais deste ambiente</div><table class="summary-table"><tr><th>SKU</th><th>Produto</th><th>Cor</th><th>Quantidade</th><th>Valor Unitário</th><th>Valor Total</th></tr>${mats||'<tr><td colspan="6">Sem material oficial vinculado.</td></tr>'}</table></div>`}const cset=companySettings(),warranty=o.documentVersions?.warrantyText||cset.warranty||V119_WARRANTY;const body=`<div class="pdf-head"><img src="${location.origin}/icon-512.png"><div class="store-client"><strong>Nova Imagem Cortinas e Persianas</strong><br>Luiz Sergio Delgobo ME<br>CNPJ 15.115.803/0001-69 • IE 90.588.753-06<br>Av. Bonifácio Vilela, 170 • Ponta Grossa–PR • CEP 84010-330<br><br><strong>PEDIDO Nº ${String(o.numero).padStart(6,'0')}</strong><br><strong>Cliente:</strong> ${esc(o.client||'-')}<br><strong>Contato:</strong> ${esc(o.contact||'-')}<br><strong>Endereço:</strong> ${esc(o.address||'-')}<br><strong>Instalação prevista:</strong> ${fmtDate(o.deliveryDate)}<br><strong>Vendedor:</strong> ${esc(displaySeller(o))}</div></div>${envs}<div class="section-title">Acompanhe seu pedido</div><div class="customer-access-box"><img class="customer-qr" src="${customerPortalQrUrl(o.numero)}" alt="QR Code para acompanhar o pedido"><div><strong>Portal do Cliente Nova Imagem</strong><br>Aponte a câmera para o QR Code.<br><br>Pedido: <strong>${String(o.numero).padStart(6,'0')}</strong><br>Senha: <strong>${esc(o.clientAccessCode||'NÃO GERADA')}</strong><br><a class="customer-portal-link" href="${customerPortalUrl(o.numero)}" target="_blank">Clique aqui para acompanhar seu pedido</a></div></div><div class="section-title">Condição contratada</div><p class="totals">${esc(cond)}: ${money(o.agreedValue)}</p><div class="section-title">CONTRATO DE FORNECIMENTO E INSTALAÇÃO</div><div class="conditions"><p><strong>CONTRATADA:</strong> Luiz Sergio Delgobo ME, CNPJ 15.115.803/0001-69.</p><p><strong>CONTRATANTE:</strong> ${esc(o.client||'-')}, endereço ${esc(o.address||'-')}.</p><p><strong>OBJETO:</strong> fornecimento e instalação dos produtos descritos neste pedido.</p><p><strong>CONDIÇÃO:</strong> ${esc(cond)}, valor contratado de ${money(o.agreedValue)}.</p><p><strong>PRAZO PREVISTO:</strong> instalação/entrega em ${fmtDate(o.deliveryDate)}.</p></div><div class="signature-grid"><div><div class="signature-line"></div><strong>Cliente / Contratante</strong></div><div><div class="signature-line"></div><strong>Nova Imagem / Vendedor</strong></div></div><div style="page-break-before:always"></div><div class="section-title">TERMO DE GARANTIA</div><div style="white-space:pre-line;line-height:1.55">${esc(warranty)}</div><br><p><strong>Pedido:</strong> ${String(o.numero).padStart(6,'0')} • <strong>Cliente:</strong> ${esc(o.client||'-')}</p><div class="signature-grid"><div><div class="signature-line"></div><strong>Cliente</strong></div><div><div class="signature-line"></div><strong>Nova Imagem</strong></div></div>`;printWindow(body)};
 
 document.addEventListener('DOMContentLoaded',()=>{if($('newWholesaleQuoteBtn'))$('newWholesaleQuoteBtn').onclick=()=>{wholesaleDraft={clientId:'',date:today(),termDays:Number(wholesaleSettings().defaultTermDays||28),dueDate:'',items:[]};setView('wholesaleSale')};if($('wholesaleQuoteSearch'))$('wholesaleQuoteSearch').oninput=renderWholesaleQuotes});
 
@@ -1720,7 +1692,7 @@ printQuote=function(q,type='summary'){
     const mats=v1214MaterialRowsNoPrice(e);
     const pm=1+quotePartnerMarkup(q)/100,qd=1-Math.max(0,Math.min(100,Number(q.discountPercent||0)))/100;
     const envCash=Number(c.cash||0)*pm*qd,envP4=Number(c.base4||0)*pm*qd,envP18=Number(c.p18||0)*pm*qd,envLabor18=Number(c.laborTotal||0)*(1+Number(db.priceConfig.terms.p18AddPct||0)/100)*pm*qd;
-    body+=`<div class="env-block"><div class="env-title">${esc(e.name)} • ${esc(e.measureMode||'DAR DESCONTO')}${e.waveLocation==='TETO'&&norm(e.fixation).normalize('NFD').replace(/[\u0300-\u036f]/g,'')==='VARAO WAVE'?' • VARÃO NO TETO':''}</div><table class="env-table"><tr><th>Medidas</th><td>${e.width} × ${e.height} cm</td><th>Aberturas</th><td>${Math.max(0,Number(e.leaves||1)-1)}</td></tr><tr><th>Acabamento</th><td>${c.finishCalc?esc(`${e.finish} / ${e.finishColor} / ${e.finishPleat} ${e.finishGather}:1`):'—'}</td><th>Forro</th><td>${c.liningCalc?esc(`${e.lining} / ${e.liningColor} / ${e.liningPleat} ${e.liningGather}:1`):'—'}</td></tr><tr><th>Fixação</th><td>${esc(e.fixation||'-')} • ${esc(e.fixColor||'')}</td><th>CONFECÇÃO</th><td><strong>${money(envLabor18)}</strong></td></tr><tr><th>VALORES</th><td><strong>Até 18x</strong><br>${money(envP18)}</td><td><strong>Até 4x</strong><br>${money(envP4)}</td><td><strong>À VISTA</strong><br>${money(envCash)}</td></tr>${e.notes?`<tr><th>Observações</th><td colspan="3">${esc(e.notes)}</td></tr>`:''}</table><div class="section-title">Materiais previstos para este ambiente</div><table class="summary-table"><tr><th>SKU</th><th>Material</th><th>Cor</th><th>Quantidade</th></tr>${mats||'<tr><td colspan="4">Sem material oficial vinculado.</td></tr>'}</table></div>`;
+    body+=`<div class="env-block"><div class="env-title">${esc(e.name)}</div><table class="env-table"><tr><th>Medidas</th><td>${e.width} × ${e.height} cm</td><th>Aberturas</th><td>${Math.max(0,Number(e.leaves||1)-1)}</td></tr><tr><th>Acabamento</th><td>${c.finishCalc?esc(`${e.finish} / ${e.finishColor} / ${e.finishPleat} ${e.finishGather}:1`):'—'}</td><th>Forro</th><td>${c.liningCalc?esc(`${e.lining} / ${e.liningColor} / ${e.liningPleat} ${e.liningGather}:1`):'—'}</td></tr><tr><th>Fixação</th><td>${esc(e.fixation||'-')} • ${esc(e.fixColor||'')}</td><th>CONFECÇÃO</th><td><strong>${money(envLabor18)}</strong></td></tr><tr><th>VALORES</th><td><strong>Até 18x</strong><br>${money(envP18)}</td><td><strong>Até 4x</strong><br>${money(envP4)}</td><td><strong>À VISTA</strong><br>${money(envCash)}</td></tr>${e.notes?`<tr><th>Observações</th><td colspan="3">${esc(e.notes)}</td></tr>`:''}</table><div class="section-title">Materiais previstos para este ambiente</div><table class="summary-table"><tr><th>SKU</th><th>Material</th><th>Cor</th><th>Quantidade</th></tr>${mats||'<tr><td colspan="4">Sem material oficial vinculado.</td></tr>'}</table></div>`;
   }
   if((q.blinds||[]).length){body+=`<div class="section-title">Persianas</div><table class="summary-table"><tr><th>Ambiente</th><th>Modelo</th><th>Cor</th><th>Medidas</th><th>Área calc.</th><th>Qtd.</th><th>18x</th><th>4x</th><th>À vista</th></tr>${q.blinds.map(x=>{const qty=Number(x.qty||1);return `<tr><td>${esc(x.environment||'PERSIANA')}</td><td>${esc(x.model||'-')}</td><td>${esc(x.color||'-')}</td><td>${x.width} × ${x.height} cm</td><td>${Number(x.billArea||x.area||0).toFixed(2)} m²</td><td>${qty} un.</td><td>${money(Number(x.p18||0)*qty)}</td><td>${money(Number(x.p4||0)*qty)}</td><td>${money(Number(x.cash||0)*qty)}</td></tr>`}).join('')}<tr><th colspan="6" style="text-align:right">TOTAL PERSIANAS</th><th>${money((q.blinds||[]).reduce((a,x)=>a+Number(x.p18||0)*Number(x.qty||1),0))}</th><th>${money((q.blinds||[]).reduce((a,x)=>a+Number(x.p4||0)*Number(x.qty||1),0))}</th><th>${money((q.blinds||[]).reduce((a,x)=>a+Number(x.cash||0)*Number(x.qty||1),0))}</th></tr></table>`;}
   if((q.looseProducts||[]).length){body+=`<div class="section-title">Produtos adicionais</div><table class="summary-table"><tr><th>Descrição</th><th>Produto</th><th>Cor</th><th>Quantidade</th></tr>${q.looseProducts.map(a=>`<tr><td>${esc(a.description||a.name)}</td><td>${esc(a.name||'-')}</td><td>${esc(a.color||'-')}</td><td>${Number(a.qty||0)} ${esc(a.unit||'UN')}</td></tr>`).join('')}</table>`;}
@@ -1753,7 +1725,7 @@ printCustomerOrder=function(o){
     const c=calcEnvironment(e);if(!c)continue;
     const envValue=v1214EnvironmentOrderValue(e,o,q);
     const mats=environmentMaterialRows(e,o.paymentCondition==='custom'?'p4':o.paymentCondition);
-    envs+=`<div class="env-block"><div class="env-title">${esc(e.name)} • ${esc(e.measureMode||'DAR DESCONTO')}${e.waveLocation==='TETO'&&norm(e.fixation).normalize('NFD').replace(/[\u0300-\u036f]/g,'')==='VARAO WAVE'?' • VARÃO NO TETO':''}</div><table class="env-table"><tr><th>Medidas</th><td>${e.width} × ${e.height} cm</td><th>Aberturas</th><td>${Math.max(0,Number(e.leaves||1)-1)}</td></tr><tr><th>Acabamento</th><td>${c.finishCalc?esc(`${e.finish} / ${e.finishColor} / ${e.finishPleat} ${e.finishGather}:1`):'—'}</td><th>Forro</th><td>${c.liningCalc?esc(`${e.lining} / ${e.liningColor} / ${e.liningPleat} ${e.liningGather}:1`):'—'}</td></tr><tr><th>Fixação</th><td colspan="3">${esc(e.fixation||'-')} • ${esc(e.fixColor||'')}</td></tr><tr><th>Valor deste ambiente</th><td colspan="3"><strong>${money(envValue)}</strong>${o.paymentCondition!=='cash'?` • ${n}x de ${money(envValue/n)}`:''}</td></tr></table><div class="section-title">Materiais deste ambiente</div><table class="summary-table"><tr><th>SKU</th><th>Produto</th><th>Cor</th><th>Quantidade</th><th>Valor Unitário</th><th>Valor Total</th></tr>${mats||'<tr><td colspan="6">Sem material oficial vinculado.</td></tr>'}</table></div>`;
+    envs+=`<div class="env-block"><div class="env-title">${esc(e.name)}</div><table class="env-table"><tr><th>Medidas</th><td>${e.width} × ${e.height} cm</td><th>Aberturas</th><td>${Math.max(0,Number(e.leaves||1)-1)}</td></tr><tr><th>Acabamento</th><td>${c.finishCalc?esc(`${e.finish} / ${e.finishColor} / ${e.finishPleat} ${e.finishGather}:1`):'—'}</td><th>Forro</th><td>${c.liningCalc?esc(`${e.lining} / ${e.liningColor} / ${e.liningPleat} ${e.liningGather}:1`):'—'}</td></tr><tr><th>Fixação</th><td colspan="3">${esc(e.fixation||'-')} • ${esc(e.fixColor||'')}</td></tr><tr><th>Valor deste ambiente</th><td colspan="3"><strong>${money(envValue)}</strong>${o.paymentCondition!=='cash'?` • ${n}x de ${money(envValue/n)}`:''}</td></tr></table><div class="section-title">Materiais deste ambiente</div><table class="summary-table"><tr><th>SKU</th><th>Produto</th><th>Cor</th><th>Quantidade</th><th>Valor Unitário</th><th>Valor Total</th></tr>${mats||'<tr><td colspan="6">Sem material oficial vinculado.</td></tr>'}</table></div>`;
   }
   const cset=companySettings(),warranty=o.documentVersions?.warrantyText||cset.warranty||V119_WARRANTY;
   const body=`<div class="pdf-head"><img src="${location.origin}/icon-512.png"><div class="store-client"><strong>Nova Imagem Cortinas e Persianas</strong><br>Luiz Sergio Delgobo ME<br>CNPJ 15.115.803/0001-69 • IE 90.588.753-06<br>Av. Bonifácio Vilela, 170 • Ponta Grossa–PR • CEP 84010-330<br><br><strong>PEDIDO Nº ${String(o.numero).padStart(6,'0')}</strong><br><strong>Cliente:</strong> ${esc(o.client||'-')}<br><strong>Contato:</strong> ${esc(o.contact||'-')}<br><strong>Endereço:</strong> ${esc(o.address||'-')}<br><strong>Instalação prevista:</strong> ${fmtDate(o.deliveryDate)}<br><strong>Vendedor:</strong> ${esc(displaySeller(o))}</div></div>${envs}<div class="section-title">Acompanhe seu pedido</div><div class="customer-access-box"><img class="customer-qr" src="${customerPortalQrUrl(o.numero)}" alt="QR Code para acompanhar o pedido"><div><strong>Portal do Cliente Nova Imagem</strong><br>Aponte a câmera para o QR Code.<br><br>Pedido: <strong>${String(o.numero).padStart(6,'0')}</strong><br>Senha: <strong>${esc(o.clientAccessCode)}</strong><br><a class="customer-portal-link" href="${customerPortalUrl(o.numero)}" target="_blank">Clique aqui para acompanhar seu pedido</a></div></div><div class="section-title">Condição contratada</div><p class="totals">${esc(payText)}</p><div class="section-title">CONTRATO DE FORNECIMENTO E INSTALAÇÃO</div><div class="conditions"><p><strong>CONTRATADA:</strong> Luiz Sergio Delgobo ME, CNPJ 15.115.803/0001-69.</p><p><strong>CONTRATANTE:</strong> ${esc(o.client||'-')}, endereço ${esc(o.address||'-')}.</p><p><strong>OBJETO:</strong> fornecimento e instalação dos produtos descritos neste pedido.</p><p><strong>CONDIÇÃO:</strong> ${esc(payText)}</p><p><strong>PRAZO PREVISTO:</strong> instalação/entrega em ${fmtDate(o.deliveryDate)}.</p></div><div class="signature-grid"><div><div class="signature-line"></div><strong>${esc(o.client||'Cliente')}</strong><br><small>Cliente / Contratante</small></div><div><div class="signature-line"></div><strong>NOVA IMAGEM CORTINAS E PERSIANAS</strong><br><small>Eric Luiz Delgobo</small></div></div><div style="page-break-before:always"></div><div class="section-title">TERMO DE GARANTIA</div><div style="white-space:pre-line;line-height:1.55">${esc(warranty)}</div><br><p><strong>Pedido:</strong> ${String(o.numero).padStart(6,'0')} • <strong>Cliente:</strong> ${esc(o.client||'-')}</p><div class="signature-grid"><div><div class="signature-line"></div><strong>${esc(o.client||'Cliente')}</strong><br><small>Cliente / Contratante</small></div><div><div class="signature-line"></div><strong>NOVA IMAGEM CORTINAS E PERSIANAS</strong><br><small>Eric Luiz Delgobo</small></div></div>`;
@@ -2519,8 +2491,8 @@ document.addEventListener('DOMContentLoaded',()=>{
     const fw=$('eFinishTubeWrap'),lw=$('eLiningTubeWrap'),generic=$('eFixationWrap');
     generic?.classList.toggle('hidden',fTube||lTube);
     fw?.classList.toggle('hidden',m==='LINING'||!fTube);lw?.classList.toggle('hidden',m==='FINISH'||!lTube);
-    if(fTube){const size=fp.includes('19MM')?'19':fp.includes('29MM')?'29':'28';v12FillProductSelect($('eFinishTube'),v12TubeProducts(size),'SELECIONE A FIXAÇÃO DO ACABAMENTO')}
-    if(lTube){const lpp=$('eLiningPleat').value,size=lpp.includes('19MM')?'19':lpp.includes('29MM')?'29':'28';v12FillProductSelect($('eLiningTube'),v12TubeProducts(size),'SELECIONE A FIXAÇÃO DO FORRO')}
+    if(fTube){const size=fp.includes('19MM')?'19':'28';v12FillProductSelect($('eFinishTube'),v12TubeProducts(size),'SELECIONE A FIXAÇÃO DO ACABAMENTO')}
+    if(lTube){const lpp=$('eLiningPleat').value,size=lpp.includes('19MM')?'19':'28';v12FillProductSelect($('eLiningTube'),v12TubeProducts(size),'SELECIONE A FIXAÇÃO DO FORRO')}
     if(!(fTube||lTube)){
       cleanFixOptions(false);
       if(ALLOWED.includes(wanted))$('eFixation').value=wanted;
@@ -3635,7 +3607,7 @@ function payrollRows(competence){const h=hrData(),rows=[];for(const e of h.emplo
   printCustomerOrder=function(o){
     ensureV119();if(!/^\d{6}$/.test(String(o.clientAccessCode||''))){o.clientAccessCode=String(crypto.getRandomValues(new Uint32Array(1))[0]%1000000).padStart(6,'0');queueSave()}
     const q=db.quotes.find(x=>Number(x.numero)===Number(o.quoteNumber)),n=v1214OrderInstallments(o),payText=v1214ContractPaymentText(o);let envs='';
-    for(const e of o.environments||[]){const c=calcEnvironment(e);if(!c)continue;const envValue=v1214EnvironmentOrderValue(e,o,q),base4=Number(c.base4||0)||1,materials4=Math.max(0,base4-Number(c.laborTotal||0)),labor4=Math.max(0,Number(c.laborTotal||0)),ratio=envValue/base4,insumos=materials4*ratio,confeccao=labor4*ratio,mats=environmentMaterialRows(e,o.paymentCondition==='custom'?'p4':o.paymentCondition);envs+=`<div class="env-block"><div class="env-title">${esc(e.name)} • ${esc(e.measureMode||'DAR DESCONTO')}${e.waveLocation==='TETO'&&norm(e.fixation).normalize('NFD').replace(/[\u0300-\u036f]/g,'')==='VARAO WAVE'?' • VARÃO NO TETO':''}</div><table class="env-table"><tr><th>Medidas</th><td>${e.width} × ${e.height} cm</td><th>Aberturas</th><td>${Math.max(0,Number(e.leaves||1)-1)}</td></tr><tr><th>Acabamento</th><td>${c.finishCalc?esc(`${e.finish} / ${e.finishColor} / ${e.finishPleat} ${e.finishGather}:1`):'—'}</td><th>Forro</th><td>${c.liningCalc?esc(`${e.lining} / ${e.liningColor} / ${e.liningPleat} ${e.liningGather}:1`):'—'}</td></tr><tr><th>Fixação</th><td colspan="3">${esc(e.fixation||'-')} • ${esc(e.fixColor||'')}</td></tr></table><table class="summary-table" style="margin-top:6px"><tr><th>VALOR DESTE AMBIENTE</th><th>TOTAL DE INSUMOS</th><th>TOTAL DE CONFECÇÃO</th></tr><tr><td><strong>${money(envValue)}</strong>${o.paymentCondition!=='cash'?`<br><small>${n}x de ${money(envValue/n)}</small>`:''}</td><td><strong>${money(insumos)}</strong></td><td><strong>${money(confeccao)}</strong><br><small>confecção + instalação</small></td></tr></table><div class="section-title">Materiais deste ambiente</div><table class="summary-table"><tr><th>SKU</th><th>Produto</th><th>Cor</th><th>Quantidade</th><th>Valor Unitário</th><th>Valor Total</th></tr>${mats||'<tr><td colspan="6">Sem material oficial vinculado.</td></tr>'}</table></div>`}
+    for(const e of o.environments||[]){const c=calcEnvironment(e);if(!c)continue;const envValue=v1214EnvironmentOrderValue(e,o,q),base4=Number(c.base4||0)||1,materials4=Math.max(0,base4-Number(c.laborTotal||0)),labor4=Math.max(0,Number(c.laborTotal||0)),ratio=envValue/base4,insumos=materials4*ratio,confeccao=labor4*ratio,mats=environmentMaterialRows(e,o.paymentCondition==='custom'?'p4':o.paymentCondition);envs+=`<div class="env-block"><div class="env-title">${esc(e.name)}</div><table class="env-table"><tr><th>Medidas</th><td>${e.width} × ${e.height} cm</td><th>Aberturas</th><td>${Math.max(0,Number(e.leaves||1)-1)}</td></tr><tr><th>Acabamento</th><td>${c.finishCalc?esc(`${e.finish} / ${e.finishColor} / ${e.finishPleat} ${e.finishGather}:1`):'—'}</td><th>Forro</th><td>${c.liningCalc?esc(`${e.lining} / ${e.liningColor} / ${e.liningPleat} ${e.liningGather}:1`):'—'}</td></tr><tr><th>Fixação</th><td colspan="3">${esc(e.fixation||'-')} • ${esc(e.fixColor||'')}</td></tr></table><table class="summary-table" style="margin-top:6px"><tr><th>VALOR DESTE AMBIENTE</th><th>TOTAL DE INSUMOS</th><th>TOTAL DE CONFECÇÃO</th></tr><tr><td><strong>${money(envValue)}</strong>${o.paymentCondition!=='cash'?`<br><small>${n}x de ${money(envValue/n)}</small>`:''}</td><td><strong>${money(insumos)}</strong></td><td><strong>${money(confeccao)}</strong><br><small>confecção + instalação</small></td></tr></table><div class="section-title">Materiais deste ambiente</div><table class="summary-table"><tr><th>SKU</th><th>Produto</th><th>Cor</th><th>Quantidade</th><th>Valor Unitário</th><th>Valor Total</th></tr>${mats||'<tr><td colspan="6">Sem material oficial vinculado.</td></tr>'}</table></div>`}
     const cset=companySettings(),warranty=o.documentVersions?.warrantyText||cset.warranty||V119_WARRANTY,body=`<div class="pdf-head"><img src="${location.origin}/icon-512.png"><div class="store-client"><strong>Nova Imagem Cortinas e Persianas</strong><br>Luiz Sergio Delgobo ME<br>CNPJ 15.115.803/0001-69 • IE 90.588.753-06<br>Av. Bonifácio Vilela, 170 • Ponta Grossa–PR • CEP 84010-330<br><br><strong>PEDIDO Nº ${String(o.numero).padStart(6,'0')}</strong><br><strong>Cliente:</strong> ${esc(o.client||'-')}<br><strong>Contato:</strong> ${esc(o.contact||'-')}<br><strong>Endereço:</strong> ${esc(o.address||'-')}<br><strong>Instalação prevista:</strong> ${fmtDate(o.deliveryDate)}<br><strong>Vendedor:</strong> ${esc(displaySeller(o))}</div></div>${envs}<div class="section-title">Acompanhe seu pedido</div><div class="customer-access-box"><img class="customer-qr" src="${customerPortalQrUrl(o.numero)}"><div><strong>Portal do Cliente Nova Imagem</strong><br>Aponte a câmera para o QR Code.<br><br>Pedido: <strong>${String(o.numero).padStart(6,'0')}</strong><br>Senha: <strong>${esc(o.clientAccessCode)}</strong><br><a class="customer-portal-link" href="${customerPortalUrl(o.numero)}" target="_blank">Clique aqui para acompanhar seu pedido</a></div></div><div class="section-title">Condição contratada</div><p class="totals">${esc(payText)}</p><div class="section-title">CONTRATO DE FORNECIMENTO E INSTALAÇÃO</div><div class="conditions"><p><strong>CONTRATADA:</strong> Luiz Sergio Delgobo ME, CNPJ 15.115.803/0001-69.</p><p><strong>CONTRATANTE:</strong> ${esc(o.client||'-')}, endereço ${esc(o.address||'-')}.</p><p><strong>OBJETO:</strong> fornecimento e instalação dos produtos descritos neste pedido.</p><p><strong>CONDIÇÃO:</strong> ${esc(payText)}</p><p><strong>PRAZO PREVISTO:</strong> instalação/entrega em ${fmtDate(o.deliveryDate)}.</p></div><div class="signature-grid"><div><div class="signature-line"></div><strong>${esc(o.client||'Cliente')}</strong><br><small>Cliente / Contratante</small></div><div><div class="signature-line"></div><strong>NOVA IMAGEM CORTINAS E PERSIANAS</strong><br><small>Eric Luiz Delgobo</small></div></div><div style="page-break-before:always"></div><div class="section-title">TERMO DE GARANTIA</div><div style="white-space:pre-line;line-height:1.55">${esc(warranty)}</div><br><p><strong>Pedido:</strong> ${String(o.numero).padStart(6,'0')} • <strong>Cliente:</strong> ${esc(o.client||'-')}</p><div class="signature-grid"><div><div class="signature-line"></div><strong>${esc(o.client||'Cliente')}</strong></div><div><div class="signature-line"></div><strong>NOVA IMAGEM CORTINAS E PERSIANAS</strong></div></div>`;printWindow(body)
   };
 
@@ -4572,7 +4544,7 @@ function payrollRows(competence){const h=hrData(),rows=[];for(const e of h.emplo
    qualquer versão antiga de printCustomerOrder.
    ============================================================================ */
 (function(){
-  const VERSION='V12.8.6';
+  const VERSION='V12.5.8';
   try{companySettings().version=VERSION}catch(_){}
 
   function orderConditionKey1275(o){
@@ -4793,363 +4765,3 @@ function payrollRows(competence){const h=hrData(),rows=[];for(const e of h.emplo
   };
 })();
 
-
-/* V12.8.4 interface — fixação Wave e medida exata */
-document.addEventListener('change',function(ev){if(['eFixation','eWaveLocation','eMeasureMode'].includes(ev.target?.id)){if(typeof applyEnvironmentFixationUI==='function')applyEnvironmentFixationUI();if(typeof updatePreview==='function')updatePreview();}});
-
-/* V12.8.6: controle visual de montagem somente para VARÃO WAVE */
-document.addEventListener('DOMContentLoaded',()=>{
- const refreshWave=()=>{const target=$('eWaveLocationWrap'),fx=$('eFixation');if(!target||!fx)return;
- const normalized=norm(fx.value).normalize('NFD').replace(/[\u0300-\u036f]/g,'');
- target.style.display=normalized.includes('VARAO WAVE')&&!quoteExcludeFixation?'':'none';
- };
- $('eFixation')?.addEventListener('change',()=>{refreshWave();try{updatePreview()}catch(e){console.warn(e)}});
- $('eWaveLocation')?.addEventListener('change',()=>{try{updatePreview()}catch(e){console.warn(e)}});
- refreshWave();
-});
-
-
-/* V12.8.9 — montagem do VARÃO WAVE: exibição exclusiva para pregas não tubulares. */
-(function(){
-  const waveNorm1289=x=>String(x||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase();
-  function refreshWaveLocation1289(){
-    const wrap=document.getElementById('eWaveLocationWrap');
-    const select=document.getElementById('eWaveLocation');
-    if(!wrap||!select)return;
-    const model=document.getElementById('eModel')?.value||'COMPLETE';
-    const finish=model!=='LINING' && isTubePleat(document.getElementById('eFinishPleat')?.value||'');
-    const lining=model!=='FINISH' && isTubePleat(document.getElementById('eLiningPleat')?.value||'');
-    const wave=waveNorm1289(document.getElementById('eFixation')?.value)==='VARAO WAVE';
-    const visible=wave&&!finish&&!lining&&!quoteExcludeFixation;
-    wrap.classList.remove('hidden'); // prevent old tube layout class from concealing Wave
-    wrap.style.display=visible?'flex':'none';
-    select.disabled=!visible;
-    if(!visible)select.value='PAREDE';
-    const product=document.getElementById('eRailProductWrap');
-    if((finish||lining)&&product)product.classList.add('hidden');
-  }
-  const oldPreview1289=updatePreview;
-  updatePreview=function(){refreshWaveLocation1289();return oldPreview1289.apply(this,arguments)};
-  const oldModel1289=updateModelFields;
-  updateModelFields=function(){const r=oldModel1289.apply(this,arguments);refreshWaveLocation1289();return r};
-  const oldRefresh1289=v12RefreshFixations;
-  v12RefreshFixations=function(){const r=oldRefresh1289.apply(this,arguments);refreshWaveLocation1289();return r};
-  document.addEventListener('DOMContentLoaded',()=>{
-    for(const id of ['eFixation','eFinishPleat','eLiningPleat','eModel','eWaveLocation']){
-      document.getElementById(id)?.addEventListener('change',()=>{refreshWaveLocation1289();if(id==='eWaveLocation')updatePreview()});
-    }
-    refreshWaveLocation1289();
-  });
-})();
-
-
-/* V12.8.10 — isolamento dos tubos (ilhós/argolas) e do produto do varão/trilho. */
-(function(){
-  const el=id=>document.getElementById(id);
-  function tubeActive(){
-    const model=el('eModel')?.value||'COMPLETE';
-    return (model!=='LINING' && isTubePleat(el('eFinishPleat')?.value||'')) ||
-           (model!=='FINISH' && isTubePleat(el('eLiningPleat')?.value||''));
-  }
-  function enforceTubeOnly(){
-    const tube=tubeActive();
-    const rail=el('eRailProductWrap'),railSelect=el('eRailProduct');
-    const wave=el('eWaveLocationWrap'),location=el('eWaveLocation');
-    const kind=String(el('eFixation')?.value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase();
-    if(tube){
-      if(rail){rail.classList.add('hidden');rail.style.display='none';}
-      if(railSelect){railSelect.value='';railSelect.disabled=true;}
-      if(wave){wave.classList.add('hidden');wave.style.display='none';}
-      if(location){location.value='PAREDE';location.disabled=true;}
-    }else{
-      if(rail){rail.style.display='';railSelect && (railSelect.disabled=false);}
-      const showWave=kind==='VARAO WAVE' && !quoteExcludeFixation;
-      if(wave){wave.classList.toggle('hidden',!showWave);wave.style.display=showWave?'flex':'none';}
-      if(location){location.disabled=!showWave;if(!showWave)location.value='PAREDE';}
-    }
-  }
-  const preview=updatePreview;
-  updatePreview=function(){const result=preview.apply(this,arguments);enforceTubeOnly();return result;};
-  const modelFields=updateModelFields;
-  updateModelFields=function(){const result=modelFields.apply(this,arguments);enforceTubeOnly();return result;};
-  const refresh=v12RefreshFixations;
-  v12RefreshFixations=function(){const result=refresh.apply(this,arguments);enforceTubeOnly();return result;};
-  const fixationUI=applyEnvironmentFixationUI;
-  applyEnvironmentFixationUI=function(){const result=fixationUI.apply(this,arguments);enforceTubeOnly();return result;};
-  document.addEventListener('DOMContentLoaded',()=>{
-    for(const id of ['eFinishPleat','eLiningPleat','eModel','eFixation','eFinishTube','eLiningTube']){
-      el(id)?.addEventListener('change',enforceTubeOnly);
-    }
-    enforceTubeOnly();
-  });
-})();
-
-
-/* V12.8.12 — esconder "Fixação selecionada no estoque" quando a cortina usa tubos (ilhós/argolas). */
-(function(){
-  const el=id=>document.getElementById(id);
-  const fold=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase();
-  function tubeScenario(){
-    const model=el('eModel')?.value||'COMPLETE';
-    const finishTube = model!=='LINING' && isTubePleat(el('eFinishPleat')?.value||'');
-    const liningTube = model!=='FINISH' && isTubePleat(el('eLiningPleat')?.value||'');
-    return finishTube || liningTube;
-  }
-  function waveScenario(){
-    const opt = el('eFixation')?.selectedOptions?.[0];
-    const base = fold(el('eFixation')?.value||'');
-    return base === 'VARAO WAVE';
-  }
-  function specialStockScenario(){
-    const base = fold(el('eFixation')?.value||'');
-    return ['TRILHO SUICO','TRILHO MOTORIZADO','VARAO WAVE','VARAO WAVE COM COMANDO POR CORDA'].includes(base);
-  }
-  function applyTubeHide12812(){
-    const railWrap = el('eRailProductWrap');
-    const railSelect = el('eRailProduct');
-    const waveWrap = el('eWaveLocationWrap');
-    const waveSelect = el('eWaveLocation');
-    if(!railWrap || !railSelect) return;
-
-    const tube = tubeScenario();
-    const special = specialStockScenario();
-    const wave = waveScenario();
-
-    if(tube){
-      railWrap.classList.add('hidden');
-      railWrap.style.display='none';
-      railSelect.disabled = true;
-      railSelect.value = '';
-      if(waveWrap){ waveWrap.classList.add('hidden'); waveWrap.style.display='none'; }
-      if(waveSelect){ waveSelect.disabled = true; waveSelect.value = 'PAREDE'; }
-      return;
-    }
-
-    railSelect.disabled = false;
-    railWrap.classList.toggle('hidden', !special || quoteExcludeFixation);
-    railWrap.style.display = (!special || quoteExcludeFixation) ? 'none' : '';
-
-    if(waveWrap && waveSelect){
-      const visibleWave = wave && !quoteExcludeFixation;
-      waveWrap.classList.toggle('hidden', !visibleWave);
-      waveWrap.style.display = visibleWave ? '' : 'none';
-      waveSelect.disabled = !visibleWave;
-      if(!visibleWave) waveSelect.value = 'PAREDE';
-    }
-  }
-
-  const _up12812 = updatePreview;
-  updatePreview = function(){ const r = _up12812.apply(this, arguments); applyTubeHide12812(); return r; };
-
-  const _fix12812 = applyEnvironmentFixationUI;
-  applyEnvironmentFixationUI = function(){ const r = _fix12812.apply(this, arguments); applyTubeHide12812(); return r; };
-
-  const _refresh12812 = v12RefreshFixations;
-  v12RefreshFixations = function(){ const r = _refresh12812.apply(this, arguments); applyTubeHide12812(); return r; };
-
-  const _model12812 = updateModelFields;
-  updateModelFields = function(){ const r = _model12812.apply(this, arguments); applyTubeHide12812(); return r; };
-
-  const _load12812 = loadEnvironmentForEdit;
-  loadEnvironmentForEdit = function(e){ const r = _load12812.apply(this, arguments); applyTubeHide12812(); return r; };
-
-  const _setup12812 = setupSelectors;
-  setupSelectors = function(){ const r = _setup12812.apply(this, arguments); applyTubeHide12812(); return r; };
-
-  document.addEventListener('DOMContentLoaded', ()=>{
-    ['eFinishPleat','eLiningPleat','eModel','eFixation','eFinishTube','eLiningTube'].forEach(id=>{
-      el(id)?.addEventListener('change', ()=>setTimeout(applyTubeHide12812,0));
-    });
-    applyTubeHide12812();
-  });
-})();
-
-/* ===== V12.8.13 • ARGOLAS / ENTRETELA / CAMPOS INTERNOS =====
-   Correções aplicadas depois das extensões anteriores para manter compatibilidade. */
-(function(){
-  const oldCalc=calcEnvironment;
-  const isRing=p=>['FRANZIDO COM ARGOLAS 19MM','FRANZIDO COM ARGOLAS 29MM'].includes(p);
-  const isEyelet=p=>['ILHÓS REDONDO','ILHÓS QUADRADO'].includes(p);
-  function evenCeil(n){const q=Math.ceil(n);return q%2===0?q:q+1;}
-  calcEnvironment=function(e){
-    const c=oldCalc(e);
-    if(!c)return c;
-    let delta=0,deltaLabor=0;
-    for(const key of ['finish','lining']){
-      const pleat=e[key+'Pleat'], accessory=c[key+'Accessory'];
-      if(!isRing(pleat)||!accessory)continue;
-      const previousQty=Number(accessory.qty||0);
-      // Largura pronta total, em centímetros, dividida pelo espaçamento de 7 cm.
-      const newQty=evenCeil(Number(e.width||0)/7);
-      const unit=Number(accessory.unitPrice||0);
-      const prevLabor=Number(accessory.labor||0);
-      accessory.qty=newQty;
-      accessory.cost=newQty*unit;
-      accessory.labor=newQty*1.20;
-      delta+=(newQty-previousQty)*unit;
-      deltaLabor+=accessory.labor-prevLabor;
-    }
-    c.accessoryCost=Number(c.accessoryCost||0)+delta;
-    c.accessoryLabor=Number(c.accessoryLabor||0)+deltaLabor;
-    c.laborTotal=Number(c.laborTotal||0)+deltaLabor;
-    // Entretela é aplicada apenas no acabamento com ilhós: 1 m por metro
-    // de tecido efetivamente consumido, incluindo corte por altura.
-    const qty=isEyelet(e.finishPleat)&&e.model!=='LINING' ? Number(c.finishCalc?.consumption||0):0;
-    c.interlining={qty,costUnit:0.60,price4xUnit:2,cost:qty*0.60,price4x:qty*2};
-    c.base4=Number(c.base4||0)+delta+deltaLabor+c.interlining.price4x;
-    const terms=db?.priceConfig?.terms||{};
-    c.cash=c.base4*(1-Number(terms.cashDiscountPct||0)/100);
-    c.p18=c.base4*(1+Number(terms.p18AddPct||0)/100);
-    return c;
-  };
-  // Seletores técnicos continuam no DOM para compatibilidade de cálculo,
-  // mas não aparecem ao atendente. Vincula automaticamente os tubos ao SKU
-  // da cor escolhida (28 mm acabamento / 19 mm forro).
-  const oldEnv=envFromForm;
-  envFromForm=function(){
-    const e=oldEnv();
-    if(e.tubeFixation || isTubePleat(e.finishPleat)||isTubePleat(e.liningPleat)){
-      const color=String(document.getElementById('eFixColor')?.value||e.fixColor||'');
-      const find=(size)=>{const list=typeof v12TubeProducts==='function'?v12TubeProducts(size):[];return list.find(p=>norm(p.color)===norm(color))||list[0]||null};
-      const f=e.model!=='LINING'?find('28'):null;
-      const l=e.model!=='FINISH'?find('19'):null;
-      if(f){e.finishTubeProductId=f.id;e.finishTube=f.product_name;e.finishTubeColor=f.color;}
-      if(l){e.liningTubeProductId=l.id;e.liningTube=l.product_name;e.liningTubeColor=l.color;}
-      e.fixation=[f?.product_name,l?.product_name].filter(Boolean).join(' + ');
-      e.tubeFixation=true;
-    }
-    return e;
-  };
-  function hideInternal(){
-    for(const id of ['eFinishTubeWrap','eLiningTubeWrap']){
-      const wrap=document.getElementById(id);
-      if(wrap){wrap.classList.add('hidden');wrap.style.setProperty('display','none','important');}
-    }
-  }
-  const previousPreview=updatePreview;
-  updatePreview=function(){const r=previousPreview.apply(this,arguments);hideInternal();return r;};
-  const previousModel=updateModelFields;
-  updateModelFields=function(){const r=previousModel.apply(this,arguments);hideInternal();return r;};
-  document.addEventListener('DOMContentLoaded',hideInternal);
-})();
-
-/* V12.8.16 — Homologação Wave, indicadores de acessórios e UF/cidade. */
-(function(){
- const el=id=>document.getElementById(id), fold=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().trim();
- const states='AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RS RO RR SC SP SE TO'.split(' ');
- const cityCache={PR:['PONTA GROSSA']};
- const even=n=>Math.ceil(n/2)*2;
- function tubeMode(){const m=el('eModel')?.value||'COMPLETE';return (m!=='LINING'&&isTubePleat(el('eFinishPleat')?.value))||(m!=='FINISH'&&isTubePleat(el('eLiningPleat')?.value));}
- const preview=updatePreview;
- updatePreview=function(){const r=preview.apply(this,arguments);
-  try{const e=envFromForm(),c=calcEnvironment(e),node=el('calcPreview');if(!c||!node)return r;
-   const ring=p=>/^FRANZIDO COM ARGOLAS/.test(p||''), eye=p=>/^ILHÓS/.test(p||'');
-   const parts=[];
-   for(const [layer,pleat] of [['ACABAMENTO',e.model==='LINING'?'':e.finishPleat],['FORRO',e.model==='FINISH'?'':e.liningPleat]]){
-     if(ring(pleat))parts.push(`ARGOLAS ${pleat.includes('29')?'29':'19'} MM — ${layer}: ${even(Number(e.width||0)/7)} UN`);
-     if(eye(pleat))parts.push(`${pleat} — ${layer}: ${even(Number(e.width||0)/14)} UN`);
-   }
-   if(parts.length){const labels=[...node.querySelectorAll('.detail-item')];const row=labels.find(x=>fold(x.querySelector('span')?.textContent)==='DESLIZANTES');if(row){row.querySelector('span').textContent='ARGOLAS / ILHÓS';row.querySelector('strong').textContent=parts.join(' • ');}}
-  }catch(err){console.warn('Resumo de acessórios:',err)}return r;
- };
- const from=envFromForm;
- envFromForm=function(){const e=from.apply(this,arguments),opt=el('eFixation')?.selectedOptions?.[0];if(fold(e.fixation)==='VARAO WAVE'){
-  e.waveLocation=el('eWaveLocation')?.value||'PAREDE';
-  const p=officialProductById(el('eRailProduct')?.value);if(p){e.railProductId=p.id;e.railProductName=p.product_name;e.railInternalCode=p.internal_code;e.fixColor=p.color;}
- }return e;};
- function installLocation(prefix, uf='PR',city='PONTA GROSSA'){
-  const state=el(prefix+'Uf'),input=el(prefix+'Cidade'),list=el(prefix+'CidadeLista');if(!state||!input||!list)return;
-  state.innerHTML=states.map(s=>`<option value="${s}">${s}</option>`).join('');state.value=states.includes(uf)?uf:'PR';input.value=city||'PONTA GROSSA';
-  const load=async()=>{const chosen=state.value;input.value='';list.replaceChildren();let cities=cityCache[chosen];if(!cities){try{const resp=await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${chosen}/municipios?orderBy=nome`);if(!resp.ok)throw Error('IBGE indisponível');cities=(await resp.json()).map(x=>x.nome.toUpperCase());cityCache[chosen]=cities;}catch(e){console.warn('Municípios indisponíveis:',e);cities=[];}}
-   if(state.value!==chosen)return;const frag=document.createDocumentFragment();cities.forEach(n=>{const op=document.createElement('option');op.value=n;frag.appendChild(op)});list.appendChild(frag);
-  };state.onchange=load;const initial=city||'PONTA GROSSA';load().then(()=>{if(state.value===uf)input.value=initial;});
-  input.addEventListener('blur',()=>{const c=cityCache[state.value]||[];if(c.length&&!c.some(x=>fold(x)===fold(input.value))){input.setCustomValidity('Selecione um município da UF informada.');}else input.setCustomValidity('');});input.addEventListener('input',()=>input.setCustomValidity(''));
- }
- const render=renderQuote;renderQuote=function(){const r=render.apply(this,arguments);installLocation('q',draft.uf||'PR',draft.city||'PONTA GROSSA');return r};
- const sync=syncDraft;syncDraft=function(){sync.apply(this,arguments);draft.uf=el('qUf')?.value||'PR';draft.city=el('qCidade')?.value?.trim()||'PONTA GROSSA';draft.address=[draft.street,draft.number,draft.neighborhood,draft.city,draft.uf,draft.cep,draft.complement].filter(Boolean).join(', ')};
- const upsert=upsertClientFromQuote;upsertClientFromQuote=function(q){upsert.apply(this,arguments);const c=db.clients.find(x=>fold(x.name)===fold(q.client));if(c){c.uf=q.uf||c.uf||'PR';c.city=q.city||c.city||'PONTA GROSSA';}};
- const modal=openClientModal;openClientModal=function(c){modal.apply(this,arguments);const cep=el('mClientCep')?.closest('label');if(!cep)return;
-  const holder=document.createElement('div');holder.style.display='contents';holder.innerHTML='<label class="field">UF<select id="mUf"></select></label><label class="field">Cidade<input id="mCidade" list="mCidadeLista" autocomplete="off"><datalist id="mCidadeLista"></datalist></label>';cep.after(holder);installLocation('m',c?.uf||'PR',c?.city||'PONTA GROSSA');
-  const save=el('mClientSave'),prior=save?.onclick;if(save&&prior)save.onclick=function(...args){const uf=el('mUf')?.value||'PR',city=el('mCidade')?.value?.trim()||'PONTA GROSSA';if(!el('mCidade').checkValidity())return alert('Selecione uma cidade válida para a UF.');prior.apply(this,args);const client=db.clients.find(x=>fold(x.name)===fold(el('mClientName')?.value));if(client){client.uf=uf;client.city=city;client.address=[client.street,client.number,client.neighborhood,city,uf,client.cep,client.complement].filter(Boolean).join(', ');queueSave();}};
- };
-
-})();
-
-/* V12.8.17 — interface simples Wave + seleção de tubos compatíveis + UF persistente. */
-(function(){
- const get=id=>document.getElementById(id);
- const fold=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase();
- const tubePleat=v=>['FRANZIDO COM ARGOLAS 19MM','FRANZIDO COM ARGOLAS 29MM','ILHÓS REDONDO','ILHÓS QUADRADO'].includes(String(v||''));
- const oldWaveFix=v12RefreshFixations;
- v12RefreshFixations=function(){const r=oldWaveFix.apply(this,arguments);refresh();return r;};
- function refresh(){
-   const sel=get('eFixation'),loc=get('eWaveLocation'),wrap=get('eWaveLocationWrap');if(!sel)return;
-   const model=get('eModel')?.value||'COMPLETE';
-   const tube=(model!=='LINING'&&tubePleat(get('eFinishPleat')?.value))||(model!=='FINISH'&&tubePleat(get('eLiningPleat')?.value));
-   // Never offer rails to tube-based pleats. Keep the original stock-based tube selectors.
-   if(tube){sel.closest('#eFixationWrap')?.classList.add('hidden');if(wrap)wrap.style.display='none';if(loc)loc.disabled=true;return;}
-   const selection=sel.value;const options=[['TRILHO MOTORIZADO','TRILHO MOTORIZADO'],['TRILHO SUÍÇO','TRILHO SUÍÇO'],['VARÃO WAVE','VARÃO WAVE'],['VARÃO WAVE COM COMANDO POR CORDA','VARÃO WAVE COM COMANDO POR CORDA']];
-   const same=sel.options.length===options.length&&options.every((o,i)=>sel.options[i].value===o[1]&&sel.options[i].text===o[0]);
-   if(!same){sel.replaceChildren();for(const [text,value] of options)sel.add(new Option(text,value));sel.value=options.some(o=>o[1]===selection)?selection:'TRILHO SUÍÇO';}
-   const wave=fold(sel.value)==='VARAO WAVE'&&!quoteExcludeFixation;
-   if(wrap){wrap.classList.toggle('hidden',!wave);wrap.style.display=wave?'flex':'none';}
-   if(loc){loc.disabled=!wave;if(!['TETO','PAREDE'].includes(loc.value))loc.value='PAREDE';}
-   if(wave){const rail=get('eRailProductWrap'),product=get('eRailProduct');if(rail){rail.classList.remove('hidden');rail.style.display='';}if(product)product.disabled=false;}
- }
- const oldPreview=updatePreview;
- updatePreview=function(){const r=oldPreview.apply(this,arguments);refresh();return r;};
- const oldForm=envFromForm;
- envFromForm=function(){const e=oldForm.apply(this,arguments);if(fold(e.fixation)==='VARAO WAVE')e.waveLocation=get('eWaveLocation')?.value||'PAREDE';return e;};
- const oldLoad=loadEnvironmentForEdit;
- loadEnvironmentForEdit=function(){const r=oldLoad.apply(this,arguments);refresh();return r;};
- document.addEventListener('DOMContentLoaded',()=>{
-   const uf=get('qUf'),city=get('qCidade');if(uf&&!uf.options.length){for(const state of 'AC AL AP AM BA CE DF ES GO MA MG MS MT PA PB PE PI PR RJ RN RO RR RS SC SE SP TO'.split(' '))uf.add(new Option(state,state));uf.value='PR';}if(city&&!city.value)city.value='PONTA GROSSA';
-   for(const id of ['eFixation','eModel','eFinishPleat','eLiningPleat','eWaveLocation'])get(id)?.addEventListener('change',()=>{refresh();if(id==='eWaveLocation')updatePreview();});
-   refresh();
- });
-})();
-
-
-/* V12.8.18 — sincronização final dos seletores. Sem alterações no D1. */
-(function(){
- const el=id=>document.getElementById(id);
- const tube=p=>typeof isTubePleat==='function'&&isTubePleat(p||'');
- const norm18=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().trim();
- function setVisible(node,show){if(!node)return;node.classList.toggle('hidden',!show);node.style.display=show?'':'none';}
- function sync18(){
-  const m=el('eModel')?.value||'COMPLETE', fp=el('eFinishPleat')?.value,lp=el('eLiningPleat')?.value;
-  const f=m!=='LINING'&&tube(fp),l=m!=='FINISH'&&tube(lp),t=f||l;
-  const fx=el('eFixation'),wl=el('eWaveLocation'),ww=el('eWaveLocationWrap');
-  setVisible(el('eFixationWrap'),!t&&!quoteExcludeFixation);
-  setVisible(el('eFinishTubeWrap'),f);setVisible(el('eLiningTubeWrap'),l);
-  const wave=!t&&norm18(fx?.value)==='VARAO WAVE'&&!quoteExcludeFixation;
-  setVisible(ww,wave);if(wl){wl.disabled=!wave;if(wave&&!['TETO','PAREDE'].includes(wl.value))wl.value='PAREDE';}
-  if(t){
-   setVisible(el('eRailProductWrap'),false);
-   for(const [active,id,pleat] of [[f,'eFinishTube',fp],[l,'eLiningTube',lp]]){
-    const select=el(id);if(!select)continue;select.disabled=!active;
-    if(!active)continue;
-    const size=String(pleat).includes('19MM')?'19':String(pleat).includes('29MM')?'29':'28';
-    const products=v12TubeProducts(size);
-    if(products.length){
-     const current=select.value;
-     if(![...select.options].some(o=>o.value===String(products[0].id))){v12FillProductSelect(select,products,'SELECIONE TUBO '+size+' MM');}
-     if(!select.value&&!current&&products.length===1)select.value=String(products[0].id);
-    }else{select.innerHTML='<option value="">TUBO '+size+' MM NÃO CADASTRADO NO ESTOQUE</option>';}
-   }
-  }else{
-   const product=el('eRailProductWrap');if(wave)setVisible(product,true);
-  }
- }
- const priorRefresh=v12RefreshFixations;
- v12RefreshFixations=function(){const r=priorRefresh.apply(this,arguments);sync18();return r};
- const priorPreview=updatePreview;
- updatePreview=function(){const r=priorPreview.apply(this,arguments);sync18();return r};
- function initial(){
-  const uf=el('qUf'),city=el('qCidade');if(uf){if(!uf.options.length){'AC AL AP AM BA CE DF ES GO MA MG MS MT PA PB PE PI PR RJ RN RO RR RS SC SE SP TO'.split(' ').forEach(x=>uf.add(new Option(x,x)));}if(!uf.value)uf.value='PR';}
-  if(city&&!city.value)city.value='PONTA GROSSA';
-  for(const id of ['eModel','eFinishPleat','eLiningPleat','eFixation','eWaveLocation'])el(id)?.addEventListener('change',()=>queueMicrotask(sync18));
-  sync18();
- }
- if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initial);else initial();
-})();

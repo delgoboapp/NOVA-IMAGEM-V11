@@ -133,6 +133,3 @@
   animation:niLoading 1.05s ease-in-out infinite alternate;
 }
 @keyframes niLoading{from{transform:translateX(-45%)}to{transform:translateX(185%)}}
-
-/* V12.8.13: controles técnicos de tubo não são campos do orçamento. */
-#eFinishTubeWrap,#eLiningTubeWrap{display:none!important}
