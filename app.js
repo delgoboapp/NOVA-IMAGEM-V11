@@ -5108,3 +5108,48 @@ document.addEventListener('DOMContentLoaded',()=>{
    refresh();
  });
 })();
+
+
+/* V12.8.18 — sincronização final dos seletores. Sem alterações no D1. */
+(function(){
+ const el=id=>document.getElementById(id);
+ const tube=p=>typeof isTubePleat==='function'&&isTubePleat(p||'');
+ const norm18=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().trim();
+ function setVisible(node,show){if(!node)return;node.classList.toggle('hidden',!show);node.style.display=show?'':'none';}
+ function sync18(){
+  const m=el('eModel')?.value||'COMPLETE', fp=el('eFinishPleat')?.value,lp=el('eLiningPleat')?.value;
+  const f=m!=='LINING'&&tube(fp),l=m!=='FINISH'&&tube(lp),t=f||l;
+  const fx=el('eFixation'),wl=el('eWaveLocation'),ww=el('eWaveLocationWrap');
+  setVisible(el('eFixationWrap'),!t&&!quoteExcludeFixation);
+  setVisible(el('eFinishTubeWrap'),f);setVisible(el('eLiningTubeWrap'),l);
+  const wave=!t&&norm18(fx?.value)==='VARAO WAVE'&&!quoteExcludeFixation;
+  setVisible(ww,wave);if(wl){wl.disabled=!wave;if(wave&&!['TETO','PAREDE'].includes(wl.value))wl.value='PAREDE';}
+  if(t){
+   setVisible(el('eRailProductWrap'),false);
+   for(const [active,id,pleat] of [[f,'eFinishTube',fp],[l,'eLiningTube',lp]]){
+    const select=el(id);if(!select)continue;select.disabled=!active;
+    if(!active)continue;
+    const size=String(pleat).includes('19MM')?'19':String(pleat).includes('29MM')?'29':'28';
+    const products=v12TubeProducts(size);
+    if(products.length){
+     const current=select.value;
+     if(![...select.options].some(o=>o.value===String(products[0].id))){v12FillProductSelect(select,products,'SELECIONE TUBO '+size+' MM');}
+     if(!select.value&&!current&&products.length===1)select.value=String(products[0].id);
+    }else{select.innerHTML='<option value="">TUBO '+size+' MM NÃO CADASTRADO NO ESTOQUE</option>';}
+   }
+  }else{
+   const product=el('eRailProductWrap');if(wave)setVisible(product,true);
+  }
+ }
+ const priorRefresh=v12RefreshFixations;
+ v12RefreshFixations=function(){const r=priorRefresh.apply(this,arguments);sync18();return r};
+ const priorPreview=updatePreview;
+ updatePreview=function(){const r=priorPreview.apply(this,arguments);sync18();return r};
+ function initial(){
+  const uf=el('qUf'),city=el('qCidade');if(uf){if(!uf.options.length){'AC AL AP AM BA CE DF ES GO MA MG MS MT PA PB PE PI PR RJ RN RO RR RS SC SE SP TO'.split(' ').forEach(x=>uf.add(new Option(x,x)));}if(!uf.value)uf.value='PR';}
+  if(city&&!city.value)city.value='PONTA GROSSA';
+  for(const id of ['eModel','eFinishPleat','eLiningPleat','eFixation','eWaveLocation'])el(id)?.addEventListener('change',()=>queueMicrotask(sync18));
+  sync18();
+ }
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initial);else initial();
+})();

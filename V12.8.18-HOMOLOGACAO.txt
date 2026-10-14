@@ -1,0 +1,1 @@
+V12.8.18 — UF com opções HTML, campo Cidade padrão; visibilidade correta de fixação Wave e tubos. Teste os cálculos antes de produção. Não executa qualquer restauração ou migração do Cloudflare D1.
