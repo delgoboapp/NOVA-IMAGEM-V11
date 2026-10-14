@@ -4929,3 +4929,34 @@ function payrollRows(competence){const h=hrData(),rows=[];for(const e of h.emplo
    return {kind:`${finName} + ${linName}`,meters:width*2,supports,ends:4,supportName:support?.product_name||'SUPORTE DUPLO',supportProductId:support?.id||null,parts,total,hardwareBase:total,detail:`${finName}/${linName} — ${color} • ${supports} suportes duplos • 4 tampas${(!first||!second)?' • ATENÇÃO: TUBO NÃO ENCONTRADO NO ESTOQUE':''}`};
  };
 })();
+
+/* NOVA IMAGEM • Homologação: cadastro de garra Wave para teto (sem alterar demais pregas). */
+(function(){
+  const name='GARRA DE TETO PARA VARÃO WAVE';
+  const normalize=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
+  let creating=false;
+  async function ensureWaveClaw(){
+    if(creating||typeof isGestor!=='function'||!isGestor()||typeof priceProducts==='undefined'||!Array.isArray(priceProducts))return;
+    if(priceProducts.some(p=>Number(p.active??1)===1&&normalize(p.product_name)===normalize(name)))return;
+    creating=true;
+    try{
+      await api('prices',{method:'POST',body:JSON.stringify({action:'CRIAR',supplier:'NOVA IMAGEM',category:'ACESSÓRIO',product_name:name,color:'SEM COR',unit:'UN',stock_quantity:500,cost:5,markup_percent:100})});
+      const response=await api('prices');
+      if(Array.isArray(response.products))priceProducts=response.products;
+    }catch(error){console.warn('Cadastro da garra Wave não realizado:',error)}finally{creating=false}
+  }
+  const reload=reloadOfficialProducts;
+  reloadOfficialProducts=async function(...args){const result=await reload.apply(this,args);await ensureWaveClaw();return result;};
+  // A recarga inicial do estoque também pode ocorrer sem usar reloadOfficialProducts.
+  document.addEventListener('DOMContentLoaded',()=>{setTimeout(()=>ensureWaveClaw(),1800)});
+  // O resumo usa o resultado do cálculo de fixação; mantém intactos preços e fórmulas das pregas.
+  const renderPreview=updatePreview;
+  updatePreview=function(){
+    const ret=renderPreview.apply(this,arguments);
+    const mount=document.getElementById('eWaveMount');
+    const fix=document.getElementById('eFixation');
+    const box=document.getElementById('eWaveMountWrap');
+    if(box&&fix){const show=fix.value==='VARÃO WAVE';box.classList.toggle('hidden',!show);box.style.display=show?'block':'none';}
+    return ret;
+  };
+})();
