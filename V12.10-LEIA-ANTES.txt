@@ -1,0 +1,8 @@
+NOVA IMAGEM ERP V12.10 — 16/10/2026
+
+1. VARÃO WAVE + NO TETO: garras por varão = máximo(2, teto(largura em metros / 0,60)); cortina completa usa 2 varões. Retira suportes dessa configuração. Na parede permanecem suportes.
+2. BARRA TOMBADA renomeada para BARRA TOMA, preservando tarifa e leitura de orçamentos antigos.
+3. SALVAR ORÇAMENTO no rodapé da tabela C, usa o MESMO botão superior, sem nova rotina de gravação.
+4. Mantidas as funções de NPS e proteção D1 da V12.6.0.
+
+AVISO: Faça backup/bookmark do D1 e teste em ambiente de homologação antes de publicar na main. A validação local de sintaxe não substitui teste real de armazenamento.

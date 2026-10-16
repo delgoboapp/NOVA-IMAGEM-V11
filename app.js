@@ -529,7 +529,7 @@ function loadEnvironmentForEdit(e){
   const fx=(e.excludeFixation&&e.excludedFixationSnapshot)?e.excludedFixationSnapshot:e;
   set('eFixation',fx.fixation||'TRILHO SUÍÇO');try{refreshFixColors()}catch(_){};try{typeof v12RefreshFixations==='function'&&v12RefreshFixations()}catch(_){}
   set('eRailProduct',fx.railProductId||'');set('eFixColor',fx.fixColor||'');set('eSupportMaterial',fx.supportMaterial||'ALUMINIO');
-  set('eFinishBar',e.finishBar||'BARRA SIMPLES');set('eSoutacheColor',e.soutacheColor||'');set('eCustomPleat',e.customPleat||0);set('eNotes',e.notes||'');
+  set('eFinishBar',e.finishBar==='BARRA TOMBADA'?'BARRA TOMA':(e.finishBar||'BARRA SIMPLES'));set('eSoutacheColor',e.soutacheColor||'');set('eCustomPleat',e.customPleat||0);set('eNotes',e.notes||'');
   if($('eAngle')){$('eAngle').checked=!!e.angle;try{$('eAngle').dispatchEvent(new Event('change',{bubbles:true}))}catch(_){}}
   set('eAngleA',e.angleA||'');set('eAngleAHeight',e.angleAHeight||'');set('eAngleB',e.angleB||'');set('eAngleBHeight',e.angleBHeight||'');set('eMotorAngleMode',e.motorAngleMode||'CURVA');
   if($('addEnvBtn'))$('addEnvBtn').textContent='SALVAR EDIÇÕES';
@@ -1443,7 +1443,7 @@ const _v118CalcEnvironment=calcEnvironment;
 calcEnvironment=function(e){
   const c=_v118CalcEnvironment(e);if(!c)return c;
   const bar=e.finishBar||'BARRA SIMPLES',barMeters=Number(c.finishCalc?.gathered||0);let laborRate=0,soutacheFactor=0;
-  if(bar==='BARRA TOMBADA')laborRate=15;if(bar==='BARRA SOUTACHE'){laborRate=20;soutacheFactor=1}if(bar==='BARRA SOUTACHE DUPLA'){laborRate=35;soutacheFactor=2}
+  if(bar==='BARRA TOMBADA'||bar==='BARRA TOMA')laborRate=15;if(bar==='BARRA SOUTACHE'){laborRate=20;soutacheFactor=1}if(bar==='BARRA SOUTACHE DUPLA'){laborRate=35;soutacheFactor=2}
   const barLabor=barMeters*laborRate,soutacheMeters=barMeters*soutacheFactor,soutache=soutacheMeters?officialProductByName('SOUTACHE',e.soutacheColor):null,soutacheCost=soutacheMeters*Number(soutache?.price_4x||0);
   c.barType=bar;c.barMeters=barMeters;c.barLabor=barLabor;c.soutacheMeters=soutacheMeters;c.soutacheProductId=soutache?.id||null;c.soutacheCost=soutacheCost;c.laborTotal=Number(c.laborTotal||0)+barLabor;c.base4=Number(c.base4||0)+barLabor+soutacheCost;c.p18=c.base4*(1+Number(db.priceConfig.terms.p18AddPct||0)/100);c.cash=c.base4*(1-Number(db.priceConfig.terms.cashDiscountPct||0)/100);return c;
 };
@@ -4818,16 +4818,20 @@ function payrollRows(competence){const h=hrData(),rows=[];for(const e of h.emplo
   fixationCalc=function(kind,widthM,model,leaves,fixColor,railProductId,supportMaterial){
     const original=oldFixationCalc(kind,widthM,model,leaves,fixColor,railProductId,supportMaterial);
     if(kind!=='VARÃO WAVE'||!waveContext||waveContext.waveMount!=='TETO'||waveContext.excludeFixation)return original;
-    const countPerRod=Math.max(2,Math.ceil(Number(widthM||0)/0.60));
     const rods=model==='COMPLETE'?2:1;
-    const clamps=countPerRod*rods;
+    const perRod=Math.max(2,Math.ceil(Number(widthM||0)/0.60));
+    const claws=rods*perRod;
     const sku=clawSku();
     const unit=sku?Number(sku.price_4x||0):10;
     const support=officialProductById(original.supportProductId)||officialProductByName('SUPORTE WAVE 28',original.railColor||fixColor);
-    const previousSupportCost=Number(original.supports||0)*Number(support?.price_4x||0);
-    const total=Number(original.total||0)-previousSupportCost+clamps*unit;
-    return {...original,total,hardwareBase:total,supports:0,clamps,clawProductId:sku?.id||null,
-      waveMount:'TETO',detail:String(original.detail||'').replace(/\s*•\s*\d+\s*suportes/i,'')+` • ${clamps} garras de teto (${countPerRod} por varão)`};
+    const oldUnit=support?Number(support.price_4x||0):Number(db.priceConfig?.wave?.support||0);
+    const oldSupportCost=Number(original.supports||0)*oldUnit;
+    const base=Number(original.hardwareBase??original.total??0)-oldSupportCost+claws*unit;
+    const additional=Number(original.total||0)-Number(original.hardwareBase??original.total??0);
+    const total=base+additional;
+    const description=String(original.detail||'').replace(/\s*•\s*\d+\s*suportes(?:\s+[^•]*)?/i,'');
+    return {...original,total,hardwareBase:base,supports:0,supportProductId:null,supportName:'',clamps:claws,clawProductId:sku?.id||null,
+      waveMount:'TETO',detail:`${description} • ${claws} garras (${perRod} por varão)`};
   };
   const oldRequirements=officialOrderRequirements;
   officialOrderRequirements=function(q){
@@ -5013,3 +5017,9 @@ function sendNpsWhatsApp(n){
  const link='https://wa.me/'+(tel?(tel.startsWith('55')?tel:'55'+tel):'')+'?text='+encodeURIComponent(msg);
  window.open(link,'_blank','noopener');
 }
+
+/* V12.10 — compatibilidade de nomenclatura de barras já gravadas */
+(function(){
+ const oldLoad=loadEnvironmentForEdit;
+ if(typeof oldLoad==='function')loadEnvironmentForEdit=function(e){return oldLoad({...e,finishBar:e.finishBar==='BARRA TOMBADA'?'BARRA TOMA':e.finishBar})};
+})();
