@@ -268,7 +268,7 @@ const NAV=[
   ['production','Produção','production'],['install','Instalações','all'],['rework','Retrabalho','all'],
   ['suppliers','Compras e Fornecedores','gestor'],['inventory','Estoque','gestor'],
   ['receivables','Contas a Receber','gestor'],['revenues','Receitas Totais','gestor'],['productionCosts','Custos de Instalação','gestor'],['sewingCost','Custo de Costura','gestor'],['results','Resultados dos Pedidos','gestor'],['hr','Departamento Pessoal','gestor'],['users','Usuários','gestor'],
-  ['kpis','Dashboard Gestão','gestor'],['inspirations','Overview','gestor'],['npsResults','Resultado NPS','gestor'],['npsSend','Enviar Pesquisa NPS','gestor'],['npsEvolution','Evolução NPS','gestor'],['payables','Contas a Pagar','gestor'],['monthlyClose','Fechamento Mensal','gestor'],['settings','Configurações','gestor'],['audit','Auditoria','gestor'],['backup','Backup','gestor'],['help','AJUDA','all']
+  ['fiscalHome','Notas Fiscais','gestor'],['kpis','Dashboard Gestão','gestor'],['inspirations','Overview','gestor'],['npsResults','Resultado NPS','gestor'],['npsSend','Enviar Pesquisa NPS','gestor'],['npsEvolution','Evolução NPS','gestor'],['payables','Contas a Pagar','gestor'],['monthlyClose','Fechamento Mensal','gestor'],['settings','Configurações','gestor'],['audit','Auditoria','gestor'],['backup','Backup','gestor'],['help','AJUDA','all']
 ];
 const NAV_GROUPS=[
  {id:'commercial',label:'COMERCIAL',items:['commercialPanel','quote','quotes','clients','orders','agenda']},
@@ -276,6 +276,7 @@ const NAV_GROUPS=[
  {id:'operational',label:'OPERACIONAL',items:['production','install','rework']},
  {id:'stock',label:'COMPRAS E ESTOQUE',items:['suppliers','inventory']},
  {id:'management',label:'GESTÃO',items:['kpis','receivables','revenues','payables','productionCosts','sewingCost','results','monthlyClose','hr','users','settings','audit','backup']},
+ {id:'fiscal',label:'NOTAS FISCAIS',items:['fiscalHome']},
  {id:'nps',label:'NPS - CLIENTES',items:['npsResults','npsSend','npsEvolution']},
  {id:'inspirations',label:'CONFIGURAÇÕES DO PORTAL',items:['inspirations']},
  {id:'help',label:'AJUDA',items:['help']}
@@ -331,7 +332,7 @@ async function saveCloud(){
  finally{cloudSaving=false}
 }
 
-function renderNav(){const nav=$('nav');if(!nav)return;nav.innerHTML='';if(!$('accordionNavStyle')){const st=document.createElement('style');st.id='accordionNavStyle';st.textContent='.nav-group{border-bottom:1px solid #e5efed}.nav-group-title{width:100%;border:0;background:transparent;text-align:left;padding:12px 10px;font-weight:850;color:#075b5b;display:flex;justify-content:space-between;align-items:center}.nav-group-title:hover{background:#eef7f5}.nav-group-items{display:none;padding:0 0 7px 8px}.nav-group.open .nav-group-items{display:grid;gap:4px}.nav-group-items .nav-btn{padding:9px 10px;font-size:13px}.nav-group-title .chev{transition:.15s}.nav-group.open .chev{transform:rotate(90deg)}';document.head.appendChild(st)}const visible=new Set(NAV.filter(x=>hasPermission(x[0])).map(x=>x[0]));let openId=sessionStorage.getItem('novaV11NavGroup')||'';for(const g of NAV_GROUPS){const ids=g.items.filter(id=>visible.has(id));if(!ids.length)continue;const wrap=document.createElement('div');wrap.className='nav-group'+(g.id===openId?' open':'');const head=document.createElement('button');head.type='button';head.className='nav-group-title';head.innerHTML=`<span>${g.label}</span><span class="chev">▶</span>`;const items=document.createElement('div');items.className='nav-group-items';for(const id of ids){const item=NAV.find(x=>x[0]===id);const b=document.createElement('button');b.className='nav-btn';b.dataset.view=id;b.textContent=item[1];b.onclick=()=>setView(id);items.appendChild(b)}head.onclick=()=>{const opening=!wrap.classList.contains('open');nav.querySelectorAll('.nav-group').forEach(x=>x.classList.remove('open'));if(opening){wrap.classList.add('open');sessionStorage.setItem('novaV11NavGroup',g.id)}else sessionStorage.removeItem('novaV11NavGroup')};wrap.append(head,items);nav.appendChild(wrap)}}
+function renderNav(){const nav=$('nav');if(!nav)return;nav.innerHTML='';if(!$('accordionNavStyle')){const st=document.createElement('style');st.id='accordionNavStyle';st.textContent='.nav-group{border-bottom:1px solid #e5efed}.nav-group-title{width:100%;border:0;background:transparent;text-align:left;padding:12px 10px;font-weight:850;color:#075b5b;display:flex;justify-content:space-between;align-items:center}.nav-group-title:hover{background:#eef7f5}.nav-group-items{display:none;padding:0 0 7px 8px}.nav-group.open .nav-group-items{display:grid;gap:4px}.nav-group-items .nav-btn{padding:9px 10px;font-size:13px}.nav-group-title .chev{transition:.15s}.nav-group.open .chev{transform:rotate(90deg)}';document.head.appendChild(st)}const visible=new Set(NAV.filter(x=>hasPermission(x[0])).map(x=>x[0]));let openId=sessionStorage.getItem('novaV11NavGroup')||'';for(const g of NAV_GROUPS){const ids=g.items.filter(id=>visible.has(id));if(!ids.length)continue;const wrap=document.createElement('div');wrap.className='nav-group'+(g.id===openId?' open':'');const head=document.createElement('button');head.type='button';head.className='nav-group-title';head.innerHTML=`<span>${g.label}${g.id==='fiscal'?'<small style="display:block;font-size:9px;color:#b06500;font-weight:600;margin-top:2px">! TESTE</small>':''}</span><span class="chev">▶</span>`;const items=document.createElement('div');items.className='nav-group-items';for(const id of ids){const item=NAV.find(x=>x[0]===id);const b=document.createElement('button');b.className='nav-btn';b.dataset.view=id;b.textContent=item[1];b.onclick=()=>setView(id);items.appendChild(b)}head.onclick=()=>{const opening=!wrap.classList.contains('open');nav.querySelectorAll('.nav-group').forEach(x=>x.classList.remove('open'));if(opening){wrap.classList.add('open');sessionStorage.setItem('novaV11NavGroup',g.id)}else sessionStorage.removeItem('novaV11NavGroup')};wrap.append(head,items);nav.appendChild(wrap)}}
 function setView(id){if(id!=='home'&&!hasPermission(id))return alert('Seu usuário não possui permissão para acessar esta área.');document.querySelectorAll('.view').forEach(v=>v.classList.remove('active','print-target'));$('view-'+id)?.classList.add('active');document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',id!=='home'&&b.dataset.view===id));if(id==='home')renderHome();if(id==='commercialPanel')renderCommercialPanel();if(id==='wholesaleDashboard')renderWholesaleDashboard();if(id==='wholesaleClients')renderWholesaleClients();if(id==='wholesaleSale')renderWholesaleSale();if(id==='wholesaleOrders')renderWholesaleOrders();if(id==='kpis')renderKpis();if(id==='results')renderResults();if(id==='productionCosts')renderProductionCosts();if(id==='sewingCost')renderSewingCost();if(id==='help')renderHelp();if(id==='pricing')renderPricing();if(id==='hr')renderHR();if(id==='receivables')renderReceivables();if(id==='revenues')renderRevenues();if(id==='settings')renderSettings();if(id==='audit')renderAudit();if(id==='monthlyClose')renderMonthlyClose();if(id==='npsResults')renderNpsResults();if(id==='npsSend')renderNpsSend();if(id==='npsEvolution')renderNpsEvolution()}
 function renderHome(){renderPurchaseAlerts();renderDiscountApprovalAlerts();renderAgendaHome();renderUserHomeAlerts();const name=currentUser?.name||currentUser?.username||'USUÁRIO';if($('homeWelcome'))$('homeWelcome').textContent=`BEM-VINDO - ${String(name).toUpperCase()}`;const quotes=[['No longo prazo, estaremos todos mortos.','John Maynard Keynes'],['O consumo é o único fim e propósito de toda produção.','Adam Smith'],['Nada é tão permanente quanto um programa temporário do governo.','Milton Friedman'],['A dificuldade não está nas novas ideias, mas em escapar das antigas.','John Maynard Keynes'],['A liberdade econômica é requisito essencial da liberdade política.','Milton Friedman'],['A riqueza não consiste em possuir grandes bens, mas em ter poucas necessidades.','Epicteto — filosofia econômica clássica']];const q=quotes[Math.floor(Math.random()*quotes.length)];if($('homeQuote'))$('homeQuote').textContent='“'+q[0]+'”';if($('homeQuoteAuthor'))$('homeQuoteAuthor').textContent='— '+q[1];const tick=()=>{const now=new Date();if($('homeDate'))$('homeDate').textContent=now.toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});if($('homeTime'))$('homeTime').textContent=now.toLocaleTimeString('pt-BR')};tick();if(homeClockTimer)clearInterval(homeClockTimer);homeClockTimer=setInterval(tick,1000)}
 function goHome(){setView('home')}
@@ -4957,36 +4958,6 @@ function payrollRows(competence){const h=hrData(),rows=[];for(const e of h.emplo
 })();
 
 /* NOVA IMAGEM • Homologação: cadastro de garra Wave para teto (sem alterar demais pregas). */
-(function(){
-  const name='GARRA DE TETO PARA VARÃO WAVE';
-  const normalize=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
-  let creating=false;
-  async function ensureWaveClaw(){
-    if(creating||typeof isGestor!=='function'||!isGestor()||typeof priceProducts==='undefined'||!Array.isArray(priceProducts))return;
-    if(priceProducts.some(p=>Number(p.active??1)===1&&normalize(p.product_name)===normalize(name)))return;
-    creating=true;
-    try{
-      await api('prices',{method:'POST',body:JSON.stringify({action:'CRIAR',supplier:'NOVA IMAGEM',category:'ACESSÓRIO',product_name:name,color:'SEM COR',unit:'UN',stock_quantity:500,cost:5,markup_percent:100})});
-      const response=await api('prices');
-      if(Array.isArray(response.products))priceProducts=response.products;
-    }catch(error){console.warn('Cadastro da garra Wave não realizado:',error)}finally{creating=false}
-  }
-  const reload=reloadOfficialProducts;
-  reloadOfficialProducts=async function(...args){const result=await reload.apply(this,args);await ensureWaveClaw();return result;};
-  // A recarga inicial do estoque também pode ocorrer sem usar reloadOfficialProducts.
-  document.addEventListener('DOMContentLoaded',()=>{setTimeout(()=>ensureWaveClaw(),1800)});
-  // O resumo usa o resultado do cálculo de fixação; mantém intactos preços e fórmulas das pregas.
-  const renderPreview=updatePreview;
-  updatePreview=function(){
-    const ret=renderPreview.apply(this,arguments);
-    const mount=document.getElementById('eWaveMount');
-    const fix=document.getElementById('eFixation');
-    const box=document.getElementById('eWaveMountWrap');
-    if(box&&fix){const show=fix.value==='VARÃO WAVE';box.classList.toggle('hidden',!show);box.style.display=show?'block':'none';}
-    return ret;
-  };
-})();
-
 /* V12.6.0 — Envios NPS: somente pedidos sem avaliação */
 function pendingNpsOrders(){
  const answered=new Set((db.customerFeedback||[]).map(f=>Number(f.orderNumber)));
@@ -5025,59 +4996,74 @@ function sendNpsWhatsApp(n){
 })();
 
 
-/* V12.10.1 — FIX DEFINITIVO: resultado final de VARÃO WAVE instalado NO TETO.
-   Corrige o resumo, valores e os insumos; parede permanece inalterada. */
+
+/* V12.11 TESTE: rotina central única para garras Varão Wave no teto. */
 (function(){
-  const fold=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
-  const claw=()=>((typeof priceProducts!=='undefined'&&Array.isArray(priceProducts))?priceProducts:[])
-    .find(p=>Number(p.active??1)===1&&fold(p.product_name).includes('GARRA')&&fold(p.product_name).includes('VARAO')&&fold(p.product_name).includes('WAVE'))||null;
-  const originalCalc=calcEnvironment;
-  calcEnvironment=function(e){
-    const c=originalCalc(e);
-    if(!c||String(e?.fixation)!=='VARÃO WAVE'||String(e?.waveMount)!=='TETO'||e.excludeFixation)return c;
-    const old=c.fixationCalc||{};
-    const count=Math.max(2,Math.ceil((Number(e.width||0)/100)/0.60))*(e.model==='COMPLETE'?2:1);
-    // A versão anterior pode já ter calculado garras: não acrescentar duas vezes.
-    if(Number(old.clamps||0)===count&&Number(old.supports||0)===0)return c;
-    const item=claw();
-    const price=item?Number(item.price_4x||0):10;
-    const support=officialProductById(old.supportProductId);
-    const supportPrice=support?Number(support.price_4x||0):Number(db.priceConfig?.wave?.support||0);
-    const removed=Number(old.supports||0)*supportPrice;
-    const prior=Number(old.total||0);
-    const next=Math.max(0,prior-removed+count*price);
-    const rods=e.model==='COMPLETE'?2:1;
-    const capCount=Number(old.ends??(2*rods));
-    const meters=Number(old.meters??(Number(e.width||0)/100*rods));
-    const name=old.railName||'VARÃO WAVE 28';
-    const color=old.railColor||e.fixColor||'';
-    c.fixationCalc={...old,total:next,hardwareBase:next,supports:0,supportProductId:null,supportName:'',clamps:count,clawProductId:item?.id||null,waveMount:'TETO',detail:`${name} • ${color} • ${meters.toFixed(2)}m • ${count} garras • ${capCount} tampas`};
-    const difference=next-prior;
-    c.base4=Number(c.base4||0)+difference;
-    c.p18=c.base4*(1+Number(db.priceConfig?.terms?.p18AddPct||0)/100);
-    c.cash=c.base4*(1-Number(db.priceConfig?.terms?.cashDiscountPct||0)/100);
-    return c;
-  };
-  const originalRequirements=officialOrderRequirements;
-  officialOrderRequirements=function(q){
-    const rows=originalRequirements(q);
-    for(const e of q?.environments||[]){
-      if(String(e?.fixation)!=='VARÃO WAVE'||String(e?.waveMount)!=='TETO'||e.excludeFixation)continue;
-      const count=Math.max(2,Math.ceil((Number(e.width||0)/100)/0.60))*(e.model==='COMPLETE'?2:1);
-      // Remove somente suportes da fixação Wave neste ambiente.
-      for(let i=rows.length-1;i>=0;i--){
-        const r=rows[i];
-        if(r.environment===e.name&&fold(r.product_name).includes('SUPORTE')&&
-           (fold(r.product_name).includes('WAVE')||fold(r.product_name).includes('28/28')))rows.splice(i,1);
-      }
-      const item=claw();
-      // Evita duplicidade se a versão anterior já gerou a linha de garras.
-      for(let i=rows.length-1;i>=0;i--){
-        const r=rows[i];
-        if(r.environment===e.name&&fold(r.source).includes('GARRA VARAO WAVE'))rows.splice(i,1);
-      }
-      if(item)rows.push({product_id:Number(item.id),internal_code:item.internal_code,product_name:item.product_name,color:item.color,unit:item.unit||'UN',qty:count,environment:e.name,environments:[e.name],source:'GARRA VARÃO WAVE - TETO',cost:Number(item.cost||0),markup_percent:Number(item.markup_percent||0),price_cash:Number(item.price_cash||0),price_4x:Number(item.price_4x||0),price_18x:Number(item.price_18x||0)});
-    }
-    return rows;
-  };
+ const fold=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
+ const isCeiling=e=>fold(e?.fixation)==='VARAO WAVE' && ['TETO','NO TETO'].includes(fold(e?.waveMount))&&!e?.excludeFixation;
+ const claw=()=>Array.isArray(priceProducts)?priceProducts.find(p=>Number(p.active??1)===1&&fold(p.product_name)==='GARRA DE VARAO WAVE'):null;
+ const qty=e=>Math.max(2,Math.ceil(Number(e.width||0)/60))*(e.model==='COMPLETE'?2:1);
+ // Adapta o resultado real da rotina de cálculo, inclusive antes da renderização.
+ const prior=calcEnvironment;
+ calcEnvironment=function(e){
+  const result=prior(e);
+  if(!result||!isCeiling(e))return result;
+  const current=result.fixationCalc||{};
+  if(current.waveMount==='TETO'&&Number(current.clamps)===qty(e)&&Number(current.supports)===0)return result;
+  const product=claw(),count=qty(e),rods=e.model==='COMPLETE'?2:1;
+  const oldSupport=officialProductById(current.supportProductId);
+  const oldPrice=Number(oldSupport?.price_4x??db.priceConfig?.wave?.support??0);
+  const previous=Number(current.total||0);
+  const newTotal=Math.max(0,previous-Number(current.supports||0)*oldPrice+count*Number(product?.price_4x??10));
+  const diff=newTotal-previous;
+  const meters=Number(e.width||0)/100*rods;
+  const ends=Number(current.ends??2*rods);
+  result.fixationCalc={...current,total:newTotal,hardwareBase:newTotal,meters,ends,supports:0,supportProductId:null,supportName:'',clamps:count,clawProductId:product?.id||null,waveMount:'TETO',detail:`${current.railName||'VARÃO WAVE 28'} • ${current.railColor||e.fixColor||''} • ${meters.toFixed(2)}m • ${count} garras • ${ends} tampas`};
+  result.base4=Number(result.base4||0)+diff;
+  result.cash=Number(result.cash||0)+diff*(1-Number(db.priceConfig?.terms?.cashDiscountPct||0)/100);
+  result.p18=Number(result.p18||0)+diff*(1+Number(db.priceConfig?.terms?.p18AddPct||0)/100);
+  return result;
+ };
+ const previousRows=officialOrderRequirements;
+ officialOrderRequirements=function(q){
+  const rows=(previousRows(q)||[]).slice();
+  for(const e of q?.environments||[]){
+   if(!isCeiling(e))continue;
+   const key=fold(e.name),count=qty(e),item=claw();
+   for(let i=rows.length-1;i>=0;i--){
+    const r=rows[i],envs=[r.environment,...(r.environments||[])].map(fold);
+    if(!envs.includes(key))continue;
+    const name=fold(r.product_name),source=fold(r.source);
+    if((name.includes('SUPORTE')&&(name.includes('WAVE')||name.includes('28/28')))||(name.includes('GARRA')&&name.includes('VARAO')&&name.includes('WAVE'))||source.includes('GARRA VARAO WAVE'))rows.splice(i,1);
+   }
+   if(item)rows.push({product_id:Number(item.id),internal_code:item.internal_code,product_name:item.product_name,color:item.color,unit:'UN',qty:count,environment:e.name,environments:[e.name],source:'GARRA VARÃO WAVE - TETO',cost:Number(item.cost||0),price_cash:Number(item.price_cash||0),price_4x:Number(item.price_4x||0),price_18x:Number(item.price_18x||0)});
+  }
+  return rows;
+ };
+ // Produto é inserido por endpoint idempotente, nunca por gravação de JSON de app_state.
+ let checking=false;
+ async function checkClaw(){if(checking||!token||!isGestor())return;checking=true;try{await api('prices',{method:'POST',body:JSON.stringify({action:'GARANTIR_GARRA_WAVE_TETO'})});const r=await api('prices');if(Array.isArray(r.products)){priceProducts=r.products;renderProducts();}}catch(e){console.warn('Garra não cadastrada:',e)}finally{checking=false}}
+ const previousReload=reloadOfficialProducts;
+ reloadOfficialProducts=async function(...args){const r=await previousReload.apply(this,args);await checkClaw();return r};
+ document.addEventListener('DOMContentLoaded',()=>setTimeout(checkClaw,1400));
+ window.niEnsureWaveClaw=checkClaw;
+})();
+
+/* V12.11 — Módulo Fiscal TESTE: documentos de conferência, sem emissão. */
+(function(){
+ const $f=id=>document.getElementById(id);
+ const formatted=n=>String(n||0).padStart(6,'0');
+ function show(section){for(const el of document.querySelectorAll('[data-fiscal-section]'))el.hidden=el.dataset.fiscalSection!==section;}
+ function init(){const root=$f('view-fiscalHome');if(!root||root.dataset.ready)return;root.dataset.ready='1';root.innerHTML=`<header class="topbar"><div><h1>Notas Fiscais <small style="font-size:11px;color:#a56c00">! TESTE</small></h1><p>Rascunhos para conferência. Não há comunicação com a SEFAZ.</p></div></header><div class="card" data-fiscal-section="home"><div class="actions"><button class="btn primary" id="fiscalBuy">NOTAS DE COMPRA</button><button class="btn primary" id="fiscalSell">NOTAS DE VENDA</button></div></div><div class="card" data-fiscal-section="buy" hidden><div class="toolbar"><h3>NOTAS DE COMPRA</h3><button class="btn ghost" data-fiscal-back>VOLTAR</button></div><p class="notice">Conferência de XMLs: implantação da importação e do armazenamento seguro ainda pendente. Não serão criadas entradas de estoque nesta tela de teste.</p><label class="field">Selecionar XML para conferência local (não salva nem envia)<input id="fiscalXml" type="file" accept=".xml,text/xml,application/xml"></label><div id="fiscalXmlPreview"></div></div><div class="card" data-fiscal-section="sell" hidden><div class="toolbar"><h3>NOTAS DE VENDA</h3><div class="actions"><button class="btn primary" id="fiscalNew">+ NOVA NOTA FISCAL</button><button class="btn ghost" data-fiscal-back>VOLTAR</button></div></div><p class="muted">Somente pré-notas para conferência. Nenhuma nota fiscal real foi emitida.</p></div><div class="card" data-fiscal-section="choose" hidden><div class="toolbar"><h3>Selecionar pedido</h3><button class="btn ghost" id="fiscalBackSell">VOLTAR</button></div><input class="search" id="fiscalOrderSearch" placeholder="Buscar pedido ou cliente"><div class="table-wrap"><table class="table"><thead><tr><th>Pedido</th><th>Cliente</th><th>Data</th><th>Valor</th><th>Ação</th></tr></thead><tbody id="fiscalOrderRows"></tbody></table></div></div><div class="card" data-fiscal-section="order" hidden><div class="toolbar"><h3 id="fiscalOrderHeading">Pedido</h3><div class="actions"><button class="btn ghost" id="fiscalBackOrders">VOLTAR</button><button class="btn primary" id="fiscalGenerate">GERAR NOTA FISCAL (RASCUNHO PDF)</button></div></div><div id="fiscalOrderDetails"></div></div>`;
+ $f('fiscalBuy').onclick=()=>show('buy');$f('fiscalSell').onclick=()=>show('sell');root.querySelectorAll('[data-fiscal-back]').forEach(x=>x.onclick=()=>show('home'));
+ $f('fiscalNew').onclick=()=>{drawOrders();show('choose')};$f('fiscalBackSell').onclick=()=>show('sell');$f('fiscalBackOrders').onclick=()=>show('choose');$f('fiscalOrderSearch').oninput=drawOrders;
+ $f('fiscalXml').onchange=async ev=>{const file=ev.target.files?.[0];if(!file)return;const node=$f('fiscalXmlPreview');if(file.size>5e6){node.textContent='XML maior que 5 MB. Arquivo não aberto.';return}try{const d=new DOMParser().parseFromString(await file.text(),'application/xml');if(d.querySelector('parsererror'))throw Error('XML inválido');const get=(tag)=>d.getElementsByTagName(tag)[0]?.textContent||'-';node.innerHTML=`<p><strong>XML local:</strong> ${esc(file.name)} • <strong>NF:</strong> ${esc(get('nNF'))} • <strong>Chave:</strong> ${esc(d.getElementsByTagName('chNFe')[0]?.textContent||'-')}</p><p>Itens identificados: ${d.getElementsByTagName('det').length}. Este XML não foi enviado ao servidor nem cadastrado.</p>`}catch(err){node.textContent='Falha ao ler XML: '+err.message}};
+ }
+ let active=null;
+ function drawOrders(){const tbody=$f('fiscalOrderRows');if(!tbody)return;const t=norm($f('fiscalOrderSearch')?.value||'');tbody.innerHTML=(db.orders||[]).filter(o=>!t||norm(o.client).includes(t)||String(o.numero).includes(t)).map(o=>`<tr><td>${formatted(o.numero)}</td><td>${esc(o.client)}</td><td>${fmtDate(o.createdDate||o.date)}</td><td>${money(o.agreedValue)}</td><td><button class="btn primary" data-fiscal-order="${Number(o.numero)}">ABRIR PEDIDO</button></td></tr>`).join('')||'<tr><td colspan="5">Nenhum pedido.</td></tr>';tbody.querySelectorAll('[data-fiscal-order]').forEach(b=>b.onclick=()=>openOrderFiscal(Number(b.dataset.fiscalOrder)))}
+ function fiscalItems(o){const environments=(o.environments||[]).map((e,i)=>({name:`Cortina sob medida — ${e.name||'Ambiente '+(i+1)}`,kind:'cortina',value:0}));const blinds=(o.blinds||[]).map((b,i)=>({name:`Persiana ${b.model||'sob medida'} — ${b.environment||'Ambiente '+(i+1)}`,kind:'persiana',value:0}));const loose=(o.looseProducts||[]).map((x,i)=>({name:x.product_name||x.name||'Produto avulso',kind:'avulso',value:0}));const items=[...environments,...blinds,...loose];const q=(db.quotes||[]).find(x=>Number(x.numero)===Number(o.quoteNumber));const discount=Math.max(0,1-Number(o.discountPercent||0)/100);let raw=items.map((x,i)=>{let val=0;if(i<environments.length&&typeof calcEnvironment==='function'){try{const c=calcEnvironment(o.environments[i]);val=Number(c?.[o.paymentCondition==='cash'?'cash':o.paymentCondition==='p18'?'p18':'base4']||0)}catch(_){}}else if(i<environments.length+blinds.length){const b=o.blinds[i-environments.length],cond=o.paymentCondition==='cash'?'cash':o.paymentCondition==='p18'?'p18':'p4';val=Number(b?.[cond]||0)*Number(b.qty||1)}else {val=Number(o.looseProducts?.[i-environments.length-blinds.length]?.total||0)}return Math.max(0,val)});const total=Math.max(0,Number(o.agreedValue||0));const sum=raw.reduce((a,b)=>a+b,0);let cumulative=0;return items.map((item,i)=>{const value=i===items.length-1?Number((total-cumulative).toFixed(2)):Number((total*(sum?raw[i]/sum:1/items.length)).toFixed(2));cumulative+=value;return {...item,value}})}
+ function openOrderFiscal(n){active=(db.orders||[]).find(o=>Number(o.numero)===n);if(!active)return;const items=fiscalItems(active);$f('fiscalOrderHeading').textContent=`Pedido ${formatted(active.numero)} — ${active.client}`;$f('fiscalOrderDetails').innerHTML=`<p><b>Cliente:</b> ${esc(active.client)} • <b>Documento:</b> ${esc(active.document||'-')} • <b>Endereço:</b> ${esc(active.address||'-')}</p><p><b>Valor contratado:</b> ${money(active.agreedValue)}</p><div class="table-wrap"><table class="table"><thead><tr><th>Produto/Ambiente</th><th>Qtd.</th><th>Valor previsto</th></tr></thead><tbody>${items.map(x=>`<tr><td>${esc(x.name)}</td><td>1 UN</td><td>${money(x.value)}</td></tr>`).join('')}</tbody></table></div><p class="notice">NCM, CFOP e tributação devem ser conferidos pela contabilidade. A prévia não é documento fiscal.</p>`; $f('fiscalGenerate').onclick=()=>printDraft(active);show('order')}
+ function printDraft(o){const items=fiscalItems(o);if(!items.length)return alert('Pedido sem itens para pré-nota.');const rows=items.map((x,i)=>`<tr><td>${i+1}</td><td>AMB-${String(i+1).padStart(3,'0')}</td><td>${esc(x.name)}</td><td>CONFERIR</td><td>CONFERIR</td><td>UN</td><td>1</td><td>${money(x.value)}</td></tr>`).join('');const body=`<div style="font-family:Arial,sans-serif"><div class="pdf-head" style="grid-template-columns:130px 1fr"><img style="width:125px;height:110px" src="${location.origin}/icon-512.png"><div><strong>LUIZ SERGIO DELGOBO ME</strong><br><strong>NOVA IMAGEM CORTINAS E PERSIANAS</strong><br>CNPJ 15.115.803/0001-69 • IE 90.588.753-06<br>Av. Bonifácio Vilela, 170 — Ponta Grossa–PR<br><strong>Bom gosto e sofisticação em cada detalhe</strong></div></div><div style="margin:12px 0;padding:14px;background:#fff0f0;border:2px solid #b33;color:#a11;text-align:center;font-weight:800;font-size:16px">PRÉ-NOTA FISCAL • RASCUNHO PARA CONFERÊNCIA<br>SEM VALIDADE FISCAL • NÃO TRANSMITIDA</div><div class="section-title">DESTINATÁRIO</div><p>Cliente: ${esc(o.client)}<br>CPF/CNPJ: ${esc(o.document||'NÃO INFORMADO')}<br>Endereço: ${esc(o.address||'NÃO INFORMADO')}<br>Pedido: ${formatted(o.numero)} • Data: ${fmtDate(o.createdDate||o.date)}</p><div class="section-title">ITENS — UM ITEM POR AMBIENTE/PRODUTO</div><table class="summary-table"><thead><tr><th>Item</th><th>Código</th><th>Produto / Ambiente</th><th>NCM</th><th>CFOP</th><th>UN</th><th>Qtd.</th><th>Valor</th></tr></thead><tbody>${rows}</tbody></table><h3 style="text-align:right">TOTAL DO PEDIDO: ${money(o.agreedValue)}</h3><p style="border:1px solid #a77;padding:12px;color:#933">DOCUMENTO DE TESTE — SEM CHAVE, PROTOCOLO OU AUTORIZAÇÃO FISCAL. NCM/CFOP E TRIBUTAÇÃO PENDENTES DE CONFERÊNCIA.</p></div>`;printWindow(body)}
+ const previousSetView=setView;
+ setView=function(id){if(id==='fiscalHome'){init();previousSetView(id);show('home');return}return previousSetView.apply(this,arguments)};
 })();

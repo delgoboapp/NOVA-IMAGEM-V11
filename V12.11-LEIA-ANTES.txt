@@ -1,0 +1,19 @@
+NOVA IMAGEM ERP V12.11 — MODULO FISCAL EM TESTE + WAVE TETO
+
+MELHORIAS:
+- Menu NOTAS FISCAIS abaixo de GESTAO, com aviso pequeno ! TESTE.
+- Notas de venda: lista de pedidos, abrir pedido, voltar, gerar pre-nota de conferencia via impressao/salvar PDF do navegador.
+- Um item por ambiente; persianas e avulsos sao discriminados separadamente. Valores proporcionais ao total do pedido.
+- NCM e CFOP aparecem como CONFERIR, ate validacao com contabilidade.
+- Rascunho sem validade fiscal; nao existe transmissao a SEFAZ.
+- Notas de compra: selecao e visualizacao local de XML (NAO GRAVA EM BANCO nem atualiza custos/estoque nesta versao).
+- Garra de varao wave: cadastro oficial idempotente na tabela price_products, 500 UN, custo R$5, 4x R$10, a vista R$9,20.
+- Instalacao varao wave NO TETO: 1 garra a cada 60cm por varao, minimo 2 por varao, suportes removidos do calculo e da requisicao; NA PAREDE preservada.
+
+ATENCAO:
+1) SEM homologacao de ponta a ponta contra o D1 real, nao publique em producao sem backup.
+2) A API de criacao de garra exige acesso GESTOR e gravacao em price_products; teste em banco de homologacao.
+3) Validar resumo, orcamento, pedido, PDF, separacao e baixa de estoque antes do uso real.
+4) A pagina de conferencia fiscal ainda NAO preserva XMLs originais nem gera notas oficiais; armazenamento seguro e mapeamento de SKUs sera proxima etapa.
+5) A pre-nota abre impressao do navegador para salvar PDF; nao eh DANFE oficial.
+6) O PDF usa icone oficial e nome/slogan. Para inserir a arte completa da marca em fundo transparente, adicione o arquivo oficial correspondente.
