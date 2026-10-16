@@ -1,0 +1,10 @@
+NOVA IMAGEM ERP V12.11.6 — CORREÇÃO DE INICIALIZAÇÃO
+
+- Removida referência à função inexistente renderOfficialStock na linha de inicialização, que interrompia a execução do restante do app.js.
+- Após a correção, os módulos de Notas Fiscais de teste e a função niWaveDiagnostico podem ser carregados.
+- Pré-nota: Notas Fiscais > Notas de Venda > Nova Nota Fiscal > Abrir Pedido > Gerar Nota Fiscal (Rascunho PDF). Não há emissão real nem transmissão à SEFAZ. O navegador precisa permitir janelas de impressão; salvar PDF no diálogo do navegador.
+- Mantido vínculo NI-0350 para VARÃO WAVE + NO TETO.
+- Atualizadas as versões de scripts/estilos para evitar cache antigo.
+
+VALIDAÇÕES REALIZADAS: node --check app.js e scripts, carregamento HTML em Chromium local. Não foi possível validar com D1 de produção nem com pedidos reais.
+ANTES DE PUBLICAR: realizar backup D1 e testar em homologação. Em caso de erro, interromper uso e compartilhar o Console.

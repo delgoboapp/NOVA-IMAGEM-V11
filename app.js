@@ -2004,8 +2004,9 @@ consumeOfficialStock=async function(q,order){
 };
 const _v1217LoadCloud=loadCloud;
 loadCloud=async function(){await _v1217LoadCloud();await v1217EnsureSpecialProducts();v1217RefreshFixProduct();renderAll()};
-const _v1217RenderOfficialStock=renderOfficialStock;
-renderOfficialStock=function(){v1217InjectMissingSpecials();return _v1217RenderOfficialStock()};
+// V12.11.6: renderOfficialStock nao existe nesta arquitetura.
+// O estoque e renderizado por renderProducts(); remover a referencia evita
+// abortar toda a inicializacao, incluindo o modulo fiscal e as garras.
 document.addEventListener('DOMContentLoaded',()=>{
   $('eFixation')?.addEventListener('change',()=>{v1217RefreshFixProduct();updatePreview()});
   $('eWidth')?.addEventListener('input',()=>{v1217RefreshFixProduct();updatePreview()});
@@ -5225,7 +5226,7 @@ function sendNpsWhatsApp(n){
   'use strict';
   const normWave=s=>String(s??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase().replace(/\s+/g,' ');
   const isTeto=e=>normWave(e?.fixation)==='VARAO WAVE' && ['NO TETO','TETO'].includes(normWave(e?.waveMount)) && !e?.excludeFixation;
-  const findClaw=()=> (priceProducts||[]).find(p=>normWave(p.internal_code)==='NI-0350'&&Number(p.active??1)===1)||null;
+  const findClaw=()=> (priceProducts||[]).find(p=>normWave(p.internal_code)==='NI-0350')||null;
   const qty=e=>Math.max(2,Math.ceil(Number(e.width||0)/60))*(normWave(e.model)==='COMPLETE'?2:1);
   const oldForm=envFromForm;
   envFromForm=function(){
@@ -5282,3 +5283,5 @@ function sendNpsWhatsApp(n){
   // Diagnóstico disponível no Console do Chrome, sem alterar dados.
   window.niWaveDiagnostico=function(){const e=envFromForm(),c=calcEnvironment(e),p=findClaw();return {fixacao:e.fixation,montagem:e.waveMount,sku:p?.internal_code||null,quantidadeEsperada:qty(e),detalhe:c?.fixationCalc?.detail||null,fixacao4x:c?.fixationCalc?.total||0}};
 })();
+
+/* V12.11.6: fim da versão — módulo fiscal permanece em modo de conferência, sem transmissão. */
