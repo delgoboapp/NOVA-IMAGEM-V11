@@ -39,7 +39,21 @@ export async function writeDB(env,db){
   await ensureSchema(env);
   const clean=normalize(db);
   clean.updatedAt=new Date().toISOString();
-  await env.DB.prepare(`INSERT INTO app_state (id,data,updated_at) VALUES (1,?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data, updated_at=excluded.updated_at`).bind(JSON.stringify(clean),clean.updatedAt).run();
+  const existing=await env.DB.prepare('SELECT data,updated_at FROM app_state WHERE id=1').first();
+  if(existing?.data){
+    let before;
+    try{before=JSON.parse(existing.data)}catch{throw new Error('Banco inválido. Gravação bloqueada.')} 
+    for(const key of ['orders','clients','quotes']){
+      if(Array.isArray(before[key])&&before[key].length>0&&(!Array.isArray(db[key])||db[key].length===0))throw new Error('Proteção D1: '+key+' não pode ser esvaziado.');
+    }
+    const previous=existing.updated_at||before.updatedAt||null;
+    const expected=db.updatedAt||null;
+    if(previous!==expected)throw new Error('Conflito de versão D1. Recarregue o sistema.');
+    const result=await env.DB.prepare('UPDATE app_state SET data=?,updated_at=? WHERE id=1 AND updated_at IS ?').bind(JSON.stringify(clean),clean.updatedAt,existing.updated_at).run();
+    if(result.meta?.changes!==1)throw new Error('Concorrência detectada. Gravação recusada.');
+  }else{
+    await env.DB.prepare('INSERT INTO app_state (id,data,updated_at) VALUES (1,?,?)').bind(JSON.stringify(clean),clean.updatedAt).run();
+  }
   return clean;
 }
 

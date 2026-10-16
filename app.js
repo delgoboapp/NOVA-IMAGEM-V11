@@ -86,6 +86,13 @@ const cleanText=s=>norm(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').repla
 function canonicalProductType(v){const x=cleanText(v);if(['ACESSORIOS','AVIAMENTO','ACESSORIO'].includes(x))return 'ACESSÓRIO';if(x==='TECIDO DE ACABAMENTO')return 'TECIDO DE ACABAMENTO';if(x==='TECIDO DE FORRO')return 'TECIDO DE FORRO';if(x==='TECIDO ESPECIAL')return 'TECIDO ESPECIAL';return 'OUTRO'}
 function productIdentity(type,name,color,unit){return [canonicalProductType(type),cleanText(stockName(name)),cleanText(color||'SEM COR'),cleanText(unit||'UN')].join('|')}
 function findProductByIdentity(type,name,color,unit){const key=productIdentity(type,name,color,unit);return (db.products||[]).find(p=>productIdentity(p.type,p.name,p.color,p.unit)===key)}
+function nextProductCode(){
+  const used=new Set((db?.products||[]).map(p=>String(p.code||'').toUpperCase()));
+  let n=1;
+  for(const p of db?.products||[]){const m=String(p.code||'').match(/^NI[- ]?(\d+)$/i);if(m)n=Math.max(n,Number(m[1])+1)}
+  while(used.has('NI-'+String(n).padStart(4,'0')))n++;
+  return 'NI-'+String(n).padStart(4,'0');
+}
 function ensureProductCode(p){if(p&&!p.code)p.code=nextProductCode();return p}
 function weightedAverageCost(oldQty,oldCost,inQty,inCost){oldQty=Number(oldQty||0);oldCost=Number(oldCost||0);inQty=Number(inQty||0);inCost=Number(inCost||0);const total=oldQty+inQty;return total>0?((oldQty*oldCost)+(inQty*inCost))/total:(inCost||oldCost)}
 function priceConfigFor(type,name){const x=stockName(name);if(type==='finish')return db.priceConfig.finishes[name]||db.priceConfig.finishes[x];if(x==='FORRO LEVE')return db.priceConfig.linings['FORRO LEVE']||db.priceConfig.linings['MICROFIBRA LEVE'];if(x==='GABARDINE')return db.priceConfig.linings['GABARDINE']||db.priceConfig.linings['GABARDINE 70%'];return db.priceConfig.linings[name]||db.priceConfig.linings[x]}
@@ -261,7 +268,7 @@ const NAV=[
   ['production','Produção','production'],['install','Instalações','all'],['rework','Retrabalho','all'],
   ['suppliers','Compras e Fornecedores','gestor'],['inventory','Estoque','gestor'],
   ['receivables','Contas a Receber','gestor'],['revenues','Receitas Totais','gestor'],['productionCosts','Custos de Instalação','gestor'],['sewingCost','Custo de Costura','gestor'],['results','Resultados dos Pedidos','gestor'],['hr','Departamento Pessoal','gestor'],['users','Usuários','gestor'],
-  ['kpis','Dashboard Gestão','gestor'],['inspirations','Overview','gestor'],['npsResults','Resultado NPS','gestor'],['npsEvolution','Evolução NPS','gestor'],['payables','Contas a Pagar','gestor'],['monthlyClose','Fechamento Mensal','gestor'],['settings','Configurações','gestor'],['audit','Auditoria','gestor'],['backup','Backup','gestor'],['help','AJUDA','all']
+  ['kpis','Dashboard Gestão','gestor'],['inspirations','Overview','gestor'],['npsResults','Resultado NPS','gestor'],['npsSend','Enviar Pesquisa NPS','gestor'],['npsEvolution','Evolução NPS','gestor'],['payables','Contas a Pagar','gestor'],['monthlyClose','Fechamento Mensal','gestor'],['settings','Configurações','gestor'],['audit','Auditoria','gestor'],['backup','Backup','gestor'],['help','AJUDA','all']
 ];
 const NAV_GROUPS=[
  {id:'commercial',label:'COMERCIAL',items:['commercialPanel','quote','quotes','clients','orders','agenda']},
@@ -269,7 +276,7 @@ const NAV_GROUPS=[
  {id:'operational',label:'OPERACIONAL',items:['production','install','rework']},
  {id:'stock',label:'COMPRAS E ESTOQUE',items:['suppliers','inventory']},
  {id:'management',label:'GESTÃO',items:['kpis','receivables','revenues','payables','productionCosts','sewingCost','results','monthlyClose','hr','users','settings','audit','backup']},
- {id:'nps',label:'NPS - CLIENTES',items:['npsResults','npsEvolution']},
+ {id:'nps',label:'NPS - CLIENTES',items:['npsResults','npsSend','npsEvolution']},
  {id:'inspirations',label:'CONFIGURAÇÕES DO PORTAL',items:['inspirations']},
  {id:'help',label:'AJUDA',items:['help']}
 ];
@@ -305,12 +312,27 @@ function suggestedInstallDate(baseDate=today()){const d=new Date(String(baseDate
 function installPrice(heightM,widthM){const h=Number(heightM||0),w=Number(widthM||0);const m=db.priceConfig?.installationMatrix||DEFAULT_PRICE_CONFIG.installationMatrix;const band=h<=Number(m.simple?.maxH??3.5)?m.simple:h<=Number(m.double?.maxH??5.5)?m.double:m.high;const key=w<=4?'up4':w<=5?'up5':'up6';return Number(band?.[key]||0)}
 async function ensureCordaoWaveOfficial(){return true}
 async function ensureV115Accessories(){if(!isGestor())return;try{await api('prices',{method:'POST',body:JSON.stringify({action:'SINCRONIZAR_V115_ACESSORIOS'})});const prices=await api('prices');priceProducts=Array.isArray(prices.products)?prices.products:priceProducts}catch(e){console.error('Falha ao sincronizar acessórios V11.5:',e)}}
-async function loadCloud(){try{cloud('Sincronizando...');const j=await api('data');db={...db,...j,priceConfig:mergeConfig(j.priceConfig)};db.wholesaleClients=db.wholesaleClients||[];db.wholesaleSales=db.wholesaleSales||[];db.auditLog=db.auditLog||[];db.attachments=db.attachments||[];db.customerFeedback=db.customerFeedback||[];db.discountApprovals=db.discountApprovals||[];db.userAlerts=db.userAlerts||[];db.blogPosts=db.blogPosts||[];db.settings=db.settings||{};let accessCodesAdded=false;if(isGestor()){for(const o of db.orders||[]){if(!/^\d{6}$/.test(String(o.clientAccessCode||''))){o.clientAccessCode=String(crypto.getRandomValues(new Uint32Array(1))[0]%1000000).padStart(6,'0');accessCodesAdded=true}}}const before=(db.products||[]).length;ensureInitialInventory();try{const prices=await api('prices');priceProducts=Array.isArray(prices.products)?prices.products:[];await ensureCordaoWaveOfficial();await ensureOfficialRailClaws();await ensureV115Accessories();await ensureV12BlackoutWide();await ensureEntretelaParaIlhos()}catch(e){priceProducts=[];console.error('Falha ao carregar price_products:',e)}cloud('Dados sincronizados na nuvem');renderAll();if((db.products||[]).length!==before||accessCodesAdded)queueSave()}catch(e){cloud('Sem conexão com a nuvem',true);alert(e.message)}}
-let saveTimer=null;function queueSave(){clearTimeout(saveTimer);saveTimer=setTimeout(saveCloud,250)}
-async function saveCloud(){if(!token)return;try{cloud('Salvando...');const j=await api('data',{method:'POST',body:JSON.stringify(db)});db.updatedAt=j.updatedAt;cloud('Dados salvos na nuvem')}catch(e){cloud('Falha ao salvar',true);alert('Não foi possível salvar: '+e.message)}}
+async function loadCloud(){cloudLoaded=false;cloudLocked=false;try{cloud('Sincronizando...');const j=await api('data');db={...db,...j,priceConfig:mergeConfig(j.priceConfig)};db.wholesaleClients=db.wholesaleClients||[];db.wholesaleSales=db.wholesaleSales||[];db.auditLog=db.auditLog||[];db.attachments=db.attachments||[];db.customerFeedback=db.customerFeedback||[];db.discountApprovals=db.discountApprovals||[];db.userAlerts=db.userAlerts||[];db.blogPosts=db.blogPosts||[];db.settings=db.settings||{};let accessCodesAdded=false;if(isGestor()){for(const o of db.orders||[]){if(!/^\d{6}$/.test(String(o.clientAccessCode||''))){o.clientAccessCode=String(crypto.getRandomValues(new Uint32Array(1))[0]%1000000).padStart(6,'0');accessCodesAdded=true}}}const before=(db.products||[]).length;ensureInitialInventory();try{const prices=await api('prices');priceProducts=Array.isArray(prices.products)?prices.products:[];await ensureCordaoWaveOfficial();await ensureOfficialRailClaws();await ensureV115Accessories();await ensureV12BlackoutWide();await ensureEntretelaParaIlhos()}catch(e){priceProducts=[];console.error('Falha ao carregar price_products:',e)}cloudLoaded=true;cloud('Dados sincronizados na nuvem');renderAll();if((db.products||[]).length!==before||accessCodesAdded)queueSave()}catch(e){cloudLoaded=false;cloudLocked=true;cloud('Sem conexão com a nuvem — gravações bloqueadas',true);alert(e.message)}}
+let saveTimer=null;let cloudLoaded=false;let cloudSaving=false;let cloudDirty=false;let cloudLocked=false;function queueSave(){if(!cloudLoaded||cloudLocked){cloud('Gravação bloqueada: dados não sincronizados',true);return}cloudDirty=true;clearTimeout(saveTimer);saveTimer=setTimeout(saveCloud,350)}
+async function saveCloud(){
+ if(!token||!cloudLoaded||cloudLocked)return;
+ if(cloudSaving){cloudDirty=true;return}
+ cloudSaving=true;
+ try{
+  while(cloudDirty&&!cloudLocked){
+   cloudDirty=false;
+   const snapshot=JSON.stringify(db);
+   cloud('Salvando...');
+   const j=await api('data',{method:'POST',body:snapshot});
+   db.updatedAt=j.updatedAt;
+   cloud('Dados salvos na nuvem');
+  }
+ }catch(e){cloudLocked=true;cloud('Gravações BLOQUEADAS — atualize após verificar o banco',true);alert('Salvamento bloqueado para proteger o banco: '+e.message+'\nNão continue editando nesta sessão.');}
+ finally{cloudSaving=false}
+}
 
 function renderNav(){const nav=$('nav');if(!nav)return;nav.innerHTML='';if(!$('accordionNavStyle')){const st=document.createElement('style');st.id='accordionNavStyle';st.textContent='.nav-group{border-bottom:1px solid #e5efed}.nav-group-title{width:100%;border:0;background:transparent;text-align:left;padding:12px 10px;font-weight:850;color:#075b5b;display:flex;justify-content:space-between;align-items:center}.nav-group-title:hover{background:#eef7f5}.nav-group-items{display:none;padding:0 0 7px 8px}.nav-group.open .nav-group-items{display:grid;gap:4px}.nav-group-items .nav-btn{padding:9px 10px;font-size:13px}.nav-group-title .chev{transition:.15s}.nav-group.open .chev{transform:rotate(90deg)}';document.head.appendChild(st)}const visible=new Set(NAV.filter(x=>hasPermission(x[0])).map(x=>x[0]));let openId=sessionStorage.getItem('novaV11NavGroup')||'';for(const g of NAV_GROUPS){const ids=g.items.filter(id=>visible.has(id));if(!ids.length)continue;const wrap=document.createElement('div');wrap.className='nav-group'+(g.id===openId?' open':'');const head=document.createElement('button');head.type='button';head.className='nav-group-title';head.innerHTML=`<span>${g.label}</span><span class="chev">▶</span>`;const items=document.createElement('div');items.className='nav-group-items';for(const id of ids){const item=NAV.find(x=>x[0]===id);const b=document.createElement('button');b.className='nav-btn';b.dataset.view=id;b.textContent=item[1];b.onclick=()=>setView(id);items.appendChild(b)}head.onclick=()=>{const opening=!wrap.classList.contains('open');nav.querySelectorAll('.nav-group').forEach(x=>x.classList.remove('open'));if(opening){wrap.classList.add('open');sessionStorage.setItem('novaV11NavGroup',g.id)}else sessionStorage.removeItem('novaV11NavGroup')};wrap.append(head,items);nav.appendChild(wrap)}}
-function setView(id){if(id!=='home'&&!hasPermission(id))return alert('Seu usuário não possui permissão para acessar esta área.');document.querySelectorAll('.view').forEach(v=>v.classList.remove('active','print-target'));$('view-'+id)?.classList.add('active');document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',id!=='home'&&b.dataset.view===id));if(id==='home')renderHome();if(id==='commercialPanel')renderCommercialPanel();if(id==='wholesaleDashboard')renderWholesaleDashboard();if(id==='wholesaleClients')renderWholesaleClients();if(id==='wholesaleSale')renderWholesaleSale();if(id==='wholesaleOrders')renderWholesaleOrders();if(id==='kpis')renderKpis();if(id==='results')renderResults();if(id==='productionCosts')renderProductionCosts();if(id==='sewingCost')renderSewingCost();if(id==='help')renderHelp();if(id==='pricing')renderPricing();if(id==='hr')renderHR();if(id==='receivables')renderReceivables();if(id==='revenues')renderRevenues();if(id==='settings')renderSettings();if(id==='audit')renderAudit();if(id==='monthlyClose')renderMonthlyClose();if(id==='npsResults')renderNpsResults();if(id==='npsEvolution')renderNpsEvolution()}
+function setView(id){if(id!=='home'&&!hasPermission(id))return alert('Seu usuário não possui permissão para acessar esta área.');document.querySelectorAll('.view').forEach(v=>v.classList.remove('active','print-target'));$('view-'+id)?.classList.add('active');document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',id!=='home'&&b.dataset.view===id));if(id==='home')renderHome();if(id==='commercialPanel')renderCommercialPanel();if(id==='wholesaleDashboard')renderWholesaleDashboard();if(id==='wholesaleClients')renderWholesaleClients();if(id==='wholesaleSale')renderWholesaleSale();if(id==='wholesaleOrders')renderWholesaleOrders();if(id==='kpis')renderKpis();if(id==='results')renderResults();if(id==='productionCosts')renderProductionCosts();if(id==='sewingCost')renderSewingCost();if(id==='help')renderHelp();if(id==='pricing')renderPricing();if(id==='hr')renderHR();if(id==='receivables')renderReceivables();if(id==='revenues')renderRevenues();if(id==='settings')renderSettings();if(id==='audit')renderAudit();if(id==='monthlyClose')renderMonthlyClose();if(id==='npsResults')renderNpsResults();if(id==='npsSend')renderNpsSend();if(id==='npsEvolution')renderNpsEvolution()}
 function renderHome(){renderPurchaseAlerts();renderDiscountApprovalAlerts();renderAgendaHome();renderUserHomeAlerts();const name=currentUser?.name||currentUser?.username||'USUÁRIO';if($('homeWelcome'))$('homeWelcome').textContent=`BEM-VINDO - ${String(name).toUpperCase()}`;const quotes=[['No longo prazo, estaremos todos mortos.','John Maynard Keynes'],['O consumo é o único fim e propósito de toda produção.','Adam Smith'],['Nada é tão permanente quanto um programa temporário do governo.','Milton Friedman'],['A dificuldade não está nas novas ideias, mas em escapar das antigas.','John Maynard Keynes'],['A liberdade econômica é requisito essencial da liberdade política.','Milton Friedman'],['A riqueza não consiste em possuir grandes bens, mas em ter poucas necessidades.','Epicteto — filosofia econômica clássica']];const q=quotes[Math.floor(Math.random()*quotes.length)];if($('homeQuote'))$('homeQuote').textContent='“'+q[0]+'”';if($('homeQuoteAuthor'))$('homeQuoteAuthor').textContent='— '+q[1];const tick=()=>{const now=new Date();if($('homeDate'))$('homeDate').textContent=now.toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});if($('homeTime'))$('homeTime').textContent=now.toLocaleTimeString('pt-BR')};tick();if(homeClockTimer)clearInterval(homeClockTimer);homeClockTimer=setInterval(tick,1000)}
 function goHome(){setView('home')}
 function renderAll(){renderHome();renderNav();renderCommercialPanel();renderQuote();renderQuotes();renderClients();renderWholesaleDashboard();renderWholesaleClients();renderWholesaleSale();renderWholesaleOrders();renderOrders();renderAgenda();renderProduction();renderInstall();renderProducts();renderProductionCosts();renderPricing();renderKpis();renderPayables();renderResults();renderReceivables();renderRevenues();renderSuppliers();renderPurchases();renderHR();renderReworks();renderUsers();renderAudit();renderNpsResults();renderNpsEvolution();}
@@ -4960,3 +4982,34 @@ function payrollRows(competence){const h=hrData(),rows=[];for(const e of h.emplo
     return ret;
   };
 })();
+
+/* V12.6.0 — Envios NPS: somente pedidos sem avaliação */
+function pendingNpsOrders(){
+ const answered=new Set((db.customerFeedback||[]).map(f=>Number(f.orderNumber)));
+ return (db.orders||[]).filter(o=>!answered.has(Number(o.numero)))
+  .sort((a,b)=>String(a.createdDate||a.date||'').localeCompare(String(b.createdDate||b.date||'')));
+}
+function renderNpsSend(){
+ if(!isGestor()||!$('npsSendRows'))return;
+ const term=norm($('npsSendSearch')?.value||'');
+ const rows=pendingNpsOrders().filter(o=>!term||norm(o.client).includes(term)||String(o.numero).includes(term));
+ $('npsSendCount').textContent=`${rows.length} pedido(s) aguardando avaliação`;
+ $('npsSendRows').innerHTML=rows.map(o=>`<tr><td>${esc(String(o.numero).padStart(6,'0'))}</td><td>${esc(o.client||'-')}</td><td>${esc(fmtDate(o.createdDate||o.date))}</td><td>${o.installation?.completedDate?'Instalação concluída':'Aguardando instalação'}</td><td><button class="btn primary" data-nps-pdf="${Number(o.numero)}">GERAR PDF</button> <button class="btn secondary" data-nps-wa="${Number(o.numero)}">WHATSAPP</button></td></tr>`).join('')||'<tr><td colspan="5">Nenhum pedido pendente encontrado.</td></tr>';
+ document.querySelectorAll('[data-nps-pdf]').forEach(b=>b.onclick=()=>printNpsInvitation(Number(b.dataset.npsPdf)));
+ document.querySelectorAll('[data-nps-wa]').forEach(b=>b.onclick=()=>sendNpsWhatsApp(Number(b.dataset.npsWa)));
+}
+function printNpsInvitation(n){
+ const o=pendingNpsOrders().find(x=>Number(x.numero)===n);if(!o)return alert('Pedido já avaliado ou não localizado.');
+ if(!/^\d{6}$/.test(String(o.clientAccessCode||'')))return alert('Este pedido não possui senha válida no Portal do Cliente.');
+ const link=customerPortalUrl(o.numero);
+ const body=`<div style="text-align:center;padding:15mm 8mm;font-family:Georgia,serif;color:#075b5b"><img src="${location.origin}/icon-512.png" style="width:90px;height:90px;object-fit:contain"><h2>NOVA IMAGEM</h2><p>CORTINAS E PERSIANAS</p><hr><h1>Sua opinião é muito importante!</h1><p>Obrigado pela confiança. Queremos conhecer sua experiência com a Nova Imagem.</p><div style="margin:25px 0;padding:15px;border:1px solid #bbb;text-align:left"><strong>Cliente:</strong> ${esc(o.client)}<br><strong>Pedido:</strong> ${esc(String(o.numero).padStart(6,'0'))}<br><strong>Data:</strong> ${esc(fmtDate(o.createdDate||o.date))}</div><img src="${customerPortalQrUrl(o.numero)}" style="width:190px;height:190px" alt="QR Code"><p>Escaneie o QR Code ou clique abaixo para responder:</p><p><a style="color:#075b5b;font-weight:bold;text-decoration:underline" target="_blank" href="${link}">RESPONDER À PESQUISA DE SATISFAÇÃO</a></p><p><strong>Número do pedido:</strong> ${esc(String(o.numero).padStart(6,'0'))}<br><strong>Senha do portal:</strong> ${esc(o.clientAccessCode)}</p><p style="margin-top:35px">Bom gosto e sofisticação em cada detalhe.</p></div>`;
+ printWindow(body);
+}
+function sendNpsWhatsApp(n){
+ const o=pendingNpsOrders().find(x=>Number(x.numero)===n);if(!o)return alert('Pedido não encontrado ou já avaliado.');
+ if(!/^\d{6}$/.test(String(o.clientAccessCode||'')))return alert('Pedido sem senha de acesso ao portal.');
+ const tel=String(o.contact||o.phone||'').replace(/\D/g,'');
+ const msg=`Olá, ${o.client||'cliente'}! A Nova Imagem agradece a sua confiança. Gostaríamos de receber sua avaliação. Acesse ${customerPortalUrl(o.numero)} — Pedido: ${String(o.numero).padStart(6,'0')} | Senha: ${o.clientAccessCode}. Muito obrigado!`;
+ const link='https://wa.me/'+(tel?(tel.startsWith('55')?tel:'55'+tel):'')+'?text='+encodeURIComponent(msg);
+ window.open(link,'_blank','noopener');
+}
