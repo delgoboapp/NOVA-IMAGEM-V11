@@ -5217,3 +5217,68 @@ function sendNpsWhatsApp(n){
  };
  window.niWaveTetoCheck={isCeiling,quantity,sku:'NI-0350'};
 })();
+
+
+/* V12.11.5 — correção central validável: VARÃO WAVE NO TETO, SKU NI-0350.
+   Esta rotina final é executada após os adaptadores antigos. */
+(function(){
+  'use strict';
+  const normWave=s=>String(s??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase().replace(/\s+/g,' ');
+  const isTeto=e=>normWave(e?.fixation)==='VARAO WAVE' && ['NO TETO','TETO'].includes(normWave(e?.waveMount)) && !e?.excludeFixation;
+  const findClaw=()=> (priceProducts||[]).find(p=>normWave(p.internal_code)==='NI-0350'&&Number(p.active??1)===1)||null;
+  const qty=e=>Math.max(2,Math.ceil(Number(e.width||0)/60))*(normWave(e.model)==='COMPLETE'?2:1);
+  const oldForm=envFromForm;
+  envFromForm=function(){
+    const e=oldForm();
+    if(normWave(e?.fixation)==='VARAO WAVE'){
+      // A interface apresenta "NO TETO"; salvar esta opção SEM converter para "TETO".
+      e.waveMount=document.getElementById('eWaveMount')?.value||e.waveMount||'PAREDE';
+    }
+    return e;
+  };
+  const oldCalc=calcEnvironment;
+  calcEnvironment=function(e){
+    const c=oldCalc(e);
+    if(!c||!isTeto(e))return c;
+    const p=findClaw(),f=c.fixationCalc||{},rods=normWave(e.model)==='COMPLETE'?2:1;
+    const count=qty(e),meters=Number(e.width||0)/100*rods,ends=Number(f.ends??rods*2);
+    if(!p){
+      c.fixationCalc={...f,detail:'GARRA NI-0350 NÃO DISPONÍVEL NO ESTOQUE — NÃO SALVAR',missingWaveClaw:true};
+      c.alerts=[...(c.alerts||[]),'GARRA NI-0350 NÃO DISPONÍVEL'];
+      return c;
+    }
+    // Cálculo anterior pode ter sido corrigido por um dos adaptadores legados.
+    // Subtrair SOMENTE os suportes ainda presentes no resultado final.
+    const support=officialProductById(f.supportProductId)||officialSupportProduct(e,f);
+    const supportPrice=Number(support?.price_4x??db.priceConfig?.wave?.support??0);
+    const formerQty=Number(f.supports||0);
+    const alreadyClaws=Number(f.clamps||0)===count&&formerQty===0&&normWave(f.waveMount)==='TETO';
+    const previous=Number(f.total||0);
+    const newFix=alreadyClaws?previous:Math.max(0,previous-formerQty*supportPrice+count*Number(p.price_4x||0));
+    const delta=newFix-previous;
+    c.fixationCalc={...f,total:newFix,hardwareBase:newFix,supports:0,supportProductId:null,supportName:'',clamps:count,clawProductId:p.id,waveMount:'TETO',missingWaveClaw:false,meters,ends,detail:`VARÃO WAVE 28 • ${e.fixColor||f.railColor||'BRANCO'} • ${meters.toFixed(2)}m • ${count} garras • ${ends} tampas`};
+    c.base4=Number(c.base4||0)+delta;
+    c.cash=Number(c.cash||0)+delta*(1-Number(db.priceConfig?.terms?.cashDiscountPct||0)/100);
+    c.p18=Number(c.p18||0)+delta*(1+Number(db.priceConfig?.terms?.p18AddPct||0)/100);
+    return c;
+  };
+  const oldRequirements=officialOrderRequirements;
+  officialOrderRequirements=function(q){
+    const rows=(oldRequirements(q)||[]).slice();
+    for(const e of q?.environments||[]){
+      if(!isTeto(e))continue;
+      const key=normWave(e.name||'');
+      for(let i=rows.length-1;i>=0;i--){
+        const r=rows[i];
+        if(![r.environment,...(r.environments||[])].some(n=>normWave(n)===key))continue;
+        const n=normWave(r.product_name),src=normWave(r.source);
+        if((n.includes('SUPORTE')&&(n.includes('WAVE')||n.includes('28/28')))||(n.includes('GARRA')&&n.includes('VARAO')&&n.includes('WAVE'))||src.includes('GARRA VARAO WAVE')) rows.splice(i,1);
+      }
+      const p=findClaw();if(!p)throw new Error('Garra NI-0350 não encontrada no estoque oficial.');
+      rows.push({product_id:Number(p.id),internal_code:p.internal_code,product_name:p.product_name,color:p.color,unit:p.unit||'UN',qty:qty(e),environment:e.name,environments:[e.name],source:'GARRA VARÃO WAVE — NO TETO',cost:Number(p.cost||0),markup_percent:Number(p.markup_percent||0),price_cash:Number(p.price_cash||0),price_4x:Number(p.price_4x||0),price_18x:Number(p.price_18x||0)});
+    }
+    return rows;
+  };
+  // Diagnóstico disponível no Console do Chrome, sem alterar dados.
+  window.niWaveDiagnostico=function(){const e=envFromForm(),c=calcEnvironment(e),p=findClaw();return {fixacao:e.fixation,montagem:e.waveMount,sku:p?.internal_code||null,quantidadeEsperada:qty(e),detalhe:c?.fixationCalc?.detail||null,fixacao4x:c?.fixationCalc?.total||0}};
+})();
