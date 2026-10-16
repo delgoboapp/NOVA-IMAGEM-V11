@@ -5042,7 +5042,7 @@ function sendNpsWhatsApp(n){
  };
  // Produto é inserido por endpoint idempotente, nunca por gravação de JSON de app_state.
  let checking=false;
- async function checkClaw(){if(checking||!token||!isGestor())return;checking=true;try{await api('prices',{method:'POST',body:JSON.stringify({action:'GARANTIR_GARRA_WAVE_TETO'})});const r=await api('prices');if(Array.isArray(r.products)){priceProducts=r.products;renderProducts();}}catch(e){console.warn('Garra não cadastrada:',e)}finally{checking=false}}
+ async function checkClaw(){if(checking||!token||!isGestor())return;checking=true;try{await api('prices',{method:'POST',body:JSON.stringify({action:'GARANTIR_GARRA_WAVE_TETO'})});const r=await api('prices');if(Array.isArray(r.products)){priceProducts=r.products;renderProducts();}}catch(e){console.error('Garra não cadastrada:',e);window.niWaveClawError=String(e?.message||e)}finally{checking=false}}
  const previousReload=reloadOfficialProducts;
  reloadOfficialProducts=async function(...args){const r=await previousReload.apply(this,args);await checkClaw();return r};
  document.addEventListener('DOMContentLoaded',()=>setTimeout(checkClaw,1400));
@@ -5066,4 +5066,45 @@ function sendNpsWhatsApp(n){
  function printDraft(o){const items=fiscalItems(o);if(!items.length)return alert('Pedido sem itens para pré-nota.');const rows=items.map((x,i)=>`<tr><td>${i+1}</td><td>AMB-${String(i+1).padStart(3,'0')}</td><td>${esc(x.name)}</td><td>CONFERIR</td><td>CONFERIR</td><td>UN</td><td>1</td><td>${money(x.value)}</td></tr>`).join('');const body=`<div style="font-family:Arial,sans-serif"><div class="pdf-head" style="grid-template-columns:130px 1fr"><img style="width:125px;height:110px" src="${location.origin}/icon-512.png"><div><strong>LUIZ SERGIO DELGOBO ME</strong><br><strong>NOVA IMAGEM CORTINAS E PERSIANAS</strong><br>CNPJ 15.115.803/0001-69 • IE 90.588.753-06<br>Av. Bonifácio Vilela, 170 — Ponta Grossa–PR<br><strong>Bom gosto e sofisticação em cada detalhe</strong></div></div><div style="margin:12px 0;padding:14px;background:#fff0f0;border:2px solid #b33;color:#a11;text-align:center;font-weight:800;font-size:16px">PRÉ-NOTA FISCAL • RASCUNHO PARA CONFERÊNCIA<br>SEM VALIDADE FISCAL • NÃO TRANSMITIDA</div><div class="section-title">DESTINATÁRIO</div><p>Cliente: ${esc(o.client)}<br>CPF/CNPJ: ${esc(o.document||'NÃO INFORMADO')}<br>Endereço: ${esc(o.address||'NÃO INFORMADO')}<br>Pedido: ${formatted(o.numero)} • Data: ${fmtDate(o.createdDate||o.date)}</p><div class="section-title">ITENS — UM ITEM POR AMBIENTE/PRODUTO</div><table class="summary-table"><thead><tr><th>Item</th><th>Código</th><th>Produto / Ambiente</th><th>NCM</th><th>CFOP</th><th>UN</th><th>Qtd.</th><th>Valor</th></tr></thead><tbody>${rows}</tbody></table><h3 style="text-align:right">TOTAL DO PEDIDO: ${money(o.agreedValue)}</h3><p style="border:1px solid #a77;padding:12px;color:#933">DOCUMENTO DE TESTE — SEM CHAVE, PROTOCOLO OU AUTORIZAÇÃO FISCAL. NCM/CFOP E TRIBUTAÇÃO PENDENTES DE CONFERÊNCIA.</p></div>`;printWindow(body)}
  const previousSetView=setView;
  setView=function(id){if(id==='fiscalHome'){init();previousSetView(id);show('home');return}return previousSetView.apply(this,arguments)};
+})();
+
+
+/* V12.11.1 — Correção operacional de acesso ao módulo fiscal e cadastro explícito da garra. */
+(function(){
+  const priorRenderNav=renderNav;
+  renderNav=function(){
+    priorRenderNav();
+    const nav=document.getElementById('nav');
+    if(!nav||!isGestor())return;
+    // Garante a visibilidade mesmo em sessões cuja navegação foi inicializada antes das novas permissões.
+    if(!Array.from(nav.querySelectorAll('.nav-group-title')).some(b=>b.textContent.includes('NOTAS FISCAIS'))){
+      const wrap=document.createElement('div'); wrap.className='nav-group';
+      wrap.innerHTML='<button type="button" class="nav-group-title"><span>NOTAS FISCAIS<small style="display:block;font-size:9px;color:#a56c00">! TESTE</small></span><span class="chev">▶</span></button><div class="nav-group-items"><button type="button" class="nav-btn">NOTAS FISCAIS</button></div>';
+      wrap.querySelector('.nav-group-title').onclick=()=>wrap.classList.toggle('open');
+      wrap.querySelector('.nav-btn').onclick=()=>setView('fiscalHome');
+      const after=Array.from(nav.querySelectorAll('.nav-group')).find(x=>x.querySelector('.nav-group-title')?.textContent.includes('GESTÃO'));
+      if(after)after.after(wrap);else nav.append(wrap);
+    }
+  };
+  const priorRenderProducts=renderProducts;
+  renderProducts=function(){
+    priorRenderProducts();
+    if(!isGestor())return;
+    const inventory=document.getElementById('view-inventory');if(!inventory)return;
+    if(inventory.querySelector('#niClawEnsureButton'))return;
+    const header=inventory.querySelector('.topbar .actions')||inventory.querySelector('.topbar');if(!header)return;
+    const button=document.createElement('button');button.type='button';button.id='niClawEnsureButton';button.className='btn secondary';button.textContent='CADASTRAR GARRA WAVE';
+    button.onclick=async()=>{
+      button.disabled=true;button.textContent='VERIFICANDO...';
+      try{
+        const r=await api('prices',{method:'POST',body:JSON.stringify({action:'GARANTIR_GARRA_WAVE_TETO'})});
+        await reloadOfficialProducts();
+        const found=(priceProducts||[]).find(p=>Number(p.active??1)===1&&norm(p.product_name)==='GARRA DE VARÃO WAVE');
+        if(!found)throw new Error('A API respondeu, mas o produto não apareceu no estoque.');
+        alert('Garra de Varão Wave disponível no estoque: '+(found.internal_code||r.internal_code||'SKU automático')+' • '+found.stock_quantity+' unidades.');
+      }catch(e){alert('Falha ao cadastrar garra: '+(e?.message||e)+'. Nenhum cadastro foi confirmado.');}
+      finally{button.disabled=false;button.textContent='CADASTRAR GARRA WAVE';}
+    };
+    header.appendChild(button);
+  };
 })();
