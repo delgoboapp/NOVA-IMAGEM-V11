@@ -1,0 +1,1 @@
+V12.11.3: restaurado menu Notas Fiscais da V12.11.1; corrigida condicao NO TETO; vinculado SKU NI-0350. Testar em homologacao. NAO fazer alteracoes em producao sem backup.
