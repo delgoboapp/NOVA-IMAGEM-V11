@@ -5159,3 +5159,61 @@ function sendNpsWhatsApp(n){
     return rows;
   };
 })();
+
+/* V12.11.4 — regra final e verificável: VARÃO WAVE + NO TETO -> NI-0350.
+   Executada após os adaptadores legados. Não altera a regra NA PAREDE. */
+(function(){
+ 'use strict';
+ const fold=s=>String(s??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase();
+ const isCeiling=e=>fold(e?.fixation)==='VARAO WAVE' && ['NO TETO','TETO'].includes(fold(e?.waveMount)) && !e?.excludeFixation;
+ const product=()=> (Array.isArray(priceProducts)?priceProducts:[]).find(p=>fold(p.internal_code)==='NI-0350' && Number(p.active??1)===1) || null;
+ const rodCount=e=>fold(e?.model)==='COMPLETE'?2:1;
+ const quantity=e=>Math.max(2,Math.ceil(Number(e.width||0)/60))*rodCount(e);
+ const priorCalc=calcEnvironment;
+ calcEnvironment=function(e){
+   const result=priorCalc(e);
+   if(!result||!isCeiling(e))return result;
+   const p=product();
+   if(!p){
+     // Nunca apresentar um preço inventado quando o estoque oficial ainda não carregou.
+     result.fixationCalc={...(result.fixationCalc||{}),detail:'ATENÇÃO: GARRA NI-0350 NÃO CARREGADA — orçamento bloqueado até atualizar estoque',missingWaveClaw:true};
+     return result;
+   }
+   const widthM=Number(e.width||0)/100;
+   // Recalcula a fixação de referência fora do contexto dos overrides de calcEnvironment.
+   const raw=fixationCalc('VARÃO WAVE',widthM,e.model,Number(e.leaves||1),e.fixColor,e.railProductId,e.supportMaterial);
+   const support=officialProductById(raw.supportProductId)||officialSupportProduct(e,raw);
+   const supportUnit=Number(support?.price_4x??db.priceConfig?.wave?.support??0);
+   const rods=rodCount(e),claws=quantity(e),ends=Number(raw.ends||rods*2);
+   const rawTotal=Number(raw.total||0),oldSupports=Number(raw.supports||0);
+   const newFix=Math.max(0,rawTotal-oldSupports*supportUnit)+claws*Number(p.price_4x||0);
+   const existing=Number(result.fixationCalc?.total||0);
+   const diff=newFix-existing;
+   const nextBase=Number(result.base4||0)+diff;
+   const terms=db.priceConfig?.terms||{};
+   result.fixationCalc={...result.fixationCalc,total:newFix,hardwareBase:newFix,meters:widthM*rods,ends,supports:0,supportProductId:null,supportName:'',clamps:claws,clawProductId:p.id,waveMount:'TETO',missingWaveClaw:false,detail:`VARÃO WAVE 28 • ${e.fixColor||raw.railColor||'BRANCO'} • ${(widthM*rods).toFixed(2)}m • ${claws} garras • ${ends} tampas`};
+   result.base4=nextBase;
+   result.cash=nextBase*(1-Number(terms.cashDiscountPct||0)/100);
+   result.p18=nextBase*(1+Number(terms.p18AddPct||0)/100);
+   return result;
+ };
+ const priorRows=officialOrderRequirements;
+ officialOrderRequirements=function(q){
+   const rows=(priorRows(q)||[]).slice();
+   for(const e of q?.environments||[]){
+     if(!isCeiling(e))continue;
+     const id=fold(e.name);
+     for(let i=rows.length-1;i>=0;i--){
+       const r=rows[i],envNames=[r.environment,...(r.environments||[])].map(fold);
+       if(!envNames.includes(id))continue;
+       const name=fold(r.product_name),source=fold(r.source);
+       if((name.includes('SUPORTE') && (name.includes('WAVE')||name.includes('28/28')))||(name.includes('GARRA')&&name.includes('VARAO')&&name.includes('WAVE'))||source.includes('GARRA VARAO WAVE'))rows.splice(i,1);
+     }
+     const p=product();
+     if(!p)throw new Error('Estoque NI-0350 não carregado. Aguarde sincronizar antes de gerar materiais.');
+     rows.push({product_id:Number(p.id),internal_code:p.internal_code,product_name:p.product_name,color:p.color,unit:p.unit||'UN',qty:quantity(e),environment:e.name,environments:[e.name],source:'GARRA VARÃO WAVE - NO TETO',cost:Number(p.cost||0),markup_percent:Number(p.markup_percent||0),price_cash:Number(p.price_cash||0),price_4x:Number(p.price_4x||0),price_18x:Number(p.price_18x||0)});
+   }
+   return rows;
+ };
+ window.niWaveTetoCheck={isCeiling,quantity,sku:'NI-0350'};
+})();
