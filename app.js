@@ -5023,3 +5023,61 @@ function sendNpsWhatsApp(n){
  const oldLoad=loadEnvironmentForEdit;
  if(typeof oldLoad==='function')loadEnvironmentForEdit=function(e){return oldLoad({...e,finishBar:e.finishBar==='BARRA TOMBADA'?'BARRA TOMA':e.finishBar})};
 })();
+
+
+/* V12.10.1 — FIX DEFINITIVO: resultado final de VARÃO WAVE instalado NO TETO.
+   Corrige o resumo, valores e os insumos; parede permanece inalterada. */
+(function(){
+  const fold=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
+  const claw=()=>((typeof priceProducts!=='undefined'&&Array.isArray(priceProducts))?priceProducts:[])
+    .find(p=>Number(p.active??1)===1&&fold(p.product_name).includes('GARRA')&&fold(p.product_name).includes('VARAO')&&fold(p.product_name).includes('WAVE'))||null;
+  const originalCalc=calcEnvironment;
+  calcEnvironment=function(e){
+    const c=originalCalc(e);
+    if(!c||String(e?.fixation)!=='VARÃO WAVE'||String(e?.waveMount)!=='TETO'||e.excludeFixation)return c;
+    const old=c.fixationCalc||{};
+    const count=Math.max(2,Math.ceil((Number(e.width||0)/100)/0.60))*(e.model==='COMPLETE'?2:1);
+    // A versão anterior pode já ter calculado garras: não acrescentar duas vezes.
+    if(Number(old.clamps||0)===count&&Number(old.supports||0)===0)return c;
+    const item=claw();
+    const price=item?Number(item.price_4x||0):10;
+    const support=officialProductById(old.supportProductId);
+    const supportPrice=support?Number(support.price_4x||0):Number(db.priceConfig?.wave?.support||0);
+    const removed=Number(old.supports||0)*supportPrice;
+    const prior=Number(old.total||0);
+    const next=Math.max(0,prior-removed+count*price);
+    const rods=e.model==='COMPLETE'?2:1;
+    const capCount=Number(old.ends??(2*rods));
+    const meters=Number(old.meters??(Number(e.width||0)/100*rods));
+    const name=old.railName||'VARÃO WAVE 28';
+    const color=old.railColor||e.fixColor||'';
+    c.fixationCalc={...old,total:next,hardwareBase:next,supports:0,supportProductId:null,supportName:'',clamps:count,clawProductId:item?.id||null,waveMount:'TETO',detail:`${name} • ${color} • ${meters.toFixed(2)}m • ${count} garras • ${capCount} tampas`};
+    const difference=next-prior;
+    c.base4=Number(c.base4||0)+difference;
+    c.p18=c.base4*(1+Number(db.priceConfig?.terms?.p18AddPct||0)/100);
+    c.cash=c.base4*(1-Number(db.priceConfig?.terms?.cashDiscountPct||0)/100);
+    return c;
+  };
+  const originalRequirements=officialOrderRequirements;
+  officialOrderRequirements=function(q){
+    const rows=originalRequirements(q);
+    for(const e of q?.environments||[]){
+      if(String(e?.fixation)!=='VARÃO WAVE'||String(e?.waveMount)!=='TETO'||e.excludeFixation)continue;
+      const count=Math.max(2,Math.ceil((Number(e.width||0)/100)/0.60))*(e.model==='COMPLETE'?2:1);
+      // Remove somente suportes da fixação Wave neste ambiente.
+      for(let i=rows.length-1;i>=0;i--){
+        const r=rows[i];
+        if(r.environment===e.name&&fold(r.product_name).includes('SUPORTE')&&
+           (fold(r.product_name).includes('WAVE')||fold(r.product_name).includes('28/28')))rows.splice(i,1);
+      }
+      const item=claw();
+      // Evita duplicidade se a versão anterior já gerou a linha de garras.
+      for(let i=rows.length-1;i>=0;i--){
+        const r=rows[i];
+        if(r.environment===e.name&&fold(r.source).includes('GARRA VARAO WAVE'))rows.splice(i,1);
+      }
+      if(item)rows.push({product_id:Number(item.id),internal_code:item.internal_code,product_name:item.product_name,color:item.color,unit:item.unit||'UN',qty:count,environment:e.name,environments:[e.name],source:'GARRA VARÃO WAVE - TETO',cost:Number(item.cost||0),markup_percent:Number(item.markup_percent||0),price_cash:Number(item.price_cash||0),price_4x:Number(item.price_4x||0),price_18x:Number(item.price_18x||0)});
+    }
+    return rows;
+  };
+})();
