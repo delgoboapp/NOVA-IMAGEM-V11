@@ -1,0 +1,17 @@
+NOVA IMAGEM — V12.6.0 (NPS + PROTEÇÃO DE GRAVAÇÃO)
+
+ALTERAÇÕES
+- NPS - CLIENTES > ENVIAR PESQUISA NPS: lista apenas pedidos ainda não avaliados; busca e impressão de convite com QR Code, link clicável e senha existente; envio do texto via WhatsApp.
+- Respostas seguem no NPS existente. Pesquisa permanece disponível apenas após instalação concluída.
+- Corrigida ausência de nextProductCode.
+- Proteção de escrita D1: controle de versão e bloqueio de esvaziamento total de clientes, orçamentos ou pedidos; gravações do navegador ficam bloqueadas quando carregamento falha ou há conflito.
+
+IMPORTANTE - ANTES DE PUBLICAR
+1. Preserve o bookmark Time Travel e exporte o banco D1 restaurado.
+2. Faça publicação em ambiente de HOMOLOGAÇÃO vinculado a um D1 de teste (nunca homologar em produção).
+3. Teste login, carregamento, criação/edição de pedido e orçamento, geração do PDF, WhatsApp e resposta no NPS.
+4. O PDF é gerado pelo comando imprimir do navegador: selecione Salvar como PDF.
+5. O botão do WhatsApp compartilha o LINK e dados de acesso; anexar o PDF é um passo separado.
+6. Exclusão do último registro de clientes, pedidos ou orçamentos é bloqueada por proteção enquanto não existir fluxo de exclusão intencional específico.
+7. Escritas concorrentes de outras sessões e endpoints podem falhar com conflito; atualize a sessão, não repita salvamentos antigos.
+8. Testes locais incluem apenas validação de sintaxe JavaScript, NÃO testes integrados com Cloudflare D1 nem impressora/navegador.

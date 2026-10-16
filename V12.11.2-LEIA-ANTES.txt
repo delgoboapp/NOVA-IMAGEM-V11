@@ -1,0 +1,9 @@
+V12.11.2 — VARÃO WAVE NO TETO — SKU NI-0350
+- Usa o produto JÁ CADASTRADO: NI-0350, GARRA PARA VARÃO WAVE, BRANCO.
+- NÃO cadastra outra garra e NÃO altera o D1 automaticamente.
+- Para VARÃO WAVE + NO TETO: 1 garra a cada 60 cm por varão (mínimo 2), 2 varões se CORTINA COMPLETA.
+- Exemplo: 300 cm, completa: 10 garras, 0 suportes, 4 tampas.
+- Para VARÃO WAVE + NA PAREDE: mantém regra dos suportes.
+- Atualiza cálculo do ambiente e linhas de requisição de insumos utilizadas nos PDFs.
+- NÃO altera quantidade disponível nem preço do produto NI-0350, cadastrados no D1.
+- Teste em homologação com cópia do banco; confirme preço total, orçamento, pedido e PDF antes da publicação.

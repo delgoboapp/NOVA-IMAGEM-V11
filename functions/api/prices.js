@@ -244,17 +244,6 @@ export async function onRequestPost(context){
       await context.env.DB.batch(stm);return json({ok:true});
     }
 
-    if(action==='GARANTIR_GARRA_WAVE_TETO'){
-      if(String(user.role||'').toUpperCase()!=='GESTOR'&&!['ERIC.DELGOBO','LUIZ.SERGIO','GESTOR'].includes(String(user.username||'').toUpperCase()))return json({error:'Acesso não autorizado'},403);
-      const name='GARRA DE VARÃO WAVE';
-      const existing=await context.env.DB.prepare(`SELECT id,internal_code FROM price_products WHERE active=1 AND product_name=? LIMIT 1`).bind(name).first();
-      if(existing)return json({ok:true,created:false,id:existing.id,internal_code:existing.internal_code});
-      const codes=await context.env.DB.prepare(`SELECT internal_code FROM price_products WHERE internal_code LIKE 'NI-%'`).all();let max=0;
-      for(const row of codes.results||[]){const m=String(row.internal_code||'').match(/^NI-(\d+)$/);if(m)max=Math.max(max,Number(m[1]))}
-      const code=`NI-${String(max+1).padStart(4,'0')}`;
-      await context.env.DB.prepare(`INSERT INTO price_products (internal_code,supplier_code,category,supplier,product_name,color,width_cm,unit,stock_quantity,multiplier,cost,markup_percent,price_cash,price_4x,price_18x,ncm,cfop_internal,cfop_interstate,active,price_manual,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)`).bind(code,'','ACESSÓRIO','NOVA IMAGEM',name,'SEM COR',0,'UN',500,2,5,100,9.2,10,9.2/0.82,'','','').run();
-      return json({ok:true,created:true,internal_code:code});
-    }
     if(action==='CRIAR'){
       const supplier=text(body.supplier),category=text(body.category).toUpperCase(),productName=text(body.product_name),color=text(body.color)||'SEM COR',unit=text(body.unit).toUpperCase()||'UN';
       const supplierCode=text(body.supplier_code),widthCm=num(body.width_cm,0),stock=num(body.stock_quantity,0),cost=num(body.cost,0),markup=num(body.markup_percent,130),ncm=text(body.ncm),cfopIn=text(body.cfop_internal),cfopOut=text(body.cfop_interstate);
