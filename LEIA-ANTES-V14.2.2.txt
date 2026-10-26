@@ -1,0 +1,9 @@
+NOVA IMAGEM V14.2.2 — PACOTE PARA TESTES EM PREVIEW
+
+Correções no código:
+- Mantém TRILHO SQUARE COM COMANDO no seletor (corrige lista fixa e rotina que o removia).
+- Padrão suíço NI-0009, preservando escolha manual por ID durante os recálculos.
+- Relatório de pedidos por vendedor: observações com quantidades de persianas e comissão gerada (sem alterar pedidos).
+- Mantém alterações de layout de EDITAR ITENS e PDF de orçamento da V14.2.1.
+
+LIMITAÇÕES: NÃO FORAM HOMOLOGADAS TODAS AS 17 ALTERAÇÕES. A interação com D1, preços de Square, persistência e exclusão/restauração de fixação requerem testes. Nenhuma migração SQL adicionada. RECOMENDAÇÃO: deploy Preview, backup e só então produção.
