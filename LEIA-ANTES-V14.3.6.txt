@@ -1,0 +1,7 @@
+V14.3.6 — CORREÇÃO EXCLUSIVA DO DESKTOP
+
+Fixadas as posições da sidebar na coluna 1 e da área main na coluna 2 em larguras acima de 760 px.
+Regras para telas de celular (<= 760 px) não alteradas.
+JS e endpoints de dados permanecem os mesmos da versão V14.3.3.
+
+RECOMENDADO: publicar primeiro em ambiente de teste.

@@ -1,0 +1,14 @@
+NOVA IMAGEM – V14.3.5 LAYOUT ESTÁVEL
+
+Objetivo:
+- Corrigir a tentativa anterior de layout premium que desconfigurou a tela inicial.
+- Aplicar refinamento visual seguro, sem mexer na lógica do ERP.
+
+Alterações:
+- Mantida a estrutura original da V14.3.3.
+- Ajuste fino de estilos em styles.css.
+- Atualização do cache busting da folha de estilos para v=14.3.5.
+- Melhoria de aparência em desktop e celular sem scripts extras de layout.
+
+Observação:
+- Se o navegador insistir em mostrar estilo antigo, fazer Ctrl+F5 após publicar.
