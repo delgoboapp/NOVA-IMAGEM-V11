@@ -1,0 +1,13 @@
+NOVA IMAGEM V14.2.7 - PERSIANAS AMORIM / CAIXA BOX
+
+Ajustes:
+- Modelo CAIXA BOX em Amorim: duas guias laterais e uma guia inferior, 60 ou 80 mm.
+- Guia 60 mm: custo R$48/m; guia 80 mm: R$65/m; 100% de markup.
+- Bandô automático: até 150cm BOX 70 (custo R$95/m), até 200cm BOX 90 (R$110/m), acima BOX GRANDE (R$238/m), respeitando largura máxima do tecido.
+- Tubos correspondentes 32, 38, 52mm, automaticamente escolhidos para Caixa Box.
+- Atualização dos acessórios (custos de fábrica por metro linear): barra 32/38 R$18; barra 53 R$25; bandô conjugado R$75; flat R$70; flat revestido R$90; semi box grande R$200/m.
+- Preço de venda 4x = custo do acessório x 2 x metragem; à vista -8%; 18x = à vista / 0,82 sobre acessórios.
+- Seleção de barras/bandôs filtrada por compatibilidade de tubo, sem opção sem barra/bandô.
+- Controle de largura máxima por coleção no momento de adicionar à proposta.
+
+IMPORTANTE: pacote para homologação; não foram realizados testes funcionais em Cloudflare Pages/D1. Os dados existentes não são modificados no arquivo ZIP. Faça backup antes de publicar.
