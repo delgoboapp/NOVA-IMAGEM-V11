@@ -1,0 +1,10 @@
+INTEGRACAO R2 - ANEXOS DOS PEDIDOS
+Binding Pages Production: ANEXOS_R2 -> nova-imagem-anexos
+O endpoint /api/order-attachments cria automaticamente a tabela pedido_anexos_r2 no D1.
+Os anexos anteriores em app_state.attachments permanecem intactos e legiveis.
+Os novos anexos de PEDIDOS usam R2 e registros na tabela separada.
+Anexos de CLIENTES permanecem no modelo anterior nesta versao.
+Nao faz migracao nem exclusao automatica de arquivos antigos.
+Verifique o binding no Preview se testar no ambiente Preview.
+Antes de publicar: backup D1. Teste com pedido de teste: upload, download, recarregar pagina, exclusao.
+Sem homologacao em Cloudflare de producao.
