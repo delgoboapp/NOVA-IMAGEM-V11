@@ -1,0 +1,5 @@
+V14.2.5 — pacote PREVIEW, alteração pontual de limite de vídeos nos anexos de pedidos.
+Vídeos MP4/WEBM/MOV: até 50 MB no R2. Outros tipos: no máximo 500 KB, sem compressão automática neste patch.
+Não corrige a falha relatada em que a função R2 não é chamada; não homologue em produção até testes da API, binding e tabela.
+Não implementa vídeos nos formulários de Inspirações/Blog (atualmente somente imagem).
+Nenhum dado do D1 é alterado pelo simples deploy deste pacote; a API pode criar a tabela pedido_anexos_r2 quando executada.
