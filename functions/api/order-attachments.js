@@ -1,8 +1,7 @@
 import {readDB,verifyToken,json} from './_shared.js';
 
-const DOCUMENT_LIMIT = 500 * 1024;
-const VIDEO_LIMIT = 50 * 1024 * 1024;
-const VIDEO_MIME = new Set(['video/mp4','video/webm','video/quicktime']);
+const MAX_DOC_SIZE = 500 * 1024;
+const MAX_VIDEO_SIZE = 50 * 1024 * 1024;
 const MIME = new Set(['application/pdf','image/jpeg','image/png','image/webp','video/mp4','video/webm','video/quicktime']);
 const TYPES = new Set(['FOTO DE MEDIÇÃO','FOTO DO AMBIENTE','INSTALAÇÃO CONCLUÍDA','COMPROVANTE','CONTRATO ASSINADO','OUTRO']);
 const error=(message,status=400)=>json({error:message},status);
@@ -51,8 +50,8 @@ export async function onRequest(context){
    if(!file||typeof file.arrayBuffer!=='function')return error('Selecione um arquivo.');
    if(!TYPES.has(tipo))return error('Tipo inválido.');
    if(!MIME.has(file.type))return error('Formato não permitido. Use PDF, JPG, PNG, WEBP, MP4, WEBM ou MOV.');
-   const limit=VIDEO_MIME.has(file.type)?VIDEO_LIMIT:DOCUMENT_LIMIT;
-   if(!file.size||file.size>limit)return error(VIDEO_MIME.has(file.type)?'Vídeo vazio ou maior que 50 MB.':'Documento ou imagem acima de 500 KB. Comprima antes de enviar.');
+   const isVideo = ['video/mp4','video/webm','video/quicktime'].includes(file.type);
+   if(!file.size || file.size > (isVideo ? MAX_VIDEO_SIZE : MAX_DOC_SIZE))return error(isVideo?'Vídeo vazio ou maior que 50 MB.':'Arquivo vazio ou maior que 500 KB.');
    const id=crypto.randomUUID(),name=safeName(file.name),key=`pedidos/${auth.numero}/${id}`;
    await env.ANEXOS_R2.put(key,file.stream(),{httpMetadata:{contentType:file.type},customMetadata:{pedido:auth.numero}});
    try{

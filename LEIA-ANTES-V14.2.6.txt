@@ -1,0 +1,11 @@
+NOVA IMAGEM V14.2.6 — CORREÇÃO DE CACHE E ANEXOS R2
+
+- Atualização do identificador de cache do app.js no index.html (anteriormente 14.1).
+- A janela PEDIDOS > ANEXOS informa explicitamente uso de R2 e proíbe fallback para D1.
+- A leitura de anexos antigos no D1 foi preservada.
+- API aceita PDF/JPG/PNG/WEBP até 500 KB e MP4/WEBM/MOV até 50 MB.
+- Para imagens/PDFs acima de 500 KB o sistema informa o limite; compressão automática ainda não implementada.
+- Continua exigindo binding ANEXOS_R2 e autenticação válida.
+- NÃO FORAM EXECUTADAS MIGRAÇÕES/ALTERAÇÕES NO D1.
+- TESTE EM PREVIEW PRIMEIRO, confirme Network e objeto em R2 antes de produção.
+- O erro de cache é causa provável, não demonstrada no ambiente de produção.
