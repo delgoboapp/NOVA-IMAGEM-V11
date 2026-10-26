@@ -1,0 +1,8 @@
+NOVA IMAGEM V14.2.8 — CORREÇÕES FIXAÇÃO
+Base: V14.2.7 enviada pelo usuário.
+1. VARÃO COM COMANDO POR CORDA: preserva fixação e aponta produto SKU oficial conforme largura/cor; impede validação indevida como trilho suíço na captura do formulário.
+2. TRILHO SQUARE: deslizantes por largura pronta: acabamento 1/5 cm; forro 1/7 cm, arredondados para cima.
+3. TRILHO SQUARE COM CORTINA COMPLETA: 2 conjuntos de trilhos do mesmo SKU, precificados e listados para separação de materiais.
+Nenhuma migração SQL. Não altera DB/R2 diretamente.
+VALIDAÇÃO PENDENTE: testar visualmente no site com dados de estoque reais; conferir um ambiente 250cm, 50 acabamento + 36 forro, 2 trilhos; e seleção de varão com comando 250cm até 3m.
+Antes de atualizar produção, efetue backup D1 e preferencialmente Preview Deployment. Não considere homologado sem validar o orçamento no navegador.
