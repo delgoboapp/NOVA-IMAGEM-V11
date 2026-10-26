@@ -1,0 +1,9 @@
+NOVA IMAGEM - Pacote preliminar de correcoes (NAO PUBLICAR EM PRODUCAO)
+Base: ZIP recebido em 26/10/2026, rotulado V14.0 no index.html.
+
+Ajustes exploratorios no app.js:
+1. No seletor da fixacao, preservar a familia escolhida pelo usuario durante refresh, evitando o retorno automatico para TRILHO SUICO em algumas sequencias de eventos.
+2. No seletor de trilhos suicos, ao iniciar um formulario novo, preferir o TRILHO TRIPLO BRANCO de codigo NI-0009 se existente no estoque ativo. Preservar modelo existente em refresh de edicao.
+
+LIMITACOES: estes dois ajustes passaram apenas pela verificacao estatica de sintaxe em Node.js. Nao foram realizados testes ponta a ponta com navegador/Cloudflare/D1. Restam pendentes os itens 01 (lentidao), 03-05 (edicao/precos). O ZIP nao representa a versao V14.1 concluida.
+Nao rodar deploy sem testes e backup.

@@ -2407,7 +2407,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     try{
       removeParallelSelector();relabel();
       const f=$('eFixation'),r=$('eRailProduct'),rw=$('eRailProductWrap'),c=$('eFixColor');if(!f||!r||!c)return;
-      const previous=preserve?(DISPLAY[f.value]||f.value||desired):desired;
+      const previous=preserve?(FAMILY_OPTIONS.includes(desired)?desired:(DISPLAY[f.value]||f.value||desired)):desired;
       if(FAMILY_OPTIONS.includes(previous))desired=previous;
       populate(f,FAMILY_OPTIONS,desired);
       desired=f.value||desired;
@@ -2416,8 +2416,13 @@ document.addEventListener('DOMContentLoaded',()=>{
         rw?.classList.remove('hidden');
         const oldModel=preserve?r.value:'';
         const models=uniq(swissProducts().map(swissModelKey));
-        populate(r,models,models.includes(oldModel)?oldModel:'','SELECIONE O MODELO');
-        const oldColor=preserve?c.value:'';
+        // Novo ambiente: preferir TRILHO TRIPLO BRANCO (NI-0009) quando existir.
+        // Ao editar/reabrir, preservar o trilho escolhido no formulário.
+        const standard=swissProducts().find(p=>/^(?:NI[- ]?)?0*9$/.test(String(p.internal_code||'').trim().toUpperCase()) && fold(p.color)==='BRANCO')
+          || swissProducts().find(p=>fold(p.product_name)==='TRILHO TRIPLO'&&fold(p.color)==='BRANCO');
+        const desiredModel=preserve&&models.includes(oldModel)?oldModel:(standard?swissModelKey(standard):'');
+        populate(r,models,desiredModel,'SELECIONE O MODELO');
+        const oldColor=preserve&&models.includes(oldModel)?c.value:(standard?.color||'BRANCO');
         populate(c,colorsFor(display,r.value),oldColor,'SELECIONE A COR');
       }else{
         rw?.classList.add('hidden');
