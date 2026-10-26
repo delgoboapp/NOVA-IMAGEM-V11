@@ -136,3 +136,10 @@
 
 /* V12.11.6: painéis fiscais inativos */
 [data-fiscal-section][hidden]{display:none!important}
+
+/* V14.2.1 - editor de itens mais amplo, sem modificar outros modais */
+.modal-backdrop:has(#v14-save) .modal{width:min(1500px,94vw);max-height:93vh;}
+.modal-backdrop:has(#v14-save) .table{min-width:970px;}
+.modal-backdrop:has(#v14-save) .table td:last-child{white-space:nowrap;}
+.modal-backdrop:has(#v14-save) .table td:last-child .btn{padding:9px 10px;font-size:11px;}
+@media(max-width:650px){.modal-backdrop:has(#v14-save){padding:4px}.modal-backdrop:has(#v14-save) .modal{width:100%;max-height:98vh;padding:12px;}}

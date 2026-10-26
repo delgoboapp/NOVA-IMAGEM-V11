@@ -1,0 +1,12 @@
+NOVA IMAGEM V14.2.1 — PATCH LIMITADO, NÃO HOMOLOGADO
+
+Alterações verificáveis no código:
+- Ajuste de layout do editor de itens com janela 94vw, máximo 1500px.
+- PDF comercial: oculta apenas a cifra CONFECÇÃO no quadro superior, sem subtrair do cálculo.
+- Quadro superior de VALORES no PDF: três colunas de igual largura.
+- Seletor de fixação: reinclui TRILHO SQUARE COM COMANDO e remove SEM TRILHO E SEM INSTALAÇÃO da interface.
+- Identificação visual V14.2.1.
+
+ATENÇÃO: NÃO FOI HOMOLOGADO em navegador com D1. A seleção Square, SKU NI-0331..0340, cores, compatibilidade e cálculo financeiro NÃO foram validados.
+Também não foi comprovado o conserto da reintrodução do TRILHO 3 VIAS em outros fluxos, nem dos 15 requisitos totais.
+Não há migração ou alteração do banco de dados neste pacote. Testar primeiro em Preview da Cloudflare.
