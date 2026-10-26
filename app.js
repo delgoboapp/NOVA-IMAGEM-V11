@@ -1287,9 +1287,9 @@ function renderCommercialPanel(){
   const sellerEl=$('commercialPanelSeller');
   if(sellerEl){
     const cur=sellerEl.value;
-    const users=allUsers().filter(u=>['SALES','PARTNER'].includes(norm(u.role)));
+    const users=allUsers().filter(u=>['SALES','PARTNER','GESTOR','GESTOR'].includes(norm(u.role)) || norm(u.role)==='MANAGER');
     sellerEl.innerHTML=isGestor()?'<option value="">TODOS OS VENDEDORES / PARCEIROS</option>'+users.map(u=>`<option value="${esc(u.username)}">${esc(u.name||u.username)}</option>`).join(''):`<option value="${esc(currentUsername())}">${esc(sellerName(currentUsername()))}</option>`;
-    sellerEl.value=isGestor()?(cur||''):currentUsername();sellerEl.disabled=!isGestor();
+    sellerEl.value=isGestor()&&[...sellerEl.options].some(o=>o.value===cur)?cur:(isGestor()?'':currentUsername());sellerEl.disabled=!isGestor();
   }
   const seller=isGestor()?norm(sellerEl?.value||''):currentUsername();
   const orders=(db.orders||[]).filter(o=>String(o.createdDate||o.date||'').slice(0,7)===month&&(!seller||resolveSellerUser(o)===seller));
@@ -2327,7 +2327,7 @@ document.addEventListener('DOMContentLoaded',()=>{
    Neutraliza rotinas legadas que forçavam WAVE -> TRILHO SUÍÇO.
 */
 (function(){
-  const FAMILY_OPTIONS=['TRILHO SUÍÇO','VARÃO WAVE','VARÃO COM COMANDO','TRILHO MOTORIZADO'];
+  const FAMILY_OPTIONS=['TRILHO SUÍÇO','VARÃO WAVE','VARÃO COM COMANDO','TRILHO SQUARE COM COMANDO','TRILHO MOTORIZADO'];
   const INTERNAL={
     'TRILHO SUÍÇO':'TRILHO SUÍÇO',
     'VARÃO WAVE':'VARÃO WAVE',
@@ -2480,7 +2480,7 @@ document.addEventListener('DOMContentLoaded',()=>{
    escolhida pelo vendedor e remove TRILHO SQUARE COM COMANDO do orçamento.
 */
 (function(){
-  const ALLOWED=['TRILHO SUÍÇO','VARÃO WAVE','VARÃO WAVE COM COMANDO POR CORDA','TRILHO MOTORIZADO'];
+  const ALLOWED=['TRILHO SUÍÇO','VARÃO WAVE','VARÃO WAVE COM COMANDO POR CORDA','TRILHO SQUARE COM COMANDO','TRILHO MOTORIZADO'];
   const fold=x=>v1216Fold(x||'');
 
   function cleanFixOptions(preserve=true){
@@ -2551,8 +2551,6 @@ document.addEventListener('DOMContentLoaded',()=>{
 
   function finalSync(){
     cleanFixOptions(true);
-    // remove qualquer opção Square reinserida por rotinas antigas
-    const el=$('eFixation'); if(el){[...el.options].filter(o=>fold(o.value).includes('SQUARE')).forEach(o=>o.remove())}
     if(typeof v1218RefreshFixProduct==='function')v1218RefreshFixProduct();
   }
 
@@ -2587,7 +2585,7 @@ document.addEventListener('DOMContentLoaded',()=>{
    TRILHO SQUARE COM COMANDO permanece removido do orçamento.
 */
 (function(){
-  const FIXES=['TRILHO SUÍÇO','VARÃO WAVE','VARÃO WAVE COM COMANDO POR CORDA','TRILHO MOTORIZADO'];
+  const FIXES=['TRILHO SUÍÇO','VARÃO WAVE','VARÃO WAVE COM COMANDO POR CORDA','TRILHO SQUARE COM COMANDO','TRILHO MOTORIZADO'];
   let lastFix='TRILHO SUÍÇO';
 
   function syncWaveFixation(preferred){
@@ -2659,7 +2657,7 @@ document.addEventListener('DOMContentLoaded',()=>{
    interfere mais na família de fixação. WAVE e FRANZIDO SUÍÇO exibem a mesma lista.
 */
 (function(){
-  const FIXES=['TRILHO SUÍÇO','VARÃO WAVE','VARÃO WAVE COM COMANDO POR CORDA','TRILHO MOTORIZADO'];
+  const FIXES=['TRILHO SUÍÇO','VARÃO WAVE','VARÃO WAVE COM COMANDO POR CORDA','TRILHO SQUARE COM COMANDO','TRILHO MOTORIZADO'];
   let rememberedFix='TRILHO SUÍÇO';
   let rememberedLiningPleat='FRANZIDO SUÍÇO';
   const prior1191=v1191Conditional;
