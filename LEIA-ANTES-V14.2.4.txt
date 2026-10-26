@@ -1,0 +1,18 @@
+Nova Imagem V14.2.4 — imagens de Inspirações / Blog no R2
+
+- Novas fotos principais de inspirações, amostras de cores, imagens do blog e capa do portal são enviadas para ANEXOS_R2, pasta portal/.
+- O D1 continua guardando apenas a URL de referência nas configurações/inspirações/postagens.
+- Imagens antigas em Base64 e as imagens locais inspiration-1.jpg etc continuam funcionando.
+- Acesso de upload restrito a perfil gestor; leitura HTTP apenas de imagens na pasta portal com chave UUID.
+- Não houve migração nem exclusão das imagens antigas.
+- A rota /api/portal-media precisa ser implantada como Pages Function.
+- Testes reais no Cloudflare R2 e no D1 ainda são necessários; faça preview, backup e verifique cada upload antes da produção.
+- Ao excluir uma postagem ou alterar a foto, arquivos antigos do R2 não são removidos automaticamente, prevenindo perda acidental. Isso exige limpeza controlada futura.
+
+ADICIONAL — INSPIRAÇÕES EM TELA CHEIA
+- Clique na fotografia da galeria Inspirações ou na seção Destaques da página inicial para ampliar.
+- Botão ← RETORNAR; tecla Escape; conserva a rolagem da galeria.
+- Funciona com imagens locais, legadas e URLs do R2.
+- Incluídos inspirations-fullscreen.js e regras CSS no styles.css.
+- Não requer migração SQL e não escreve no D1/R2.
+- Validação realizada: sintaxe JavaScript. Teste visual no navegador ainda necessário.

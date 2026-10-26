@@ -143,3 +143,11 @@
 .modal-backdrop:has(#v14-save) .table td:last-child{white-space:nowrap;}
 .modal-backdrop:has(#v14-save) .table td:last-child .btn{padding:9px 10px;font-size:11px;}
 @media(max-width:650px){.modal-backdrop:has(#v14-save){padding:4px}.modal-backdrop:has(#v14-save) .modal{width:100%;max-height:98vh;padding:12px;}}
+
+/* V14.2.4 — Inspirações: foto em tela cheia, botão retornar */
+.inspiration-card>img,.site-featured-card>img{cursor:zoom-in}
+.ni-insp-fullscreen{position:fixed;inset:0;z-index:2147483000;background:rgba(7,19,20,.97);display:flex;align-items:center;justify-content:center;padding:70px 16px 18px;box-sizing:border-box}
+.ni-insp-fullscreen img{display:block;max-width:100%;max-height:calc(100dvh - 90px);width:auto;height:auto;object-fit:contain;box-shadow:0 8px 40px rgba(0,0,0,.25)}
+.ni-insp-return{position:absolute;top:16px;left:16px;background:#fff;border:0;border-radius:9px;padding:12px 20px;color:#075b5b;font-weight:800;cursor:pointer;z-index:1}
+.ni-insp-return:focus-visible{outline:3px solid #6ee7df;outline-offset:3px}
+@media(max-width:600px){.ni-insp-fullscreen{padding:76px 8px 12px}.ni-insp-fullscreen img{max-height:calc(100dvh - 94px)}.ni-insp-return{top:12px;left:12px}}
