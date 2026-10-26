@@ -1,9 +1,19 @@
-NOVA IMAGEM - Pacote preliminar de correcoes (NAO PUBLICAR EM PRODUCAO)
-Base: ZIP recebido em 26/10/2026, rotulado V14.0 no index.html.
+NOVA IMAGEM - V14.1 - PACOTE PARA HOMOLOGACAO (NAO PUBLICAR DIRETAMENTE)
+Base: ZIP V14.0 recebido em 26/10/2026.
 
-Ajustes exploratorios no app.js:
-1. No seletor da fixacao, preservar a familia escolhida pelo usuario durante refresh, evitando o retorno automatico para TRILHO SUICO em algumas sequencias de eventos.
-2. No seletor de trilhos suicos, ao iniciar um formulario novo, preferir o TRILHO TRIPLO BRANCO de codigo NI-0009 se existente no estoque ativo. Preservar modelo existente em refresh de edicao.
+ALTERACOES IMPLEMENTADAS NO CODIGO
+01. Debounce de 240ms na largura/altura para reduzir recálculo em cada tecla.
+02. Fixacao: ajuste preliminar de persistencia de VARAO COM COMANDO (app.js).
+03. EDITAR ITENS: preco unitario e total, considerando base 4x.
+04. EDITAR ITENS: botao ALTERAR VALOR por item, inclusive mao de obra.
+05. Recalculo de 4x, a vista e 18x a partir de valores por ambiente. Persistencia em manualPrices; estoque nao e alterado. RECALCULAR TODOS limpa quantidades e precos manuais.
+06. Trilho padrao: preferencia pelo TRILHO TRIPLO BRANCO NI-0009, preservando escolha em edicao.
 
-LIMITACOES: estes dois ajustes passaram apenas pela verificacao estatica de sintaxe em Node.js. Nao foram realizados testes ponta a ponta com navegador/Cloudflare/D1. Restam pendentes os itens 01 (lentidao), 03-05 (edicao/precos). O ZIP nao representa a versao V14.1 concluida.
-Nao rodar deploy sem testes e backup.
+VALIDACOES AINDA NECESSARIAS ANTES DO DEPLOY
+- Testar navegacao/teclado/formulario de largura e altura em navegador real, inclusive cotacao em L.
+- Testar VARAO COM COMANDO e precos dos itens com dados reais de estoque.
+- Conferir alteracoes manuais, salvar, reabrir, PDFs, pedidos, movimentos de estoque, mao de obra.
+- Confirmar que registro de estoque NI-0009 existe e esta ativo.
+- Fazer backup D1 e deploy em staging antes de producao.
+
+Foi executado node --check em app.js e v14-updates.js. Nao houve teste ponta a ponta nem deploy.
