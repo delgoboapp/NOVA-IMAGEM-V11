@@ -1,0 +1,9 @@
+NOVA IMAGEM V14.3.2 - PACOTE CONSOLIDADO
+
+Base: V14.3.1 (inclui layout novo, alertas, fixacoes, garras Square e itens avulsos).
+Blog: normalizacao no D1, envio publico de blogPosts.
+Inspiracoes e blog: agora sinalizam a alteracao antes de chamar saveCloud, persistindo no D1 com verificacao de bloqueio.
+Fotos de blog, inspiracoes, cores e capa: mantidas na integracao R2 via /api/portal-media.
+Sem limpeza de D1 ou R2, sem migracoes SQL.
+Homologar antes da publicacao: criar inspiracao e postagem, atualizar pagina, sair, acessar portal sem login e verificar as imagens no R2.
+Se algum registro nao foi realmente persistido na versao anterior, precisara ser recriado apos a atualizacao.

@@ -1,0 +1,8 @@
+V14.3.3 — HOTFIX GARRAS SQUARE
+Corrige GARRA TRILHO 3 VIAS para GARRA PARA TRILHO SUICO SIMPLES.
+Conta 1 garra a cada 60 cm POR TRILHO, minimo 2 por trilho.
+Exemplo 500 cm com acabamento e forro: 9 + 9 = 18 garras.
+Produto e valor sao buscados no estoque oficial.
+Se nao houver garra simples cadastrada ativa, nao inventar preco; conferir antes de fechar o pedido.
+Nenhuma alteracao de schema, D1 ou R2.
+Homologar em orcamento novo e conferir EDITAR ITENS, totais e resumo.

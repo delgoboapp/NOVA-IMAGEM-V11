@@ -1,0 +1,20 @@
+NOVA IMAGEM V14.3.0 - HOMOLOGAÇÃO
+Base: V14.2.8 fornecida anteriormente.
+
+1. Home com identidade visual aprovada, 6 atalhos e alertas de compras, instalações e agenda.
+   IGNORAR oculta só no navegador usado (localStorage), VER abre a função pertinente.
+2. Varão Wave com comando por corda: referência de produto em NI-0306 a NI-0330, seleção de cor,
+   fixação teto/parede pelo campo ONDE SERÁ FIXADO; cálculo de garras de teto ou suportes de parede.
+3. Square: usa garra de trilho suíço simples; quantidade por trilho 1/60cm,
+   considerando 2 trilhos em cortina completa; preserva correções V14.2.8.
+4. EDITAR ITENS: adiciona produto avulso ao ambiente, com SKU oficial e preço 4x,
+   persistido na composição do ambiente sem alteração do cadastro de estoque.
+5. Sem scripts SQL nem migração D1/R2. Integrações anteriores mantidas.
+
+ATENÇÃO: Esta versão não foi testada contra o D1 de produção nem por browser real.
+VALIDAR antes de confirmar vendas reais:
+- varão com comando 500 cm BRANCO: 5 suportes parede ou 9 garras teto;
+- trilho Square 500 cm com forro: 2 trilhos + 18 garras simples;
+- item avulso: adicionar, salvar, reabrir e recalcular todos;
+- home: IGNORAR/VER, permissões e data de instalação;
+- arquivos dos pedidos permanecem no R2.

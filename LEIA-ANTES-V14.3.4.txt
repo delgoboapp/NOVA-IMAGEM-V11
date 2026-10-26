@@ -1,0 +1,20 @@
+NOVA IMAGEM V14.3.4 — DEFINITIVA PARA HOMOLOGAÇÃO
+
+Inclui:
+1) Home interna no layout aprovado pelo usuário, com seis atalhos, ícones em linha e tamanhos ajustados.
+2) Painel de alertas abaixo da frase, com botões VER e IGNORAR.
+3) Correção consolidada do TRILHO SQUARE COM COMANDO:
+   - usa GARRA PARA TRILHO SUÍÇO SIMPLES;
+   - quantidade por trilho: 1 a cada 60 cm;
+   - exemplo validado: 2 trilhos de 5,00 m = 18 garras.
+4) Correção consolidada do VARÃO WAVE COM COMANDO POR CORDA:
+   - mantém o tipo correto de fixação;
+   - busca o produto oficial do varão com comando por corda no estoque;
+   - respeita TETO/PAREDE com regra do Wave.
+5) Mantém as correções já consolidadas do blog/inspirações em D1/R2 e o botão ADICIONAR ITEM AVULSO.
+
+Antes de publicar:
+- homologar a HOME;
+- testar um orçamento novo com Trilho Square completo de 5,00 m;
+- conferir EDITAR ITENS;
+- testar um orçamento com Varão com Comando por Corda em PAREDE e em TETO.
