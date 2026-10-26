@@ -78,19 +78,39 @@ window.generateLabelsV1263=labelsV14;
 function editor(){
  const selected=(draft.environments||[]).find(e=>String(e.id)===String(quoteEditingEnvironmentId));
  const e=selected||envFromForm();if(!e.name||!e.width||!e.height)return alert('Preencha o ambiente e as medidas antes de editar os itens.');
- const rows=baseRequirements(e),computed=calcEnvironment({...e,manualItems:{}});
+ let rows=baseRequirements(e),computed=calcEnvironment({...e,manualItems:{}});
+ const extraItems=JSON.parse(JSON.stringify(e.manualExtraItems||[]));
  const labor=[{product_id:'__sewing',product_name:'MÃO DE OBRA — COSTURA',qty:computed.sewingMeters,unit:'M'}, {product_id:'__installation',product_name:'MÃO DE OBRA — INSTALAÇÃO',qty:computed.installCost?1:0,unit:'SERVIÇO'}];
  const overrides={...manual(e)};
  const prices={...(e.manualPrices||{})};
- const all=[...rows,...labor];
+ let all=[...rows,...labor];
  const getQty=r=>{const v=overrides[itemKey(r)];return v===null?0:v===undefined?Number(r.qty||0):Number(v)};
  const baseUnit=r=>{if(r.product_id==='__sewing')return Number(db.priceConfig.sewingPerMeter||0);if(r.product_id==='__installation')return Number(computed.installCost||0);return Number(r.price_4x||0)};
  const unit=r=>prices[itemKey(r)]===undefined?baseUnit(r):Number(prices[itemKey(r)]);
- const show=()=>{openModal(`<h2>EDITAR ITENS — ${htmlEscape(e.name)}</h2><p>Valores de venda em 4x, exclusivos deste ambiente; descontos e acréscimos são calculados automaticamente.</p><div class="table-wrap"><table class="table"><thead><tr><th>Item</th><th>Quantidade</th><th>Valor unitário (4x)</th><th>Valor total (4x)</th><th>Ações</th></tr></thead><tbody>${all.map((r,i)=>{const k=itemKey(r),v=overrides[k],qty=getQty(r),price=unit(r);return `<tr><td>${htmlEscape(r.product_name)}<br><small>${htmlEscape(r.color||'')} ${htmlEscape(r.internal_code||'')}</small></td><td>${Number(qty).toFixed(r.unit==='M'?2:0)} ${htmlEscape(r.unit||'UN')}${v!==undefined?' <b>(MANUAL)</b>':''}</td><td>${money(price)}${prices[k]!==undefined?' <b>(MANUAL)</b>':''}</td><td>${money(price*qty)}</td><td style="min-width:350px"><button class="btn secondary" data-v14-change="${i}">ALTERAR QUANTIDADE</button> <button class="btn secondary" data-v141-price="${i}">ALTERAR VALOR</button> <button class="btn danger" data-v14-remove="${i}">EXCLUIR ITEM</button></td></tr>`}).join('')}</tbody></table></div><div class="actions" style="margin-top:12px"><button class="btn primary" id="v14-save">SALVAR ALTERAÇÕES</button><button class="btn secondary" id="v14-reset">RECALCULAR TODOS</button><button class="btn ghost" id="v14-cancel">CANCELAR</button></div>`);
+ const show=()=>{openModal(`<h2>EDITAR ITENS — ${htmlEscape(e.name)}</h2><p>Valores de venda em 4x, exclusivos deste ambiente; descontos e acréscimos são calculados automaticamente.</p><div class="table-wrap"><table class="table"><thead><tr><th>Item</th><th>Quantidade</th><th>Valor unitário (4x)</th><th>Valor total (4x)</th><th>Ações</th></tr></thead><tbody>${all.map((r,i)=>{const k=itemKey(r),v=overrides[k],qty=getQty(r),price=unit(r);return `<tr><td>${htmlEscape(r.product_name)}<br><small>${htmlEscape(r.color||'')} ${htmlEscape(r.internal_code||'')}</small></td><td>${Number(qty).toFixed(r.unit==='M'?2:0)} ${htmlEscape(r.unit||'UN')}${v!==undefined?' <b>(MANUAL)</b>':''}</td><td>${money(price)}${prices[k]!==undefined?' <b>(MANUAL)</b>':''}</td><td>${money(price*qty)}</td><td style="min-width:350px"><button class="btn secondary" data-v14-change="${i}">ALTERAR QUANTIDADE</button> <button class="btn secondary" data-v141-price="${i}">ALTERAR VALOR</button> <button class="btn danger" data-v14-remove="${i}">EXCLUIR ITEM</button></td></tr>`}).join('')}</tbody></table></div><div class="actions" style="margin-top:12px"><button class="btn primary" id="v14-save">SALVAR ALTERAÇÕES</button><button class="btn secondary" id="v14-reset">RECALCULAR TODOS</button><button class="btn secondary" id="v143-add">+ ADICIONAR ITEM AVULSO</button><button class="btn ghost" id="v14-cancel">CANCELAR</button></div>`);
  document.querySelectorAll('[data-v141-price]').forEach(b=>b.onclick=()=>{const r=all[Number(b.dataset.v141Price)],k=itemKey(r);const x=prompt(`Novo valor UNITÁRIO em 4x para ${r.product_name} (R$):`,String(unit(r).toFixed(2)).replace('.',','));if(x===null)return;const n=Number(x.trim().replace(',','.'));if(!Number.isFinite(n)||n<0||!x.trim())return alert('Informe um preço válido, maior ou igual a zero.');prices[k]=n;show()});
  document.querySelectorAll('[data-v14-change]').forEach(b=>b.onclick=()=>{const r=all[Number(b.dataset.v14Change)],k=itemKey(r),cur=overrides[k]===undefined?r.qty:overrides[k]??0;const x=prompt(`Nova quantidade para ${r.product_name}:`,String(cur));if(x===null)return;const n=Number(x.replace(',','.'));if(!Number.isFinite(n)||n<0)return alert('Informe uma quantidade válida, maior ou igual a zero.');overrides[k]=n;show()});
  document.querySelectorAll('[data-v14-remove]').forEach(b=>b.onclick=()=>{const r=all[Number(b.dataset.v14Remove)];if(confirm(`Excluir ${r.product_name} deste ambiente?`)){overrides[itemKey(r)]=null;show()}});
- $('v14-save').onclick=()=>{const index=(draft.environments||[]).findIndex(x=>String(x.id)===String(e.id));if(index<0){alert('Primeiro adicione o ambiente ao orçamento. Depois edite os itens dele.');return}draft.environments[index].manualItems={...overrides};draft.environments[index].manualPrices={...prices};closeModal();renderQuote();updatePreview()};
+ $('v14-save').onclick=()=>{const index=(draft.environments||[]).findIndex(x=>String(x.id)===String(e.id));if(index<0){alert('Primeiro adicione o ambiente ao orçamento. Depois edite os itens dele.');return}draft.environments[index].manualItems={...overrides};draft.environments[index].manualPrices={...prices};draft.environments[index].manualExtraItems=extraItems;closeModal();renderQuote();updatePreview()};
+ $('v143-add').onclick=()=>{
+   const available=(priceProducts||[]).filter(p=>Number(p.active??1)===1).sort((a,b)=>String(a.product_name).localeCompare(String(b.product_name),'pt-BR'));
+   if(!available.length)return alert('Estoque oficial indisponível.');
+   const dialog=document.createElement('div');dialog.id='v143ItemDialog';dialog.style.cssText='position:fixed;inset:0;background:#122b2f88;z-index:99999;display:grid;place-items:center;padding:20px';
+   const panel=document.createElement('section');panel.style.cssText='background:white;padding:20px;border-radius:14px;width:min(650px,96vw);max-height:85vh;overflow:auto';
+   panel.innerHTML=`<h3>Adicionar item avulso — ${htmlEscape(e.name)}</h3><p>Somente produtos do estoque oficial. O preço usado é o de venda em 4x.</p><label>Produto<select id="v143ItemProduct" style="width:100%;padding:10px"><option value="">Selecione</option>${available.map(p=>`<option value="${Number(p.id)}">${htmlEscape(p.internal_code||'')} • ${htmlEscape(p.product_name)} • ${htmlEscape(p.color||'')} • ${money(Number(p.price_4x||0))}</option>`).join('')}</select></label><label style="display:block;margin:14px 0">Quantidade<input id="v143ItemQty" type="number" step="0.01" min="0.01" value="1" style="width:100%;padding:10px"></label><div style="display:flex;gap:8px"><button class="btn primary" id="v143ConfirmItem">ADICIONAR</button><button class="btn secondary" id="v143CloseItem">RETORNAR</button></div>`;
+   dialog.appendChild(panel);document.body.appendChild(dialog);
+   panel.querySelector('#v143CloseItem').onclick=()=>dialog.remove();
+   panel.querySelector('#v143ConfirmItem').onclick=()=>{
+     const id=Number(panel.querySelector('#v143ItemProduct').value),p=available.find(x=>Number(x.id)===id),qty=Number(panel.querySelector('#v143ItemQty').value);
+     if(!p||!Number.isFinite(qty)||qty<=0)return alert('Escolha um produto e uma quantidade válida.');
+     const old=extraItems.find(x=>Number(x.product_id)===id);
+     if(old)old.qty=Number(old.qty||0)+qty;
+     else extraItems.push({product_id:Number(p.id),internal_code:p.internal_code,product_name:p.product_name,color:p.color,unit:p.unit||'UN',qty,price_4x:Number(p.price_4x||0),price_cash:Number(p.price_cash||0),price_18x:Number(p.price_18x||0),cost:Number(p.cost||0),source:'ITEM AVULSO',environment:e.name});
+     const exists=all.find(x=>Number(x.product_id)===id);
+     if(exists)exists.qty+=qty;else all.push(extraItems[extraItems.length-1]);
+     dialog.remove();show();
+   }
+ };
  $('v14-reset').onclick=()=>{if(!confirm('Restaurar todas as quantidades E valores originais deste ambiente?'))return;for(const k of Object.keys(overrides))delete overrides[k];for(const k of Object.keys(prices))delete prices[k];show()};$('v14-cancel').onclick=closeModal;
  };show();
 }

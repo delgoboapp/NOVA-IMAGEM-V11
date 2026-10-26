@@ -1,0 +1,7 @@
+NOVA IMAGEM V14.3.1 — CORREÇÃO BLOG PUBLICO
+
+Corrigido: D1 agora persiste blogPosts; API /api/portal retorna posts publicados; não gestores não sobrescrevem blogPosts.
+Imagens permanecem no Cloudflare R2 conforme integração existente.
+Sem SQL, sem limpeza, sem sobrescrever dados deliberadamente.
+Postagens criadas anteriormente que tenham sido descartadas pelo D1 precisarão ser recriadas depois da publicação.
+Testar: criar postagem PUBLICADA, salvar, sair e abrir Blog sem login.
