@@ -428,10 +428,26 @@ function calcEnvironment(e){
   const customPleat=Number(e.customPleat||0);
   // V14: deslizantes por camada e por trecho da cortina em L.
   const widths=e.angle&&Number(e.angleA)>0&&Number(e.angleB)>0?[Number(e.angleA),Number(e.angleB)]:[Number(e.width)];
-  const finishSlidersBase=widths.reduce((sum,cm)=>sum+Math.ceil(cm/5),0);
-  const liningSlidersBase=widths.reduce((sum,cm)=>sum+Math.ceil(cm/7),0);
-  const sliderQtyPerLayer=finishSlidersBase;
-  let finishSliders=finish?finishSlidersBase:0,liningSliders=lining?liningSlidersBase:0;
+  // V14.3.7: cortina completa = 1 deslizante/3 cm de largura total,
+  // arredondado para cima ao multiplo de 4. Cortina simples = 1/5 cm.
+  // Distribuir entre camadas WAVE evita cobrar duas vezes a mesma quantidade.
+  const isCompleteCurtain=!!finish&&!!lining;
+  const sliderTotal=widths.reduce((sum,cm)=>{
+    const qty=Math.ceil(Math.max(0,cm)/(isCompleteCurtain?3:5));
+    return sum+(isCompleteCurtain?Math.ceil(qty/4)*4:qty);
+  },0);
+  const finishWave=!!finish&&e.finishPleat==='WAVE';
+  const liningWave=!!lining&&e.liningPleat==='WAVE';
+  const sliderQtyPerLayer=sliderTotal;
+  let finishSliders=0,liningSliders=0;
+  if(finishWave&&liningWave){
+    finishSliders=Math.ceil(sliderTotal/2);
+    liningSliders=sliderTotal-finishSliders;
+  }else if(finishWave){finishSliders=sliderTotal;}
+  else if(liningWave){liningSliders=sliderTotal;}
+  else if(isCompleteCurtain){finishSliders=Math.ceil(sliderTotal/2);liningSliders=sliderTotal-finishSliders;}
+  else if(finish){finishSliders=sliderTotal;}
+  else if(lining){liningSliders=sliderTotal;}
   const accessoryFor=(pleat,calc)=>{
     if(!calc)return {qty:0,cost:0,name:'',labor:0};
     const gatheredCm=Number(calc.gathered||0)*100;let name='',spacing=0,laborUnit=0,header=0;
