@@ -508,6 +508,7 @@ function clearEnv(){
   ['eName','eWidth','eHeight','eNotes'].forEach(id=>$(id).value='');
   $('eCustomPleat').value=0;
   quoteEditingEnvironmentId=null;
+  quoteEditOriginalPrices=null;
   quoteExcludeFixation=false;
   if($('addEnvBtn'))$('addEnvBtn').textContent='+ Adicionar ambiente';
   applyEnvironmentFixationUI();
@@ -529,9 +530,34 @@ function applyEnvironmentFixationUI(){
   if(b){b.textContent=quoteExcludeFixation?'RESTAURAR FIXAÇÃO':'EXCLUIR FIXAÇÃO';b.className='btn '+(quoteExcludeFixation?'danger':'secondary')}
 }
 
+let quoteEditOriginalPrices=null;
+function confirmEnvironmentPriceScope(onChoice, hasChanges){
+  const overlay=document.createElement('div');
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(14,38,42,.62);z-index:200000;display:flex;align-items:center;justify-content:center;padding:20px';
+  overlay.innerHTML=`<div role="dialog" aria-modal="true" aria-labelledby="env-scope-title" style="background:#fff;border-radius:15px;padding:25px;width:min(560px,100%);box-shadow:0 15px 55px #1235;text-align:center;color:#075c61"><h2 id="env-scope-title" style="font-size:19px;margin:0 0 12px">VOCÊ DESEJA APLICAR ESSA CORREÇÃO?</h2><p style="color:#485d61;margin:0 0 20px">Em TODOS OS AMBIENTES, somente valores unitários alterados serão aplicados aos itens correspondentes. Quantidades e configurações não serão modificadas.</p><div style="display:flex;flex-wrap:wrap;justify-content:center;gap:12px"><button type="button" class="btn primary" data-scope="one">NESSE AMBIENTE</button><button type="button" class="btn secondary" data-scope="all" ${hasChanges?'':'disabled title="Não há valores alterados para propagar"'}>TODOS OS AMBIENTES</button></div><button type="button" class="btn ghost" data-scope="cancel" style="margin-top:15px">CANCELAR</button></div>`;
+  document.body.appendChild(overlay);
+  const dismiss=()=>overlay.remove();
+  overlay.querySelectorAll('[data-scope]').forEach(b=>b.onclick=()=>{const choice=b.dataset.scope;dismiss();if(choice!=='cancel')onChoice(choice)});
+}
+function propagateEnvironmentPrices(source, changes){
+  for(const target of draft.environments||[]){
+    if(String(target.id)===String(source.id))continue;
+    // Apenas itens presentes na composição do destino, nunca suas quantidades.
+    const applicable=new Set(['__sewing','__installation']);
+    try{for(const item of officialOrderRequirements({environments:[{...target,manualPrices:{}}]})){
+      if(String(item.environment||'')===String(target.name||''))applicable.add(String(item.product_id));
+    }}catch(_){/* A composição existente permanece intacta se não puder ser lida. */}
+    for(const [key,value] of Object.entries(changes)){
+      if(!applicable.has(String(key)))continue;
+      if(!target.manualPrices||typeof target.manualPrices!=='object')target.manualPrices={};
+      target.manualPrices[key]=value;
+    }
+  }
+}
 function loadEnvironmentForEdit(e){
   if(!e)return;
   quoteEditingEnvironmentId=e.id;
+  quoteEditOriginalPrices=clone(e.manualPrices||{});
   quoteExcludeFixation=!!e.excludeFixation;
   const set=(id,v)=>{const el=$(id);if(el&&v!==undefined&&v!==null)el.value=String(v)};
   set('eModel',e.model);try{updateModelFields()}catch(_){}
@@ -1124,7 +1150,18 @@ function bind(){
       for(const key of ['manualItems','manualPrices','manualExtraItems']){
         if(previous&&Object.prototype.hasOwnProperty.call(previous,key))e[key]=clone(previous[key]);
       }
-      draft.environments[i]=e;
+      const baseline=quoteEditOriginalPrices||{};
+      const changedPrices={};
+      for(const [key,value] of Object.entries(e.manualPrices||{})){
+        if(!Object.prototype.hasOwnProperty.call(baseline,key)||Number(baseline[key])!==Number(value))changedPrices[key]=value;
+      }
+      confirmEnvironmentPriceScope(scope=>{
+        draft.environments[i]=e;
+        if(scope==='all')propagateEnvironmentPrices(e,changedPrices);
+        renderQuote();
+        clearEnv();
+      },Object.keys(changedPrices).length>0);
+      return;
     }else draft.environments.push(e);
     renderQuote();
     clearEnv();
