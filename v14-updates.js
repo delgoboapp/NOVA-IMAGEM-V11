@@ -40,6 +40,11 @@ calcEnvironment=function(e){
  const sew=Number(prices.__sewing),install=Number(prices.__installation);
  if(Object.prototype.hasOwnProperty.call(prices,'__sewing')&&Number.isFinite(sew)&&sew>=0){const qty=e.manualItems?.__sewing===null?0:e.manualItems?.__sewing===undefined?Number(c.sewingMeters||0):Number(e.manualItems.__sewing);delta+=qty*sew-Number(c.sewingCost||0)}
  if(Object.prototype.hasOwnProperty.call(prices,'__installation')&&Number.isFinite(install)&&install>=0){const qty=e.manualItems?.__installation===null?0:e.manualItems?.__installation===undefined?(c.installCost?1:0):Number(e.manualItems.__installation);delta+=qty*install-Number(c.installCost||0)}
+ // O resumo de mão de obra também deve refletir os preços manuais.
+ const sewQty=e.manualItems?.__sewing===null?0:e.manualItems?.__sewing===undefined?Number(c.sewingMeters||0):Number(e.manualItems.__sewing);
+ const instQty=e.manualItems?.__installation===null?0:e.manualItems?.__installation===undefined?(c.installCost?1:0):Number(e.manualItems.__installation);
+ if(Object.prototype.hasOwnProperty.call(prices,'__sewing')&&Number.isFinite(sew)&&sew>=0){const revised=sewQty*sew;c.laborTotal=Number(c.laborTotal||0)+revised-Number(c.sewingCost||0);c.sewingCost=revised;}
+ if(Object.prototype.hasOwnProperty.call(prices,'__installation')&&Number.isFinite(install)&&install>=0){const revised=instQty*install;c.laborTotal=Number(c.laborTotal||0)+revised-Number(c.installCost||0);c.installCost=revised;}
  c.base4=Math.max(0,c.base4+delta);
  c.cash=c.base4*(1-Number(db.priceConfig.terms.cashDiscountPct||0)/100);
  c.p18=c.base4*(1+Number(db.priceConfig.terms.p18AddPct||0)/100);

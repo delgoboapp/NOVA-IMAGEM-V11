@@ -498,6 +498,7 @@ function envFromForm(){
 }
 function updatePreview(){
   const e=envFromForm();
+  if(quoteEditingEnvironmentId){const saved=(draft.environments||[]).find(x=>String(x.id)===String(quoteEditingEnvironmentId));if(saved){e.manualItems=clone(saved.manualItems||{});e.manualPrices=clone(saved.manualPrices||{});e.manualExtraItems=clone(saved.manualExtraItems||[]);}}
   if(!e.name||!e.width||!e.height){$('calcPreview').innerHTML='Preencha ambiente, medidas e configuração para visualizar o cálculo.';return}
   const c=calcEnvironment(e);if(!c)return;
   const f=c.finishCalc,l=c.liningCalc;
@@ -539,7 +540,16 @@ function loadEnvironmentForEdit(e){
   set('eLining',e.lining);try{refreshLiningColors()}catch(_){}set('eLiningColor',e.liningColor);set('eLiningPleat',e.liningPleat);set('eLiningGather',e.liningGather);
   const fx=(e.excludeFixation&&e.excludedFixationSnapshot)?e.excludedFixationSnapshot:e;
   set('eFixation',fx.fixation||'TRILHO SUÍÇO');try{refreshFixColors()}catch(_){};try{typeof v12RefreshFixations==='function'&&v12RefreshFixations()}catch(_){}
-  set('eRailProduct',fx.railProductId||'');set('eFixColor',fx.fixColor||'');set('eSupportMaterial',fx.supportMaterial||'ALUMINIO');
+  // O seletor moderno de trilho usa MODELO, não ID numérico do estoque.
+  const railSku=officialProductById(fx.railProductId);
+  const railSelect=$('eRailProduct');
+  if(railSelect&&fx.fixation==='TRILHO SUÍÇO'){
+    const wantedName=railSku?.product_name||fx.railProductName||'';
+    const option=[...railSelect.options].find(o=>String(o.value)===String(fx.railProductId))
+      ||[...railSelect.options].find(o=>norm(o.value)===norm(wantedName)||norm(o.textContent)===norm(wantedName));
+    if(option)railSelect.value=option.value;
+  }else set('eRailProduct',fx.railProductId||'');
+  set('eFixColor',fx.fixColor||railSku?.color||'');set('eSupportMaterial',fx.supportMaterial||'ALUMINIO');
   set('eFinishBar',e.finishBar==='BARRA TOMBADA'?'BARRA TOMA':(e.finishBar||'BARRA SIMPLES'));set('eSoutacheColor',e.soutacheColor||'');set('eCustomPleat',e.customPleat||0);set('eNotes',e.notes||'');
   if($('eAngle')){$('eAngle').checked=!!e.angle;try{$('eAngle').dispatchEvent(new Event('change',{bubbles:true}))}catch(_){}}
   set('eAngleA',e.angleA||'');set('eAngleAHeight',e.angleAHeight||'');set('eAngleB',e.angleB||'');set('eAngleBHeight',e.angleBHeight||'');set('eMotorAngleMode',e.motorAngleMode||'CURVA');
@@ -559,13 +569,25 @@ function renderQuote(){
   for(const e of draft.environments||[]){
     const c=calcEnvironment(e);if(!c)continue;const pm=1+quotePartnerMarkup(draft)/100;labor+=c.laborTotal;
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td><strong>${esc(e.name)}</strong>${c.alerts.length?`<br><span class="badge warn">${esc(c.alerts.join(' • '))}</span>`:''}${e.excludeFixation?'<br><span class="badge warn">FIXAÇÃO EXCLUÍDA</span>':''}</td><td>${e.width} × ${e.height} cm<br>${Math.max(0,Number(e.leaves||1)-1)} abertura(s)</td><td>${e.model==='COMPLETE'?'Cortina completa':e.model==='LINING'?'Apenas forro':'Apenas acabamento'}</td><td>${c.finishCalc?`${esc(e.finish)}<br>${esc(e.finishColor)} • ${e.finishPleat} ${e.finishGather}:1`:'—'}</td><td>${c.liningCalc?`${esc(e.lining)}<br>${esc(e.liningColor)} • ${e.liningPleat} ${e.liningGather}:1`:'—'}</td><td>${e.excludeFixation?'SEM FIXAÇÃO / SEM INSTALAÇÃO':`${esc(e.fixation)}<br>${esc(e.fixColor)}`}</td><td>${money(c.laborTotal)}</td><td>${money(c.p18*pm)}</td><td>${money(c.base4*pm)}</td><td>${money(c.cash*pm)}</td><td class="no-print"><button class="btn secondary" data-edit-env="${e.id}">Editar</button> <button class="btn danger" data-del-env="${e.id}">Excluir</button></td>`;
+    tr.innerHTML=`<td><strong>${esc(e.name)}</strong>${c.alerts.length?`<br><span class="badge warn">${esc(c.alerts.join(' • '))}</span>`:''}${e.excludeFixation?'<br><span class="badge warn">FIXAÇÃO EXCLUÍDA</span>':''}</td><td>${e.width} × ${e.height} cm<br>${Math.max(0,Number(e.leaves||1)-1)} abertura(s)</td><td>${e.model==='COMPLETE'?'Cortina completa':e.model==='LINING'?'Apenas forro':'Apenas acabamento'}</td><td>${c.finishCalc?`${esc(e.finish)}<br>${esc(e.finishColor)} • ${e.finishPleat} ${e.finishGather}:1`:'—'}</td><td>${c.liningCalc?`${esc(e.lining)}<br>${esc(e.liningColor)} • ${e.liningPleat} ${e.liningGather}:1`:'—'}</td><td>${e.excludeFixation?'SEM FIXAÇÃO / SEM INSTALAÇÃO':`${esc(e.fixation)}<br>${esc(e.fixColor)}`}</td><td>${money(c.laborTotal)}</td><td>${money(c.p18*pm)}</td><td>${money(c.base4*pm)}</td><td>${money(c.cash*pm)}</td><td class="no-print"><button class="btn secondary" data-edit-env="${e.id}">Editar</button> <button class="btn secondary" data-duplicate-env="${e.id}" title="Criar cópia independente deste ambiente">Duplicar</button> <button class="btn danger" data-del-env="${e.id}">Excluir</button></td>`;
     tbody.appendChild(tr)
   }
   for(const b of draft.blinds||[]){const qty=Number(b.qty||1);const tr=document.createElement('tr');tr.className='blind-row';tr.innerHTML=`<td><strong>${esc(b.environment||'PERSIANA')}</strong><br><span class="badge blue">PERSIANA</span></td><td>${b.width} × ${b.height} cm<br>${qty} un.</td><td>Persiana</td><td>${esc(b.model)}<br>${esc(b.color||'-')}</td><td>—</td><td>${esc(b.commandSide||'-')}${b.bando?`<br>Bandô: ${esc(b.bando)}`:''}</td><td>—</td><td>${money(Number(b.p18||0)*qty)}</td><td>${money(Number(b.p4||0)*qty)}</td><td>${money(Number(b.cash||0)*qty)}</td><td class="no-print"><button class="btn danger" data-del-blind="${b.id}">Excluir</button></td>`;tbody.appendChild(tr)}
   for(const a of draft.looseProducts||[]){const qty=Number(a.qty||1),tr=document.createElement('tr');tr.className='loose-row';tr.innerHTML=`<td><strong>${esc(a.description||a.name)}</strong><br><span class="badge blue">${a.stockManaged===false?'FORA DE ESTOQUE':'PRODUTO AVULSO'}</span></td><td>${qty} ${esc(a.unit||'UN')}</td><td>${esc(a.type||'')}</td><td>${esc(a.name)}<br>${esc(a.color||'')}</td><td>—</td><td>${a.priceOverride?`Preço ajustado<br><small>${esc(a.priceReason||'')}</small>`:'Preço padrão'}</td><td>—</td><td>${money(Number(a.p18||0)*qty)}</td><td>${money(Number(a.p4||0)*qty)}</td><td>${money(Number(a.cash||0)*qty)}</td><td class="no-print"><button class="btn danger" data-del-loose="${a.id}">Excluir</button></td>`;tbody.appendChild(tr)}
   const t=quoteTotals(draft);$('qCount').textContent=(draft.environments?.length||0)+(draft.blinds?.length||0)+(draft.looseProducts?.length||0);$('q18').textContent=money(t.p18);$('q4').textContent=money(t.p4);$('qCash').textContent=money(t.cash);$('sumLabor').textContent=money(labor);$('sum18').textContent=money(t.p18);$('sum4').textContent=money(t.p4);$('sumCash').textContent=money(t.cash);
   document.querySelectorAll('[data-edit-env]').forEach(b=>b.onclick=()=>{const e=(draft.environments||[]).find(x=>String(x.id)===String(b.dataset.editEnv));if(e)loadEnvironmentForEdit(e)});
+  document.querySelectorAll('[data-duplicate-env]').forEach(b=>b.onclick=()=>{
+    const i=(draft.environments||[]).findIndex(x=>String(x.id)===String(b.dataset.duplicateEnv));
+    if(i<0)return;
+    const copy=clone(draft.environments[i]);copy.id=uid();
+    const base=String(copy.name||'AMBIENTE').replace(/\s*[—-]\s*CÓPIA(?:\s+\d+)?$/i,'');
+    let name=base+' — CÓPIA',n=2;
+    while(draft.environments.some(x=>String(x.name).toUpperCase()===name.toUpperCase()))name=base+' — CÓPIA '+n++;
+    copy.name=name;
+    // Materiais e preços manuais pertencem à cópia, não compartilham referências.
+    draft.environments.splice(i+1,0,copy);
+    renderQuote();
+  });
   document.querySelectorAll('[data-del-env]').forEach(b=>b.onclick=()=>{draft.environments=draft.environments.filter(x=>String(x.id)!==String(b.dataset.delEnv));renderQuote()});
   document.querySelectorAll('[data-del-blind]').forEach(b=>b.onclick=()=>{draft.blinds=(draft.blinds||[]).filter(x=>x.id!==b.dataset.delBlind);renderQuote()});
   document.querySelectorAll('[data-del-loose]').forEach(b=>b.onclick=()=>{draft.looseProducts=(draft.looseProducts||[]).filter(x=>x.id!==b.dataset.delLoose);renderQuote()})
@@ -1097,10 +1119,10 @@ function bind(){
       if(i<0)return alert('Ambiente não encontrado para edição.');
       e.id=quoteEditingEnvironmentId;
       const previous=draft.environments[i];
-      if(previous?.manualItems && Object.keys(previous.manualItems).length){
-        if(JSON.stringify([previous.width,previous.height,previous.angle,previous.angleA,previous.angleB,previous.finish,previous.lining,previous.fixation])!==JSON.stringify([e.width,e.height,e.angle,e.angleA,e.angleB,e.finish,e.lining,e.fixation])){
-          if(confirm('Existem itens editados manualmente. OK para manter as alterações, CANCELAR para recalcular todos os itens.')) e.manualItems=clone(previous.manualItems);
-        }else e.manualItems=clone(previous.manualItems);
+      // Nunca descartar alterações manuais ao salvar medidas, cor ou trilho.
+      // O botão RECALCULAR TODOS é a ação explícita para eliminá-las.
+      for(const key of ['manualItems','manualPrices','manualExtraItems']){
+        if(previous&&Object.prototype.hasOwnProperty.call(previous,key))e[key]=clone(previous[key]);
       }
       draft.environments[i]=e;
     }else draft.environments.push(e);
