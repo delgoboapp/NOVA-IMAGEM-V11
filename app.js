@@ -2442,7 +2442,7 @@ document.addEventListener('DOMContentLoaded',()=>{
    Neutraliza rotinas legadas que forçavam WAVE -> TRILHO SUÍÇO.
 */
 (function(){
-  const FAMILY_OPTIONS=['TRILHO SUÍÇO','VARÃO WAVE','VARÃO COM COMANDO','TRILHO SQUARE COM COMANDO','TRILHO MOTORIZADO'];
+  const FAMILY_OPTIONS=['TRILHO SUÍÇO','VARÃO WAVE','VARÃO WAVE COM COMANDO POR CORDA','TRILHO SQUARE COM COMANDO','TRILHO MOTORIZADO'];
   const INTERNAL={
     'TRILHO SUÍÇO':'TRILHO SUÍÇO',
     'VARÃO WAVE':'VARÃO WAVE',
@@ -2522,7 +2522,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     try{
       removeParallelSelector();relabel();
       const f=$('eFixation'),r=$('eRailProduct'),rw=$('eRailProductWrap'),c=$('eFixColor');if(!f||!r||!c)return;
-      const previous=preserve?(FAMILY_OPTIONS.includes(desired)?desired:(DISPLAY[f.value]||f.value||desired)):desired;
+      const previous=preserve?(FAMILY_OPTIONS.includes(desired)?desired:(f.value||desired)):desired;
       if(FAMILY_OPTIONS.includes(previous))desired=previous;
       populate(f,FAMILY_OPTIONS,desired);
       desired=f.value||desired;
@@ -2552,7 +2552,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   // Impede que rotinas antigas alterem a escolha do usuário.
   document.addEventListener('change',function(ev){
     if(ev.target?.id==='eFixation'){
-      const chosen=DISPLAY[ev.target.value]||ev.target.value;
+      const chosen=ev.target.value;
       if(FAMILY_OPTIONS.includes(chosen))desired=chosen;
       setTimeout(syncAndPreview,0);
     }else if(['eRailProduct','eFixColor'].includes(ev.target?.id))setTimeout(syncAndPreview,0);
