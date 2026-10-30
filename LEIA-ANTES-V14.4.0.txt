@@ -1,0 +1,36 @@
+ERP NOVA IMAGEM — PACOTE V14.4.0 (PRÉVIA PARA HOMOLOGAÇÃO)
+
+ATENÇÃO: NÃO PUBLICAR DIRETO SOBRE O ERP DE PRODUÇÃO SEM BACKUP E TESTES.
+Este pacote foi preparado a partir do ZIP enviado e passou por verificações estáticas de sintaxe, mas NÃO foi validado no ambiente Cloudflare real, nem testado com o banco D1 de produção.
+
+RECURSOS INCLUÍDOS NESTA PRÉVIA
+- Menu CONTAS DA LOJA com contas predefinidas, abertura, entradas, saídas, transferências e extrato PDF por período.
+- Contas pessoais de ERIC, LUIZ e ELIANE; carteiras, títulos simples de pagar/receber, baixa parcial, extrato e PDF.
+- Documentos da empresa: enviar, listar, procurar, baixar, renomear e excluir documentos privados no R2 (ligação ANEXOS_R2).
+- Filtros de contas a receber e contas a pagar, relatórios por impressão/Salvar em PDF.
+- Pagamento em lote com saída financeira (requer teste de consistência no D1).
+- Registro de créditos líquidos na conta para recebimentos, separado da baixa do pedido (atenção à conciliação).
+- DRE GERENCIAL PRELIMINAR com 9% padrão e valor manual; NÃO é DRE contábil consolidada.
+- Marca visual preservada no sistema e relatórios usando a função printWindow existente.
+
+LIMITAÇÕES QUE IMPEDEM HOMOLOGAÇÃO DIRETA COMO VERSÃO FINAL
+- Baixa de recebimento no pedido e lançamento do líquido na conta ainda são operações separadas, que exigem conciliação manual.
+- Pagamentos em lote gravam no livro financeiro e no estado anterior do ERP em etapas diferentes; se ocorrer falha intermediária, será necessária reconciliação.
+- Ajustes de saldo, classificação completa de receitas/despesas na DRE, consolidação contábil e fechamento por competência ainda precisam de implementação/testes adicionais.
+- Valor da taxa DRE é guardado no navegador, e não definitivamente por competência no D1.
+- Contas pessoais ainda não têm edição/exclusão de títulos e permissões individuais granuladas; acesso limitado aos gestores.
+- Documentos: editar nome; substituição de arquivo exige apagar e cadastrar novo.
+- Não foi executado teste de fluxo completo nem homologação de Workers/R2/D1.
+- PDFs são gerados via janela de impressão/Salvar como PDF do navegador (sem anexo automático ao WhatsApp ou e-mail).
+- Saldo Mercado Pago de R$ 7.369,89 em 30/10/2026 13:21 NÃO é gravado automaticamente, deve ser confirmado ao cadastrar saldo de abertura.
+
+ANTES DE PUBLICAR
+1. Salvar ZIP do commit atual e exportar backup completo do D1.
+2. Criar implantação de teste com cópia dos dados, nunca apontando a homologação para o banco de produção.
+3. Confirmar bindings DB (D1) e ANEXOS_R2 (R2 privado), já usados pelo ERP.
+4. Verificar permissões e autenticação; subir arquivos com a estrutura preservada.
+5. Testar saldos, extratos, transferências, lançamentos, relatórios e documentos com dados de teste.
+6. Somente depois de passar no teste completo considerar produção.
+
+Commit sugerido:
+feat: adiciona estrutura financeira e documentos R2 para homologação v14.4.0
