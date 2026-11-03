@@ -1,0 +1,12 @@
+NOVA IMAGEM — IMPORTAÇÃO 03/11/2026
+
+1. Suba o conteúdo deste ZIP (arquivos na raiz) ao repositório GitHub e publique no Cloudflare Pages.
+2. Faça login como GESTOR e faça BACKUP COMPLETO pelo ERP antes da importação.
+3. Abra FINANCEIRO > CONTAS A PAGAR e clique IMPORTAR PLANILHAS 03/11.
+4. Confira a prévia de novos títulos, duplicados e casos para revisão.
+5. Clique CONFIRMAR IMPORTAÇÃO ÚNICA. O servidor compara novamente com o D1 antes de gravar.
+6. Confira o Contas a Pagar e GESTÃO > Vendedores, filtre outubro/2026 para Luiz Sérgio.
+
+IMPORTANTE: A publicação do código não altera o banco de dados. A importação só ocorre após confirmação autenticada. Repetir a operação não recria registros coincidentes. Possíveis coincidências são retidas para conferência. Os dois clientes sem data e valor não são importados. Um título consta com vencimento em 2023: confira manualmente. Não foram informadas datas previstas de instalação.
+
+As vendas históricas entram no valor vendido, sem registro de recebimentos e sem movimentação de estoque. Os custos dessas vendas não estão disponíveis; não interprete margem ou lucro delas como valores reais.
