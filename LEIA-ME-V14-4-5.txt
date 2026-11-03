@@ -1,0 +1,41 @@
+NOVA IMAGEM — ERP V14.4.5 — 03/11/2026
+
+BASE
+- Pacote anterior V14.4.4 preservado.
+- Esta versão adiciona melhorias pontuais em Contas da Loja e Pedidos.
+
+ALTERAÇÕES DESTA VERSÃO
+1. CONTAS DA LOJA
+- Inserido o botão "Fluxo de Caixa" na tela Contas da Loja.
+- O relatório de fluxo de caixa considera:
+  • recebimentos efetivos dos pedidos;
+  • contas efetivamente pagas;
+  • resultado de caixa do período;
+  • DRE gerencial resumido do mês.
+- Permite visualização em tela e exportação em PDF.
+
+2. RECURSOS + GRÁFICO EM PIZZA
+- Acima do detalhamento das contas, foi criada a conta-resumo "RECURSOS".
+- O valor mostra a soma dos saldos atuais das contas da loja.
+- Adicionado gráfico em pizza com a participação percentual dos recursos por conta.
+
+3. PEDIDOS — EDITAR VALOR DO PEDIDO
+- Dentro do pedido, para gestor, foi adicionado o botão "EDITAR VALOR DO PEDIDO".
+- O novo valor é aplicado de forma proporcional aos itens monetários do pedido.
+- Exige justificativa obrigatória.
+- Não permite definir valor menor que o total já recebido.
+- Gera histórico interno no pedido e registro na auditoria.
+
+OBSERVAÇÕES
+- O fluxo de caixa usa regime de caixa (o que entrou e saiu no período).
+- O DRE continua gerencial e usa os pedidos gerados no mês.
+- Vendas históricas simplificadas não recebem a edição proporcional do valor do pedido.
+
+PUBLICAÇÃO
+- Fazer backup antes do commit.
+- Enviar o conteúdo do ZIP ao repositório GitHub.
+- Testar primeiro em homologação.
+
+VALIDAÇÃO
+- Verificação estática de sintaxe JavaScript concluída.
+- Não houve teste conectado ao D1 de produção.
