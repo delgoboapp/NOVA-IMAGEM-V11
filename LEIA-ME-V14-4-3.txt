@@ -1,0 +1,17 @@
+NOVA IMAGEM CORTINAS E PERSIANAS — V14.4.3
+Alterações sobre a base V14.4.2 enviada/preparada em 03/11/2026.
+
+1) COMERCIAL / GESTÃO: o faturamento e o ticket médio usam o valor contratado (agreedValue) dos pedidos, inclusive vendas históricas. Os custos permanecem calculados separadamente e não devem ser confundidos com faturamento.
+2) RECEBIMENTO DE PEDIDO: ao confirmar pagamento pelo botão Receber, o valor bruto recebido é creditado em CAIXA DA LOJA no D1, com referência única. Repasse para outras contas através de Transferir Recursos. Evite inserir novamente recebimentos antigos já quitados.
+3) TRANSFERÊNCIA DE CAIXA: quando a origem for CAIXA DA LOJA, informar valor da venda e valor líquido repassado. Diferença -> JUROS DA MÁQUINA ou OUTRO (justificativa obrigatória). O valor líquido entra na conta destino e a diferença é despesa no Caixa; o principal original não é alterado.
+4) CONTAS A PAGAR: novo formulário de pagamento em lote com multa e juros opcionais por título. O débito do principal/multa/juros é atômico no D1, evitando uma parte das falhas de lançamento parcial. O título é marcado como pago somente após a confirmação D1.
+5) CONTAS: cartões-resumo de taxas da operadora, outras diferenças, multas e juros e demonstrativo imprimível/PDF para período escolhido.
+6) CONTAS A PAGAR: preserva agrupamento em 5 blocos da V14.4.2.
+
+IMPORTANTE:
+- FAZER BACKUP COMPLETO DO D1/ERP ANTES DO COMMIT.
+- PUBLICAR E VALIDAR PRIMEIRO NO AMBIENTE DE TESTE COM UMA VENDA DE TESTE E UM TÍTULO DE TESTE.
+- O COMMIT ALTERA CÓDIGO; NÃO ALTERA PEDIDOS/CONTAS ATUAIS ATÉ USO DAS ROTINAS.
+- DADOS DO USUÁRIO DENTRO DE import-data.json: não publique em repositório público.
+- RECEBIMENTOS ANTIGOS NÃO SÃO CREDITADOS RETROATIVAMENTE; exigem conciliação manual cuidadosa para evitar duplicidade.
+- SEM TESTE LIVE NO D1 PUBLICADO; verificações locais de sintaxe e empacotamento apenas.

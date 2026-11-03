@@ -1,0 +1,22 @@
+NOVA IMAGEM V14.4.2 — CONTAS A PAGAR AGRUPADAS
+
+Atualizacao visual baseada na V14.4.1 de 03/11/2026.
+
+ORGANIZACAO
+1. EM ATRASO (vermelho) — aberto
+2. VENCEM HOJE (azul) — aberto
+3. PROXIMOS 7 DIAS (amanha ate hoje+7) — aberto
+4. APOS 7 DIAS (inclusive sem vencimento) — recolhido
+5. PAGOS — recolhido
+
+Cada cabecalho informa quantidade e valor. Grupos vazios sao omitidos.
+Os filtros existentes continuam ativos e os totais incluem grupos fechados.
+Acoes de editar/excluir e selecao para pagamento permanecem no mesmo modulo.
+Impressao e Exportar PDF contemplam os titulos de todos os grupos filtrados.
+
+IMPORTANTE
+- Nao houve alteracao na estrutura de dados, tabelas D1, Cloudflare Workers ou API.
+- Os titulos ja importados permanecem onde estao, sem nova importacao.
+- Nao clique novamente em IMPORTAR PLANILHAS 03/11; esse botao da versao anterior foi preservado.
+- Publicar em ambiente de teste antes de producao e fazer backup completo.
+- Subir o CONTEUDO da pasta extraida para a raiz do repositorio GitHub.

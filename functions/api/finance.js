@@ -32,6 +32,13 @@ export async function onRequest({env,request}){
   const rows=(await env.DB.prepare('SELECT id,date,kind,description,person,reference,transfer_id,amount FROM ni_movements WHERE account_id=? AND date>=? AND date<=? ORDER BY date,created_at,id').bind(id,from,to).all()).results;
   return json({account:id,from,to,opening:(Number(a.opening)+Number(opening.total))/100,rows:rows.map(r=>({...r,amount:r.amount/100}))});
  }
+ if(request.method==='GET'&&action==='cost-summary'){
+  const from=validDate(url.searchParams.get('from')||'1900-01-01'),to=validDate(url.searchParams.get('to')||'2999-12-31');
+  const kinds=['TAXA_CARTAO','DIFERENCA_OUTROS','MULTA_ATRASO','JUROS_ATRASO'];
+  const rows=(await env.DB.prepare('SELECT id,date,kind,description,account_id,amount,reference FROM ni_movements WHERE kind IN (?,?,?,?) AND date>=? AND date<=? ORDER BY date DESC,created_at DESC').bind(...kinds,from,to).all()).results;
+  const totals=Object.fromEntries(kinds.map(k=>[k,0]));for(const r of rows)totals[r.kind]+=Math.abs(Number(r.amount))/100;
+  return json({from,to,totals,rows:rows.map(r=>({...r,amount:Math.abs(r.amount)/100}))});
+ }
  if(request.method==='GET'&&action==='titles'){
   const owner=url.searchParams.get('owner');if(!await account(env,owner))return err('Conta inexistente');
   return json({titles:(await env.DB.prepare('SELECT * FROM ni_personal_titles WHERE owner=? ORDER BY due_date').bind(owner).all()).results.map(t=>({...t,amount:t.amount/100,paid:t.paid/100}))});
@@ -41,13 +48,50 @@ export async function onRequest({env,request}){
  if(action==='transfer'){
   const from=String(p.from||''),to=String(p.to||'');if(from===to)return err('Contas precisam ser diferentes');
   if(!await account(env,from)||!await account(env,to))return err('Conta inexistente');
-  const value=cents(p.value),date=validDate(p.date),reason=String(p.reason||'').trim().slice(0,500);if(!reason)return err('Informe justificativa');
-  if(await balance(env,from)<value)return err('Saldo insuficiente');
-  const ref=crypto.randomUUID(),person=u.username;
-  await env.DB.batch([
-   env.DB.prepare('INSERT INTO ni_movements VALUES(?,?,?,?,?,?,?,?,?,?)').bind(crypto.randomUUID(),from,-value,date,'TRANSFERÊNCIA',reason,person,null,ref,now),
-   env.DB.prepare('INSERT INTO ni_movements VALUES(?,?,?,?,?,?,?,?,?,?)').bind(crypto.randomUUID(),to,value,date,'TRANSFERÊNCIA',reason,person,null,ref,now)
-  ]);return json({ok:true,transferId:ref});
+  const net=cents(p.value),day=validDate(p.date),reason=String(p.reason||'').trim().slice(0,500);if(!reason)return err('Informe justificativa');
+  const isCash=from==='CAIXA DA LOJA';
+  if(!isCash&&(p.grossValue!=null||p.feeType))return err('Diferenças devem ser lançadas somente nas saídas do CAIXA DA LOJA');
+  const gross=isCash&&p.grossValue!=null?cents(p.grossValue):net;
+  if(gross<net)return err('Valor recebido não pode ser superior ao valor da venda');
+  const diff=gross-net,feeType=String(p.feeType||'');
+  if(diff&& !['JUROS_DA_MAQUINA','OUTRO'].includes(feeType))return err('Classifique a diferença como JUROS DA MÁQUINA ou OUTRO');
+  const detail=String(p.feeReason||'').trim().slice(0,500);
+  if(diff&&feeType==='OUTRO'&&!detail)return err('Explique o motivo da diferença');
+  if(await balance(env,from)<gross)return err('Saldo insuficiente para o valor bruto da venda');
+  const ref=crypto.randomUUID(),person=u.username,steps=[
+    env.DB.prepare('INSERT INTO ni_movements VALUES(?,?,?,?,?,?,?,?,?,?)').bind(crypto.randomUUID(),from,-net,day,'TRANSFERÊNCIA',reason,person,null,ref,now),
+    env.DB.prepare('INSERT INTO ni_movements VALUES(?,?,?,?,?,?,?,?,?,?)').bind(crypto.randomUUID(),to,net,day,'TRANSFERÊNCIA',reason,person,null,ref,now)
+  ];
+  if(diff)steps.push(env.DB.prepare('INSERT INTO ni_movements VALUES(?,?,?,?,?,?,?,?,?,?)').bind(crypto.randomUUID(),from,-diff,day,feeType==='JUROS_DA_MAQUINA'?'TAXA_CARTAO':'DIFERENCA_OUTROS',`Venda ${gross/100} | Recebido ${net/100} | Diferença ${diff/100} | ${detail||'Juros da máquina'} | ${reason}`,person,'NI-FEE:'+ref,ref,now));
+  await env.DB.batch(steps);return json({ok:true,transferId:ref,gross:gross/100,received:net/100,fee:diff/100});
+ }
+ if(action==='order-receipt'){
+  const accountId='CAIXA DA LOJA',value=cents(p.value),day=validDate(p.date),paymentId=String(p.paymentId||'');
+  if(!/^[a-zA-Z0-9_-]{8,100}$/.test(paymentId))return err('Identificador do pagamento inválido');
+  const orderNo=String(p.orderNo||'').slice(0,30),reason='Recebimento pedido '+orderNo+' | '+String(p.method||'').slice(0,60);
+  const reference='NI-ORDER-RECEIPT:'+paymentId;
+  const existing=await env.DB.prepare('SELECT amount FROM ni_movements WHERE reference=?').bind(reference).first();
+  if(existing){if(Number(existing.amount)!==value)return err('Recebimento já registrado com outro valor',409);return json({ok:true,alreadyExists:true})}
+  await env.DB.prepare('INSERT INTO ni_movements VALUES(?,?,?,?,?,?,?,?,?,?)').bind(crypto.randomUUID(),accountId,value,day,'RECEBIMENTO_PEDIDO',reason,u.username,reference,null,now).run();
+  return json({ok:true});
+ }
+ if(action==='payables-batch'){
+  const id=String(p.account||''),acc=await account(env,id);if(!acc||acc.kind!=='COMPANY')return err('Conta de saída inválida');
+  const day=validDate(p.date),items=p.items;if(!Array.isArray(items)||!items.length||items.length>200)return err('Informe entre 1 e 200 títulos');
+  const ids=new Set(),ops=[];let total=0;
+  for(const row of items){
+   const tid=String(row.id||'');if(!/^[a-zA-Z0-9_-]{3,100}$/.test(tid)||ids.has(tid))return err('Identificador de título inválido ou repetido');ids.add(tid);
+   const value=cents(row.value),fine=Number(row.fine||0),interest=Number(row.interest||0);
+   if(!Number.isFinite(fine)||!Number.isFinite(interest)||fine<0||interest<0||fine>1e8||interest>1e8)return err('Multas ou juros inválidos');
+   const fineC=Math.round(fine*100),interestC=Math.round(interest*100),label=String(row.label||tid).slice(0,180);
+   for(const [kind,amount,reference,reason] of [['PAGAMENTO',value,'NI-PAY:'+tid,'Pagamento título '+label],['MULTA_ATRASO',fineC,'NI-FINE:'+tid,'Multa título '+label],['JUROS_ATRASO',interestC,'NI-INTEREST:'+tid,'Juros título '+label]]){
+    if(!amount)continue;
+    const previous=await env.DB.prepare('SELECT id FROM ni_movements WHERE reference=?').bind(reference).first();if(previous)return err('Título já movimentado: '+label+'. Confira o extrato e o cadastro antes de repetir.',409);
+    total+=amount;ops.push(env.DB.prepare('INSERT INTO ni_movements VALUES(?,?,?,?,?,?,?,?,?,?)').bind(crypto.randomUUID(),id,-amount,day,kind,reason,u.username,reference,null,now));
+   }
+  }
+  if(await balance(env,id)<total)return err('Saldo insuficiente. Total com multas e juros: R$ '+(total/100).toFixed(2));
+  await env.DB.batch(ops);return json({ok:true,count:items.length,total:total/100});
  }
  if(action==='movement'){
   const id=String(p.account||''),a=await account(env,id);if(!a)return err('Conta inválida');
