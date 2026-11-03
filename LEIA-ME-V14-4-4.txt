@@ -1,0 +1,23 @@
+NOVA IMAGEM — ERP V14.4.4 — 03/11/2026
+
+BASE: V14.4.3, com funcionalidades de contas, gestão, vendas e importação histórica preservadas.
+
+ALTERAÇÕES
+1. CONTAS A PAGAR: botão "Editar valor da conta" por título, disponível somente para gestores. Exige justificativa digitável com pelo menos 5 caracteres para qualquer alteração efetiva do valor.
+2. Histórico/auditoria: registra valor anterior, novo valor, data, usuário, justificativa e origem no título (valueChangeHistory) e no log de auditoria do ERP.
+3. Edição habitual "Editar": caso valor mude, também requer justificativa, e não permite alterar pagamentos já baixados por esse formulário.
+4. Proteções: novo valor maior que zero, com até 2 casas decimais; nunca menor que valor já pago. Não movimenta saldos de contas, nem altera pagamento efetuado.
+5. Removido o botão temporário "IMPORTAR PLANILHAS 03/11". Mantido o código de visualização/ impressão dos pedidos históricos já importados. Não reimportar planilhas.
+6. Atualizada identificação visual V14.4.4 e parâmetros de atualização de cache dos arquivos editados.
+
+PUBLICAÇÃO
+- Faça backup completo antes do commit e teste em ambiente de homologação.
+- Descompacte o ZIP e envie o conteúdo (não a pasta-mãe) para o repositório GitHub.
+- Não execute importação novamente; registros D1 permanecem inalterados até ação de usuários.
+- Caso tenha pagamentos liquidados, o total do título não poderá ficar abaixo do valor já pago.
+- Se houver ajuste contábil por juros, multa ou desconto já pago, utilize os procedimentos financeiros próprios; esta tela só corrige o valor contratado da conta.
+
+VALIDAÇÃO
+- Verificação estática de sintaxe JavaScript concluída.
+- Não foi possível testar contra seu banco D1 de produção nem simular todos os fluxos do navegador.
+- Verifique a linha alterada no painel e no log de Auditoria depois de salvar.

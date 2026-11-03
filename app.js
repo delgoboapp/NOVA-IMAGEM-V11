@@ -1023,17 +1023,63 @@ function renderPayables(){
       const status=payableStatus(p),tr=document.createElement('tr');
       tr.dataset.payableGroup=key;tr.dataset.payableId=String(p.id);tr.hidden=!niPayableGroupVisibility[key];
       tr.className='ni-pay-item ni-pay-item-'+key;
-      tr.innerHTML=`<td><input type="checkbox" class="ni144-pay-check" value="${esc(p.id)}" aria-label="Selecionar título" ${selected.has(String(p.id))?'checked':''}> ${esc(p.documentNumber||p.title)}</td><td>${esc(p.definition||'-')}</td><td>${esc(p.quoteNumber||p.purchaseOrder||'-')}</td><td>${fmtDate(p.dueDate)}</td><td>${money(p.value)}</td><td>${money(p.paidValue)}</td><td>${fmtDate(p.paidDate)}</td><td><span class="badge ${status==='PAGO'?'ok':status==='EM ATRASO'?'danger':'warn'}">${status}</span></td><td><button class="btn ghost" data-payable-edit="${esc(p.id)}">Editar</button> <button class="btn danger" data-payable-del="${esc(p.id)}">Excluir</button></td>`;
+      tr.innerHTML=`<td><input type="checkbox" class="ni144-pay-check" value="${esc(p.id)}" aria-label="Selecionar título" ${selected.has(String(p.id))?'checked':''}> ${esc(p.documentNumber||p.title)}</td><td>${esc(p.definition||'-')}</td><td>${esc(p.quoteNumber||p.purchaseOrder||'-')}</td><td>${fmtDate(p.dueDate)}</td><td>${money(p.value)}</td><td>${money(p.paidValue)}</td><td>${fmtDate(p.paidDate)}</td><td><span class="badge ${status==='PAGO'?'ok':status==='EM ATRASO'?'danger':'warn'}">${status}</span></td><td><button class="btn ghost" data-payable-value="${esc(p.id)}">Editar valor da conta</button> <button class="btn ghost" data-payable-edit="${esc(p.id)}">Editar</button> <button class="btn danger" data-payable-del="${esc(p.id)}">Excluir</button></td>`;
       tb.appendChild(tr);
     }
   }
   if(!list.length){const tr=document.createElement('tr');tr.innerHTML='<td colspan="9" style="padding:24px;text-align:center">Nenhum título encontrado nos filtros.</td>';tb.appendChild(tr)}
   const sum=x=>x.reduce((a,p)=>a+Number(p.value||0),0),paid=x=>x.reduce((a,p)=>a+Number(p.paidValue||0),0),pending=x=>x.reduce((a,p)=>a+Math.max(0,Number(p.value||0)-Number(p.paidValue||0)),0),late=x=>x.filter(p=>payableStatus(p)==='EM ATRASO').reduce((a,p)=>a+Math.max(0,Number(p.value||0)-Number(p.paidValue||0)),0);
   if($('payableSummary'))$('payableSummary').innerHTML=[['Total geral',money(sum(all))],['Total filtrado',money(sum(list))],['Pago no filtro',money(paid(list))],['A pagar no filtro',money(pending(list))],['Em atraso',money(late(list))]].map(x=>`<div class="kpi"><span>${x[0]}</span><strong>${x[1]}</strong></div>`).join('');
+  tb.querySelectorAll('[data-payable-value]').forEach(b=>b.onclick=()=>niEditPayableValue(db.payables.find(x=>String(x.id)===b.dataset.payableValue)));
   tb.querySelectorAll('[data-payable-edit]').forEach(b=>b.onclick=()=>openPayable(db.payables.find(x=>String(x.id)===b.dataset.payableEdit)));
   tb.querySelectorAll('[data-payable-del]').forEach(b=>b.onclick=()=>{if(confirm('Excluir este título definitivamente?')){db.payables=db.payables.filter(x=>String(x.id)!==b.dataset.payableDel);queueSave();renderPayables()}});
 }
-function openPayable(p=null){openModal(`<h2>${p?'Editar':'Novo'} título</h2><div class="grid two"><label class="field">Título / documento<input id="apTitle" value="${esc(p?.documentNumber||p?.title||'')}"></label><label class="field">Definição<input id="apDef" value="${esc(p?.definition||'')}"></label><label class="field">Referência<input id="apQuote" value="${esc(p?.quoteNumber||p?.purchaseOrder||'')}"></label><label class="field">Vencimento<input id="apDue" type="date" value="${p?.dueDate||''}"></label><label class="field">Valor<input id="apValue" type="number" step="0.01" value="${Number(p?.value||0)}"></label><label class="field">Valor pago<input id="apPaid" type="number" step="0.01" value="${Number(p?.paidValue||0)}"></label><label class="field">Data pagamento<input id="apPaidDate" type="date" value="${p?.paidDate||''}"></label><label class="field">Observações<textarea id="apNotes">${esc(p?.notes||'')}</textarea></label></div><button id="apSave" class="btn primary">Salvar</button>`);$('apSave').onclick=()=>{const doc=$('apTitle').value.trim();const obj={...(p||{}),id:p?.id||uid(),title:doc,documentNumber:doc,definition:$('apDef').value.trim(),quoteNumber:$('apQuote').value.trim(),dueDate:$('apDue').value,value:Number($('apValue').value||0),paidValue:Number($('apPaid').value||0),paidDate:$('apPaidDate').value,notes:$('apNotes').value.trim()};if(!obj.title)return alert('Informe o título/documento.');const i=db.payables.findIndex(x=>x.id===obj.id);if(i>=0)db.payables[i]=obj;else db.payables.unshift(obj);queueSave();closeModal();renderPayables()}}
+// V14.4.4 — alteracoes de valores com justificativa obrigatoria e auditoria.
+function niMoneyCents(v){return Math.round(Number(v)*100)}
+function niRecordPayableValueChange(p,oldValue,newValue,reason,source){
+  const event={at:new Date().toISOString(),by:currentUsername(),oldValue:Number(oldValue),newValue:Number(newValue),reason:String(reason),source:String(source)};
+  p.valueChangeHistory=Array.isArray(p.valueChangeHistory)?p.valueChangeHistory:[];
+  p.valueChangeHistory.push(event);
+  audit('FINANCEIRO','ALTERACAO VALOR CONTA A PAGAR',p.documentNumber||p.title||p.id,
+    `De ${money(oldValue)} para ${money(newValue)} • Motivo: ${reason} • Origem: ${source}`);
+}
+function niEditPayableValue(p){
+  if(!p)return alert('Título não encontrado.');
+  if(!isGestor())return alert('Somente um gestor pode alterar o valor da conta.');
+  const original=Number(p.value||0),paid=Number(p.paidValue||0);
+  const history=(p.valueChangeHistory||[]).slice(-5).reverse().map(h=>`<li>${esc(new Date(h.at).toLocaleString('pt-BR'))} • ${money(h.oldValue)} → ${money(h.newValue)} • ${esc(h.reason||'')} (${esc(h.by||'')})</li>`).join('');
+  openModal(`<h2>Editar valor da conta</h2><p><b>Título:</b> ${esc(p.documentNumber||p.title||'')}<br><b>Fornecedor/definição:</b> ${esc(p.definition||'-')}<br><b>Valor atual:</b> ${money(original)}<br><b>Valor já pago:</b> ${money(paid)}</p><div class="grid two"><label class="field">Novo valor (R$)<input id="niPayValueNew" type="number" min="0.01" step="0.01" value="${original.toFixed(2)}"></label><label class="field" style="grid-column:1/-1">Justificativa da alteração (obrigatória)<textarea id="niPayValueReason" rows="3" placeholder="Ex.: correção de valor do boleto, desconto negociado, ajuste do fornecedor"></textarea></label></div><p class="muted">A correção será registrada na auditoria, com valor anterior, novo valor, usuário, data e justificativa. Nenhuma movimentação de caixa será criada ou modificada.</p>${history?`<h3>Últimas alterações</h3><ul>${history}</ul>`:''}<button class="btn primary" id="niPayValueConfirm">Salvar alteração de valor</button>`);
+  $('niPayValueConfirm').onclick=()=>{
+    const raw=$('niPayValueNew').value,amount=Number(raw),reason=$('niPayValueReason').value.trim();
+    if(!raw||!Number.isFinite(amount)||amount<=0||Math.abs(amount*100-niMoneyCents(amount))>0.0001)return alert('Informe um valor positivo com no máximo duas casas decimais.');
+    if(niMoneyCents(amount)===niMoneyCents(original))return alert('O novo valor precisa ser diferente do atual.');
+    if(reason.length<5)return alert('Digite a justificativa da alteração (pelo menos 5 caracteres).');
+    if(niMoneyCents(amount)<niMoneyCents(paid))return alert('O valor não pode ser menor que o valor já pago. Confira os pagamentos antes de corrigir.');
+    if(!cloudLoaded||cloudLocked)return alert('Banco não sincronizado. Recarregue e tente novamente.');
+    p.value=Number(amount.toFixed(2));
+    niRecordPayableValueChange(p,original,p.value,reason,'EDITAR VALOR DA CONTA');
+    queueSave();closeModal();renderPayables();
+  };
+}
+function openPayable(p=null){
+  openModal(`<h2>${p?'Editar':'Novo'} título</h2><div class="grid two"><label class="field">Título / documento<input id="apTitle" value="${esc(p?.documentNumber||p?.title||'')}"></label><label class="field">Definição<input id="apDef" value="${esc(p?.definition||'')}"></label><label class="field">Referência<input id="apQuote" value="${esc(p?.quoteNumber||p?.purchaseOrder||'')}"></label><label class="field">Vencimento<input id="apDue" type="date" value="${p?.dueDate||''}"></label><label class="field">Valor<input id="apValue" type="number" min="0.01" step="0.01" value="${Number(p?.value||0)}"></label><label class="field">Valor pago<input id="apPaid" type="number" step="0.01" value="${Number(p?.paidValue||0)}" ${p?'readonly':''}></label><label class="field">Data pagamento<input id="apPaidDate" type="date" value="${p?.paidDate||''}" ${p?'readonly':''}></label><label class="field">Observações<textarea id="apNotes">${esc(p?.notes||'')}</textarea></label>${p?'<label class="field" style="grid-column:1/-1">Justificativa para alteração do valor (obrigatória se mudar)<textarea id="apValueReason" placeholder="Motivo da correção de valor"></textarea></label>':''}</div>${p?'<p class="muted">Pagamentos realizados não são editáveis aqui. Use o processo financeiro apropriado para corrigir baixas.</p>':''}<button id="apSave" class="btn primary">Salvar</button>`);
+  $('apSave').onclick=()=>{
+    const doc=$('apTitle').value.trim(),rawValue=$('apValue').value,newValue=Number(rawValue);
+    if(!doc)return alert('Informe o título/documento.');
+    if(!rawValue||!Number.isFinite(newValue)||newValue<=0||Math.abs(newValue*100-Math.round(newValue*100))>0.0001)return alert('Informe um valor válido com até duas casas decimais.');
+    if(p&&!isGestor()&&niMoneyCents(newValue)!==niMoneyCents(p.value||0))return alert('Somente um gestor pode alterar o valor da conta.');
+    if(p&&niMoneyCents(newValue)<niMoneyCents(p.paidValue||0))return alert('O novo valor não pode ser menor que o montante já pago.');
+    if(!cloudLoaded||cloudLocked)return alert('Banco não sincronizado. Recarregue e tente novamente.');
+    const modified=p&&niMoneyCents(newValue)!==niMoneyCents(p.value||0);
+    const reason=modified?$('apValueReason').value.trim():'';
+    if(modified&&reason.length<5)return alert('Digite a justificativa da alteração do valor (pelo menos 5 caracteres).');
+    const oldValue=Number(p?.value||0);
+    const obj={...(p||{}),id:p?.id||uid(),title:doc,documentNumber:doc,definition:$('apDef').value.trim(),quoteNumber:$('apQuote').value.trim(),dueDate:$('apDue').value,value:Number(newValue.toFixed(2)),paidValue:p?Number(p.paidValue||0):Number($('apPaid').value||0),paidDate:p?(p.paidDate||''):$('apPaidDate').value,notes:$('apNotes').value.trim()};
+    if(modified)niRecordPayableValueChange(obj,oldValue,obj.value,reason,'EDITAR TÍTULO');
+    const i=db.payables.findIndex(x=>x.id===obj.id);if(i>=0)db.payables[i]=obj;else db.payables.unshift(obj);
+    queueSave();closeModal();renderPayables();
+  };
+}
 
 function supplierOrders(id){return (db.purchaseOrders||[]).filter(o=>o.supplierId===id)}
 function supplierPayables(id){const nums=new Set(supplierOrders(id).map(o=>o.number));return (db.payables||[]).filter(p=>nums.has(p.purchaseOrder)||supplierOrders(id).some(o=>o.id===p.purchaseOrderId))}

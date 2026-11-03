@@ -21,6 +21,5 @@
    };
   }catch(ex){alert('Falha na conferência: '+ex.message)}
  };
- const add=()=>{const bar=document.querySelector('#view-payables .topbar .actions');if(!bar||document.getElementById('niHistoricalImportBtn'))return;const b=document.createElement('button');b.id='niHistoricalImportBtn';b.className='btn secondary';b.textContent='IMPORTAR PLANILHAS 03/11';b.onclick=niImportPreview;bar.prepend(b)};
- if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',add);else add();
+ // Botão de importação encerrado depois da carga de 03/11/2026.
 })();
