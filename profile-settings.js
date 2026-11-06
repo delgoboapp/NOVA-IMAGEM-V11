@@ -41,7 +41,20 @@
      const own=(db.users||[]).find(u=>norm(u.username)===key);
      if(own)own.markupPercent=margin;
      else{db.settings.builtInUserProfiles=db.settings.builtInUserProfiles||{};db.settings.builtInUserProfiles[key]={...(db.settings.builtInUserProfiles[key]||{}),markupPercent:margin};}
-     try{await saveCloud();$('pfStatus').textContent='Configurações gravadas na nuvem.';renderNav()}catch(e){$('pfStatus').textContent='Falha ao salvar: '+e.message;alert(e.message)}
+     try{await saveCloud();
+       // Confirma a persistência real no D1, não apenas a resposta HTTP de gravação.
+       const confirmed=await api('data');
+       const persisted=confirmed.settings?.personalQuoteProfiles?.[key];
+       if(!persisted||Number(persisted.marginPercent)!==margin)throw new Error('A nuvem não confirmou o acréscimo deste usuário. Nenhuma confirmação de salvamento será exibida.');
+       db.settings.personalQuoteProfiles[key]=persisted;
+       // Atualiza imediatamente apenas o orçamento NOVO em edição deste usuário.
+       // Orçamentos previamente gravados mantêm o percentual original.
+       if(!draft.numero && norm(draft.sellerUser||currentUsername())===key){
+         draft.partnerMarkupPercent=margin;
+         renderQuote();updatePreview();
+       }
+       $('pfStatus').textContent='Configurações confirmadas na nuvem • markup '+margin+'%.';renderNav()
+     }catch(e){$('pfStatus').textContent='Falha ao salvar: '+e.message;alert(e.message)}
    };
    $('pfChangePass').onclick=async()=>{const old=$('pfOld').value,p=$('pfNew').value,confirm=$('pfConfirm').value;if(!old||p.length<6||p!==confirm)return alert('Informe a senha atual e confirme uma nova senha de pelo menos 6 caracteres.');const user=userPermissionRecord(ownKey()),expected=db.settings?.userPasswordOverrides?.[ownKey()]||user.hash;
      if(await sha256(old)!==expected)return alert('Senha atual incorreta.');
