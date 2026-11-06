@@ -8,6 +8,11 @@ async function setup(env){
  await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_ni_mov_account_date ON ni_movements(account_id,date)').run();
  await env.DB.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_ni_mov_reference ON ni_movements(reference) WHERE reference IS NOT NULL').run();
  await env.DB.prepare('CREATE TABLE IF NOT EXISTS ni_personal_titles (id TEXT PRIMARY KEY,owner TEXT NOT NULL,kind TEXT NOT NULL,name TEXT NOT NULL,due_date TEXT NOT NULL,amount INTEGER NOT NULL,paid INTEGER NOT NULL DEFAULT 0,created_at TEXT NOT NULL)').run();
+ // Auditoria separada e persistida no D1, gerada no servidor por triggers.
+ await env.DB.prepare('CREATE TABLE IF NOT EXISTS ni_finance_audit (id INTEGER PRIMARY KEY AUTOINCREMENT,at TEXT NOT NULL,person TEXT NOT NULL,action TEXT NOT NULL,account_id TEXT NOT NULL,detail TEXT NOT NULL)').run();
+ await env.DB.prepare(`CREATE TRIGGER IF NOT EXISTS ni_audit_movement_insert AFTER INSERT ON ni_movements BEGIN INSERT INTO ni_finance_audit(at,person,action,account_id,detail) VALUES(NEW.created_at,NEW.person,NEW.kind,NEW.account_id,NEW.description || ' | centavos: ' || NEW.amount || ' | referência: ' || COALESCE(NEW.reference,NEW.transfer_id,'—'));END`).run();
+
+
  for(const [id,kind] of accounts)await env.DB.prepare('INSERT OR IGNORE INTO ni_accounts(id,kind,created_at) VALUES(?,?,?)').bind(id,kind,new Date().toISOString()).run();
 }
 function cents(n){let v=Number(n);if(!Number.isFinite(v)||v<=0||v>1e10)throw Error('Valor inválido');return Math.round(v*100)}
@@ -18,6 +23,10 @@ export async function onRequest({env,request}){
  const u=await verifyToken(env,request);if(!u)return err('Sessão inválida',401);if(u.role!=='gestor')return err('Acesso restrito a gestores',403);
  try{
  await setup(env);const url=new URL(request.url),action=url.searchParams.get('action')||'list';
+ if(request.method==='GET'&&action==='audit'){
+  const rows=(await env.DB.prepare('SELECT at,person,action,account_id,detail FROM ni_finance_audit ORDER BY id DESC LIMIT 1000').all()).results;
+  return json({rows});
+ }
  if(request.method==='GET'&&action==='list'){
   const rows=(await env.DB.prepare('SELECT * FROM ni_accounts ORDER BY CASE kind WHEN \'COMPANY\' THEN 0 ELSE 1 END,id').all()).results;
   const sums=(await env.DB.prepare('SELECT account_id,SUM(amount) total FROM ni_movements GROUP BY account_id').all()).results;
@@ -45,6 +54,20 @@ export async function onRequest({env,request}){
  }
  if(request.method!=='POST')return err('Método não permitido',405);
  const p=await request.json(),now=new Date().toISOString();
+ if(action==='adjust-balance'){
+  const id=String(p.account||''),a=await account(env,id);
+  if(!a||a.kind!=='COMPANY')return err('Conta da loja inválida',404);
+  const target=Number(p.value),day=validDate(p.date),reason=String(p.reason||'').trim().slice(0,500);
+  if(!Number.isFinite(target)||target<0||target>1e10)return err('Novo saldo inválido');
+  if(reason.length<10)return err('A justificativa deve conter pelo menos 10 caracteres');
+  const before=await balance(env,id),next=Math.round(target*100),diff=next-before;
+  if(!diff)return err('O saldo informado já coincide com o saldo da conta');
+  if(Number(p.expectedBalanceCents)!==before)return err('Saldo foi alterado por outra operação. Atualize e confira novamente.',409);
+  const ref='NI-ADJUST:'+crypto.randomUUID();
+  const desc=`Ajuste de saldo auditável | saldo anterior R$ ${(before/100).toFixed(2)} | saldo novo R$ ${(next/100).toFixed(2)} | diferença R$ ${(diff/100).toFixed(2)} | Justificativa: ${reason}`;
+  await env.DB.prepare('INSERT INTO ni_movements VALUES(?,?,?,?,?,?,?,?,?,?)').bind(crypto.randomUUID(),id,diff,day,'AJUSTE_SALDO',desc,u.username,ref,null,now).run();
+  return json({ok:true,previous:before/100,current:next/100,adjustment:diff/100,reference:ref});
+ }
  if(action==='transfer'){
   const from=String(p.from||''),to=String(p.to||'');if(from===to)return err('Contas precisam ser diferentes');
   if(!await account(env,from)||!await account(env,to))return err('Conta inexistente');
@@ -106,11 +129,11 @@ export async function onRequest({env,request}){
   const existing=await env.DB.prepare('SELECT COUNT(*) n FROM ni_movements WHERE account_id=?').bind(id).first();
   if(existing.n)return err('Conta possui movimentações. Não altere abertura; faça ajuste documentado.');
   const value=Number(p.value);if(!Number.isFinite(value)||value<0)return err('Saldo inválido');
-  await env.DB.prepare('UPDATE ni_accounts SET opening=?,opening_at=? WHERE id=?').bind(Math.round(value*100),now,id).run();return json({ok:true});
+  await env.DB.batch([env.DB.prepare('UPDATE ni_accounts SET opening=?,opening_at=? WHERE id=?').bind(Math.round(value*100),now,id),env.DB.prepare('INSERT INTO ni_finance_audit(at,person,action,account_id,detail) VALUES(?,?,?,?,?)').bind(now,u.username,'SALDO DE ABERTURA',id,'Saldo anterior: '+(Number((await account(env,id)).opening)/100).toFixed(2)+' | Novo: '+value.toFixed(2))]);return json({ok:true});
  }
  if(action==='account'){
   const id=String(p.name||'').trim().slice(0,100);if(!id||await account(env,id))return err('Nome inválido ou existente');
-  const kind=p.kind==='PERSONAL'?'PERSONAL':'COMPANY';await env.DB.prepare('INSERT INTO ni_accounts VALUES(?,?,0,NULL,?)').bind(id,kind,now).run();return json({ok:true});
+  const kind=p.kind==='PERSONAL'?'PERSONAL':'COMPANY';await env.DB.batch([env.DB.prepare('INSERT INTO ni_accounts VALUES(?,?,0,NULL,?)').bind(id,kind,now),env.DB.prepare('INSERT INTO ni_finance_audit(at,person,action,account_id,detail) VALUES(?,?,?,?,?)').bind(now,u.username,'CRIAR CONTA',id,'Nova conta: '+kind)]);return json({ok:true});
  }
  if(action==='title'){
   const owner=String(p.owner||'');const a=await account(env,owner);if(!a||a.kind!=='PERSONAL')return err('Pessoa inválida');

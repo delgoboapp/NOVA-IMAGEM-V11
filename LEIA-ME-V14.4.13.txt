@@ -1,0 +1,29 @@
+NOVA IMAGEM — V14.4.13 | ENTREGÁVEL PARA VALIDAÇÃO
+Data: 06/11/2026
+Base: ZIP V14.4.12 enviado no histórico desta conversa.
+
+ALTERAÇÕES
+1. Logomarca do portal: mantém o atalho para a HOME (data-home-top) em todas as telas públicas.
+2. Gestão > Taxas de Parcelamento: 18 percentuais individuais (crédito 1x a 18x), edição e gravação por gestor. Nenhuma taxa é presumida: configure a tabela real antes de usar crédito.
+3. Conversão de orçamento em pedido: PIX/dinheiro ou crédito 1x a 18x. Preço cobrado = preço à vista já com markup/desconto / (1 - taxa). Pedido salva percentual e encargo histórico; comissão e resultado comercial baseados no valor à vista. Pedido antigo mantém os valores salvos.
+4. Sincronização do markup: gestor e usuário alteram o mesmo perfil pessoal no D1. Gestor também vê o percentual do perfil no cadastro de usuários.
+5. Gestão/Dashboard/Contas: mostra taxas efetivamente conciliadas na operadora conforme movimentações TAXA_CARTAO na D1. NÃO conta taxas previstas como já pagas. A estatística de taxas é da LOJA TODA, mesmo com filtro de vendedor, pois a conciliação não identifica vendedor.
+6. Gestão/Contas: botão ACERTAR VALOR, com saldo anterior, novo saldo, justificativa, data, proteção contra concorrência e registro no extrato.
+7. Auditoria: eventos do app_state (alterações do markup, taxas, conversões) e histórico financeiro ni_finance_audit alimentado por triggers/ações no D1 (transferências, recebimentos, ajustes, lançamentos, criação de contas).
+8. DRE gerencial: bruto cobrado e taxas efetivamente conciliadas, com ressalva de competências diferentes.
+
+REGRA DE CAIXA
+Recebimentos de pedidos entram na CAIXA DA LOJA. Só o gestor efetua a transferência/reconciliação, informando conta de destino, bruto recebido do cliente, líquido repassado e motivo da diferença. A diferença da maquininha é despesa financeira (TAXA_CARTAO). Ajustes de saldo não representam venda.
+
+INSTRUÇÕES DE PUBLICAÇÃO SEGURA
+- Antes de publicar, faça backup validado do D1 (não apenas backup do site).
+- Implante primeiro em ambiente de homologação com cópia sanitizada do banco.
+- Configure as taxas reais em Gestão > Taxas de Parcelamento e confirme a gravação.
+- Teste PIX, crédito 1x, 4x e 18x com pedidos de teste; cheque o valor recebido, comissão e resultado.
+- Teste gestor define markup do parceiro e parceiro visualiza após atualizar a sessão.
+- Teste o acerto em conta de teste, extrato e auditoria. Depois confirme o dashboard com a transferência bruta/líquida.
+- Observe que o script de frontend passou por validação de sintaxe e o trigger SQLite foi testado em banco local; integração real com Pages/Workers/D1 de produção não foi executada.
+- A restauração do estado anterior exige tanto o ZIP anterior quanto o backup do banco, quando houver escrita de dados.
+
+IMPORTANTE
+Não recalcula automaticamente pedidos antigos. Percentuais de 1x a 18x devem ser preenchidos pelo gestor. Não há dados fictícios da operadora.
