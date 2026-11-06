@@ -1,0 +1,7 @@
+NOVA IMAGEM ERP V14.5.0 — PACOTE PARA HOMOLOGAÇÃO
+
+Alterações: navegação pelo logo; 18 taxas de cartão; crédito 1x–18x na conversão; markup por usuário; acompanhamento de taxas no Dashboard e Contas; conciliação pela Caixa da Loja; ajuste de saldo auditável; documentos individuais por pedido e comparação de markup.
+
+IMPORTANTE: a validação de negócio no Cloudflare/D1 ainda não foi feita. Faça backup do D1 e teste em homologação. Configure taxas reais antes de converter um pedido em cartão. A edição de contratos exige revisão jurídica antes de usar em documentos reais.
+
+Depois de publicar, use Ctrl+F5 para atualizar os recursos do navegador. Verifique em Gestão > Taxas de Parcelamento; Gestão > Contas > Acertar Valor; e em Orçamentos > Converter. Não sobrescreva dados do D1 manualmente.
