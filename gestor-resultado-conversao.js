@@ -41,7 +41,28 @@ function openPreview(q){
  const modal=byId('modalBody');if(!modal)return;const holder=document.createElement('div');holder.id='managerPreview149';holder.innerHTML=modalHtml;for(const el of [...modal.children])el.style.display='none';modal.appendChild(holder);
  byId('previewReturn149').onclick=()=>{holder.remove();for(const el of [...modal.children])el.style.display=''};
 }
-function attach(q){if(!manager())return;const go=byId('convGo');if(!go||byId('previewResult149'))return;const btn=document.createElement('button');btn.id='previewResult149';btn.type='button';btn.className='btn secondary';btn.textContent='Ver resultado do pedido';btn.style.margin='8px';btn.onclick=()=>openPreview(q);go.insertAdjacentElement('afterend',btn)}
+function attach(q){
+ if(!manager())return;
+ const go=byId('convGo');
+ if(!go||byId('previewResult149'))return;
+ const btn=document.createElement('button');
+ btn.id='previewResult149';
+ btn.type='button';
+ btn.className='btn secondary';
+ btn.textContent='Ver resultado antes de gerar';
+ btn.onclick=()=>openPreview(q);
+ let row=byId('convActionRow149');
+ if(!row){
+  row=document.createElement('div');
+  row.id='convActionRow149';
+  row.style.cssText='display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px';
+  if(go.parentNode){
+   go.parentNode.insertBefore(row,go);
+   row.appendChild(go);
+  }
+ }
+ row.appendChild(btn);
+}
 function hook(){if(typeof convertQuote!=='function')return;const original=convertQuote;convertQuote=function(n){const result=original.apply(this,arguments);if(manager()){const q=(db.quotes||[]).find(x=>num(x.numero)===num(n));if(q)setTimeout(()=>attach(q),20)}return result}}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',hook);else hook();
 })();
