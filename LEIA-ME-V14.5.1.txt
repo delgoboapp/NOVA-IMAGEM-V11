@@ -1,0 +1,7 @@
+NOVA IMAGEM — V14.5.1 (HOMOLOGAÇÃO)
+
+NOVO: conversão com PIX, cartão de 1x a 18x, entrada PIX/dinheiro no pedido ou na entrega e cartão sobre o saldo. Valor bruto distribuído proporcionalmente aos itens, contrato com total e parcelas, sem revelar percentual da operadora ao cliente. Gravação auditada na conversão.
+
+ATENÇÃO: não houve teste integrado com Cloudflare D1 ou pagamentos reais. Antes da publicação, exporte backup verificável do D1; verifique menu Taxas de Parcelamento com taxas REAIS; não use vendas reais para testar. Entrada não é quitada automaticamente: lançar somente quando recebida.
+
+TESTE: abrir novo orçamento, converter, escolher 2x / 18x / entrada + parcelamento, confirmar preview; checar contrato e PDF; conferir em Auditoria o registro de conversão; conferir os saldos antes/depois. Ctrl+Shift+R para atualizar cache.
