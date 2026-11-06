@@ -50,6 +50,11 @@ const DEFAULT_PRICE_CONFIG={
   commissionDefault:5
 };
 const DEFAULT_USERS=[
+  {username:'DCORATTA',name:'FERNANDA',role:'sales',commission:5,permissions:['quote','quotes','clients','orders','install','agenda'],builtIn:true},
+  {username:'GARCIELLO',name:'JULIANO',role:'sales',commission:5,permissions:['quote','quotes','clients','orders','install','agenda'],builtIn:true},
+  {username:'DECORE',name:'RONALDO',role:'sales',commission:5,permissions:['quote','quotes','clients','orders','install','agenda'],builtIn:true},
+  {username:'DINHO',name:'ODENIR JOSE FONTANA FILHO',role:'sales',commission:5,permissions:['quote','quotes','clients','orders','install','agenda'],builtIn:true},
+  {username:'VENDAS',name:'VENDEDOR',role:'sales',commission:5,permissions:['quote','quotes','clients','orders','install','agenda'],builtIn:true},
   {username:'VENDAS1',name:'Vendas 1',role:'sales',commission:5,builtIn:true},
   {username:'VENDAS2',name:'Vendas 2',role:'sales',commission:5,builtIn:true},
   {username:'GESTOR',name:'Gestor',role:'gestor',commission:0,builtIn:true},
@@ -316,10 +321,16 @@ function installPrice(heightM,widthM){const h=Number(heightM||0),w=Number(widthM
 async function ensureCordaoWaveOfficial(){return true}
 async function ensureV115Accessories(){if(!isGestor())return;try{await api('prices',{method:'POST',body:JSON.stringify({action:'SINCRONIZAR_V115_ACESSORIOS'})});const prices=await api('prices');priceProducts=Array.isArray(prices.products)?prices.products:priceProducts}catch(e){console.error('Falha ao sincronizar acessórios V11.5:',e)}}
 async function loadCloud(){cloudLoaded=false;cloudLocked=false;try{cloud('Sincronizando...');const j=await api('data');db={...db,...j,priceConfig:mergeConfig(j.priceConfig)};db.wholesaleClients=db.wholesaleClients||[];db.wholesaleSales=db.wholesaleSales||[];db.auditLog=db.auditLog||[];db.attachments=db.attachments||[];db.customerFeedback=db.customerFeedback||[];db.discountApprovals=db.discountApprovals||[];db.userAlerts=db.userAlerts||[];db.blogPosts=db.blogPosts||[];db.settings=db.settings||{};let accessCodesAdded=false;if(isGestor()){for(const o of db.orders||[]){if(!/^\d{6}$/.test(String(o.clientAccessCode||''))){o.clientAccessCode=String(crypto.getRandomValues(new Uint32Array(1))[0]%1000000).padStart(6,'0');accessCodesAdded=true}}}const before=(db.products||[]).length;ensureInitialInventory();try{const prices=await api('prices');priceProducts=Array.isArray(prices.products)?prices.products:[];await ensureCordaoWaveOfficial();await ensureOfficialRailClaws();await ensureV115Accessories();await ensureV12BlackoutWide();await ensureEntretelaParaIlhos()}catch(e){priceProducts=[];console.error('Falha ao carregar price_products:',e)}cloudLoaded=true;cloud('Dados sincronizados na nuvem');renderAll();if((db.products||[]).length!==before||accessCodesAdded)queueSave()}catch(e){cloudLoaded=false;cloudLocked=true;cloud('Sem conexão com a nuvem — gravações bloqueadas',true);alert(e.message)}}
-let saveTimer=null;let cloudLoaded=false;let cloudSaving=false;let cloudDirty=false;let cloudLocked=false;function queueSave(){if(!cloudLoaded||cloudLocked){cloud('Gravação bloqueada: dados não sincronizados',true);return}cloudDirty=true;clearTimeout(saveTimer);saveTimer=setTimeout(saveCloud,350)}
+let saveTimer=null;let cloudLoaded=false;let cloudSaving=false;let cloudDirty=false;let cloudLocked=false;function queueSave(){if(!cloudLoaded||cloudLocked){cloud('Gravação bloqueada: dados não sincronizados',true);return}cloudDirty=true;clearTimeout(saveTimer);saveTimer=setTimeout(()=>saveCloud().catch(()=>{}),350)}
 async function saveCloud(){
- if(!token||!cloudLoaded||cloudLocked)return;
- if(cloudSaving){cloudDirty=true;return}
+ if(!token||!cloudLoaded||cloudLocked)throw new Error('Dados não sincronizados. Nenhuma alteração foi salva.');
+ cloudDirty=true;
+ if(cloudSaving){
+  // A gravação em andamento finalizará a alteração; o chamador deve aguardar.
+  while(cloudSaving){await new Promise(resolve=>setTimeout(resolve,50));}
+  if(cloudLocked)throw new Error('Gravação bloqueada.');
+  if(!cloudDirty)return;
+ }
  cloudSaving=true;
  try{
   while(cloudDirty&&!cloudLocked){
@@ -330,7 +341,7 @@ async function saveCloud(){
    db.updatedAt=j.updatedAt;
    cloud('Dados salvos na nuvem');
   }
- }catch(e){cloudLocked=true;cloud('Gravações BLOQUEADAS — atualize após verificar o banco',true);alert('Salvamento bloqueado para proteger o banco: '+e.message+'\nNão continue editando nesta sessão.');}
+ }catch(e){cloudLocked=true;cloud('Gravações BLOQUEADAS — atualize após verificar o banco',true);alert('Salvamento bloqueado para proteger o banco: '+e.message+'\nNão continue editando nesta sessão.');throw e;}
  finally{cloudSaving=false}
 }
 
@@ -1094,7 +1105,7 @@ function renderUsers(){const tb=$('usersTable');if(!tb)return;const disabled=new
 
 function openUserProfile(username){if(!isGestor())return;const key=norm(username),custom=(db.users||[]).find(x=>norm(x.username)===key),u=userPermissionRecord(username);openModal(`<h2>Editar usuário • ${esc(username)}</h2><div class="grid two"><label class="field">Nome completo<input id="ueName" value="${esc(u.name||'')}"></label><label class="field">Perfil<select id="ueRole"><option value="sales">VENDAS</option><option value="production">PRODUÇÃO</option><option value="gestor">GESTOR</option></select></label><label class="field">Comissão (%)<input id="ueComm" type="number" step="0.01" value="${Number(u.commission||0)}"></label><div class="field"><span>Login</span><strong>${esc(username)}</strong></div></div><p class="muted">O login é a identidade permanente do vendedor e não é alterado para preservar o histórico.</p><button id="ueSave" class="btn primary">Salvar</button>`);$('ueRole').value=u.role||'sales';$('ueSave').onclick=async()=>{if(custom){custom.name=$('ueName').value.trim()||custom.name;custom.role=$('ueRole').value;custom.commission=Number($('ueComm').value||0)}else{db.settings=db.settings||{};db.settings.builtInUserProfiles=db.settings.builtInUserProfiles||{};db.settings.builtInUserProfiles[key]={name:$('ueName').value.trim()||u.name,role:$('ueRole').value,commission:Number($('ueComm').value||0)}}await saveCloud();closeModal();renderUsers();refreshSellerControl(draft.sellerUser)}}
 
-function openResetPassword(username){if(!isGestor())return;openModal(`<h2>Redefinir senha • ${esc(username)}</h2><p class="muted">O Gestor define uma nova senha sem visualizar a senha atual.</p><label class="field">Nova senha<input id="resetPass" type="password" minlength="6"></label><label class="field">Confirmar nova senha<input id="resetPass2" type="password" minlength="6"></label><button id="resetPassSave" class="btn primary" style="margin-top:12px">Alterar senha</button>`);$('resetPassSave').onclick=async()=>{const a=$('resetPass').value,b=$('resetPass2').value;if(a.length<6)return alert('A senha precisa ter pelo menos 6 caracteres.');if(a!==b)return alert('As senhas não conferem.');const custom=(db.users||[]).find(x=>norm(x.username)===norm(username));const hash=await sha256(a);if(custom)custom.hash=hash;else{db.settings=db.settings||{};db.settings.userPasswordOverrides=db.settings.userPasswordOverrides||{};db.settings.userPasswordOverrides[norm(username)]=hash}await saveCloud();closeModal();alert('Senha alterada. Ela valerá no próximo login.')}}
+function openResetPassword(username){if(!isGestor())return;openModal(`<h2>Redefinir senha • ${esc(username)}</h2><p class="muted">O Gestor define uma nova senha sem visualizar a senha atual.</p><label class="field">Nova senha<input id="resetPass" type="password" minlength="6"></label><label class="field">Confirmar nova senha<input id="resetPass2" type="password" minlength="6"></label><button id="resetPassSave" class="btn primary" style="margin-top:12px">Alterar senha</button>`);$('resetPassSave').onclick=async()=>{const a=$('resetPass').value,b=$('resetPass2').value;if(a.length<6)return alert('A senha precisa ter pelo menos 6 caracteres.');if(a!==b)return alert('As senhas não conferem.');const custom=(db.users||[]).find(x=>norm(x.username)===norm(username));const hash=await sha256(a);if(custom&&!DEFAULT_USERS.some(u=>norm(u.username)===norm(username)))custom.hash=hash;else{db.settings=db.settings||{};db.settings.userPasswordOverrides=db.settings.userPasswordOverrides||{};db.settings.userPasswordOverrides[norm(username)]=hash}await saveCloud();closeModal();alert('Senha alterada. Ela valerá no próximo login.')}}
 function deleteUser(username){if(!isGestor())return alert('Apenas o GESTOR pode gerenciar usuários.');const u=[...DEFAULT_USERS,...db.users].find(x=>norm(x.username)===norm(username));if(!u)return;if(norm(username)===currentUsername())return alert('Você não pode excluir/desativar o usuário atualmente conectado.');db.disabledUsers=db.disabledUsers||[];if(u.builtIn){const i=db.disabledUsers.findIndex(x=>norm(x)===norm(username));if(i>=0){if(!confirm('Reativar este usuário?'))return;db.disabledUsers.splice(i,1)}else{if(!confirm('Desativar este usuário?'))return;db.disabledUsers.push(norm(username))}}else{if(!confirm('Excluir definitivamente este usuário?'))return;db.users=db.users.filter(x=>norm(x.username)!==norm(username));db.disabledUsers=db.disabledUsers.filter(x=>norm(x)!==norm(username));if(db.settings?.userPermissions)delete db.settings.userPermissions[norm(username)]}queueSave();renderUsers()}
 function permissionChecklist(selected=[]){const set=new Set(selected);return `<div class="permission-grid">${NAV.map(([id,label])=>`<label class="perm"><input type="checkbox" data-perm="${id}" ${set.has('*')||set.has(id)?'checked':''}> ${esc(label)}</label>`).join('')}</div>`}
 function collectPermissions(){return [...document.querySelectorAll('[data-perm]:checked')].map(x=>x.dataset.perm)}

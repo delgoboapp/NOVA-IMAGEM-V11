@@ -1,4 +1,9 @@
 export const DEFAULT_USERS = [
+  { username:'DCORATTA', name:'FERNANDA', role:'sales', hash:'1b33ff3ee1d5d1b8e554539c161eca70bebc9fefbd12b9c356113cd4707a54cd', commission:5, permissions:['quote','quotes','clients','orders','install','agenda'], builtIn:true },
+  { username:'GARCIELLO', name:'JULIANO', role:'sales', hash:'d38c33f73addbeb5c2842d06a574650df43ec71962bf04c68d980b18542cb32c', commission:5, permissions:['quote','quotes','clients','orders','install','agenda'], builtIn:true },
+  { username:'DECORE', name:'RONALDO', role:'sales', hash:'3078fe957a67442ab5a31ec2b22587e9262a6470746dd29b683a39d03f6260e5', commission:5, permissions:['quote','quotes','clients','orders','install','agenda'], builtIn:true },
+  { username:'DINHO', name:'ODENIR JOSE FONTANA FILHO', role:'sales', hash:'81d4d328b1897bb1ba9e9217f98b5fbacb5624422c10144b3c9f81d50c701eaa', commission:5, permissions:['quote','quotes','clients','orders','install','agenda'], builtIn:true },
+  { username:'VENDAS', name:'VENDEDOR', role:'sales', hash:'f0d37b52eb46c7248fe21233b4bfb0a16de4944d9e611a62f3b7feb6d4a53550', commission:5, permissions:['quote','quotes','clients','orders','install','agenda'], builtIn:true },
   { username:'VENDAS1', name:'Vendas 1', role:'sales', hash:'1602b4048b35882a346c6887360d0343cde72797314f81a36065c71320562615', builtIn:true },
   { username:'VENDAS2', name:'Vendas 2', role:'sales', hash:'68d31642d5ee64f81c7706f66f82a8041540bd682d0318634a45614385a7a322', builtIn:true },
   { username:'GESTOR', name:'Gestor', role:'gestor', hash:'c4240fe88a529a7242f70c1faef6e41697368c175499a49910fef9813585e7a3', builtIn:true },
